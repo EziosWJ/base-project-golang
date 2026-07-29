@@ -1,0 +1,9 @@
+Name: basegoapi-api
+Host: 0.0.0.0
+Port: 8080
+DatabaseURL: ""
+TokenTTLSeconds: 7200
+UploadRoot: uploads
+LogClearEnabled: true
+AllowedOrigins: http://localhost:5173
+DefaultPassword: admin123

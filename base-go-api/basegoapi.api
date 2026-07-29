@@ -1,0 +1,67 @@
+syntax = "v1"
+
+type (
+	LoginRequest {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	LoginToken {
+		TokenName  string `json:"tokenName"`
+		TokenValue string `json:"tokenValue"`
+		ExpiresIn  int64  `json:"expiresIn"`
+	}
+	AuthDept {
+		Id       int64  `json:"id"`
+		DeptName string `json:"deptName"`
+		DeptCode string `json:"deptCode"`
+	}
+	AuthRole {
+		Id       int64  `json:"id"`
+		RoleName string `json:"roleName"`
+		RoleCode string `json:"roleCode"`
+	}
+	AuthUser {
+		Id            int64      `json:"id"`
+		Username      string     `json:"username"`
+		Nickname      string     `json:"nickname"`
+		Avatar        string     `json:"avatar,optional"`
+		Phone         string     `json:"phone,optional"`
+		Email         string     `json:"email,optional"`
+		Dept          *AuthDept  `json:"dept,optional"`
+		Roles         []AuthRole `json:"roles"`
+		LastLoginTime string     `json:"lastLoginTime,optional"`
+		LastLoginIp   string     `json:"lastLoginIp,optional"`
+	}
+	AuthMenu {
+		Id             int64       `json:"id"`
+		ParentId       int64       `json:"parentId"`
+		MenuName       string      `json:"menuName"`
+		MenuType       string      `json:"menuType"`
+		Path           string      `json:"path"`
+		Component      string      `json:"component,optional"`
+		ExternalUrl    string      `json:"externalUrl,optional"`
+		Icon           string      `json:"icon,optional"`
+		PermissionCode string      `json:"permissionCode,optional"`
+		SortOrder      int64       `json:"sortOrder"`
+		Visible        int64       `json:"visible"`
+		Children       []*AuthMenu `json:"children"`
+	}
+)
+
+@server (
+	prefix: /api/auth
+)
+service basegoapi-api {
+	@handler Login
+	post /login (LoginRequest) returns (LoginToken)
+
+	@handler Logout
+	post /logout
+
+	@handler CurrentUser
+	get /me returns (AuthUser)
+
+	@handler CurrentUserMenus
+	get /menus returns ([]AuthMenu)
+}
+
