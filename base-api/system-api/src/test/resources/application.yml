@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:${DB_URL:jdbc:mysql://localhost:3306/base_project?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}}
+    username: ${TEST_DB_USERNAME:${DB_USERNAME:root}}
+    password: ${TEST_DB_PASSWORD:${DB_PASSWORD:}}

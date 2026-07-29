@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: system-api
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/base_project?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+server:
+  port: 8080
+
+system:
+  default-password: admin123
+  file:
+    upload-root: uploads
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 7200
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  is-read-header: true
+  is-read-body: false
+  is-read-cookie: false
+  auto-renew: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+system:
+  log-clear-enabled: true
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+system:
+  log-clear-enabled: false
+
+app:
+  cors:
+    allowed-origins: []
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
