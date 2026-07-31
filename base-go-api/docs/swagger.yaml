@@ -131,6 +131,47 @@ definitions:
       message:
         type: string
     type: object
+  dept.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  dept.ids:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  dept.request:
+    properties:
+      deptCode:
+        type: string
+      deptName:
+        type: string
+      email:
+        type: string
+      leader:
+        type: string
+      parentId:
+        type: integer
+      phone:
+        type: string
+      remark:
+        type: string
+      sortOrder:
+        type: integer
+      status:
+        type: integer
+    type: object
+  dept.statusReq:
+    properties:
+      status:
+        type: integer
+    type: object
   rbac.ApiEnvelope:
     properties:
       code:
@@ -195,6 +236,85 @@ definitions:
     type: object
   rbac.statusRequest:
     properties:
+      status:
+        type: integer
+    type: object
+  usermgmt.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  usermgmt.avatarRequest:
+    properties:
+      avatar:
+        type: string
+    type: object
+  usermgmt.batchRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  usermgmt.passwordRequest:
+    properties:
+      newPassword:
+        type: string
+      oldPassword:
+        type: string
+    type: object
+  usermgmt.rolesRequest:
+    properties:
+      roleIds:
+        items:
+          type: integer
+        type: array
+    type: object
+  usermgmt.statusRequest:
+    properties:
+      status:
+        type: integer
+    type: object
+  usermgmt.userCreateRequest:
+    properties:
+      avatar:
+        type: string
+      deptId:
+        type: integer
+      email:
+        type: string
+      gender:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      remark:
+        type: string
+      status:
+        type: integer
+      username:
+        type: string
+    type: object
+  usermgmt.userUpdateRequest:
+    properties:
+      avatar:
+        type: string
+      deptId:
+        type: integer
+      email:
+        type: string
+      gender:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      remark:
+        type: string
       status:
         type: integer
     type: object
@@ -277,6 +397,207 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
+  /api/system/dept:
+    post:
+      parameters:
+      - description: 部门
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dept.request'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 新增部门
+      tags:
+      - 部门管理
+  /api/system/dept/{id}:
+    delete:
+      parameters:
+      - description: 部门 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除部门
+      tags:
+      - 部门管理
+    get:
+      parameters:
+      - description: 部门 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 部门详情
+      tags:
+      - 部门管理
+    put:
+      parameters:
+      - description: 部门 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 部门
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dept.request'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改部门
+      tags:
+      - 部门管理
+  /api/system/dept/{id}/status:
+    patch:
+      parameters:
+      - description: 部门 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dept.statusReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改部门状态
+      tags:
+      - 部门管理
+  /api/system/dept/batch-delete:
+    post:
+      parameters:
+      - description: 部门 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dept.ids'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量删除部门
+      tags:
+      - 部门管理
+  /api/system/dept/options:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 启用部门树
+      tags:
+      - 部门管理
+  /api/system/dept/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 部门名称
+        in: query
+        name: deptName
+        type: string
+      - description: 部门编码
+        in: query
+        name: deptCode
+        type: string
+      - description: 状态：0 或 1
+        in: query
+        name: status
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 部门分页
+      tags:
+      - 部门管理
+  /api/system/dept/tree:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dept.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 部门树
+      tags:
+      - 部门管理
   /api/system/menu:
     post:
       parameters:
@@ -747,6 +1068,339 @@ paths:
       summary: 角色分页
       tags:
       - 角色管理
+  /api/system/user:
+    post:
+      parameters:
+      - description: 用户
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.userCreateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 新增用户
+      tags:
+      - 用户管理
+  /api/system/user/{id}:
+    delete:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除用户
+      tags:
+      - 用户管理
+    get:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 用户详情
+      tags:
+      - 用户管理
+    put:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 用户
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.userUpdateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改用户
+      tags:
+      - 用户管理
+  /api/system/user/{id}/reset-password:
+    put:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 重置用户密码
+      tags:
+      - 用户管理
+  /api/system/user/{id}/roles:
+    put:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.rolesRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 分配用户角色
+      tags:
+      - 用户管理
+  /api/system/user/{id}/status:
+    patch:
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.statusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改用户状态
+      tags:
+      - 用户管理
+  /api/system/user/batch-delete:
+    post:
+      parameters:
+      - description: 用户 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.batchRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量删除用户
+      tags:
+      - 用户管理
+  /api/system/user/me/avatar:
+    put:
+      parameters:
+      - description: 头像地址
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.avatarRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前用户修改头像
+      tags:
+      - 用户管理
+  /api/system/user/me/password:
+    put:
+      parameters:
+      - description: 新旧密码
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/usermgmt.passwordRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前用户修改密码
+      tags:
+      - 用户管理
+  /api/system/user/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 用户名
+        in: query
+        name: username
+        type: string
+      - description: 昵称
+        in: query
+        name: nickname
+        type: string
+      - description: 手机号
+        in: query
+        name: phone
+        type: string
+      - description: 邮箱
+        in: query
+        name: email
+        type: string
+      - description: 状态：0 或 1
+        in: query
+        name: status
+        type: integer
+      - description: 部门 ID
+        in: query
+        name: deptId
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/usermgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 用户分页
+      tags:
+      - 用户管理
 securityDefinitions:
   BearerAuth:
     in: header

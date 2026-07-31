@@ -20,8 +20,10 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
 
 const postgresImage = "postgres:17-alpine"
@@ -62,7 +64,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil)
+	}, database, service, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -129,7 +131,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil)
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -167,6 +169,90 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	}
 	if auditCount != 3 {
 		t.Fatalf("operation audit count = %d, want 3 successful mutations", auditCount)
+	}
+}
+
+func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
+	if err != nil {
+		t.Fatalf("create RBAC service: %v", err)
+	}
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
+	if err != nil {
+		t.Fatalf("create department service: %v", err)
+	}
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), usermgmt.NewRBACAuditRecorder(auditRecorder), "admin123")
+	if err != nil {
+		t.Fatalf("create user service: %v", err)
+	}
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService)
+	if err != nil {
+		t.Fatalf("build department and user API: %v", err)
+	}
+	adminToken := loginAdmin(t, router)
+
+	createdDept := serveJSON(router, http.MethodPost, "/api/system/dept", `{"parentId":1,"deptName":"研发部","deptCode":"RND","status":1}`, adminToken)
+	assertEnvelopeCode(t, createdDept, http.StatusOK, 200, "success")
+	deptTree := serveJSON(router, http.MethodGet, "/api/system/dept/tree", "", adminToken)
+	if deptTree.Code != http.StatusOK || !strings.Contains(deptTree.Body.String(), `"deptCode":"RND"`) {
+		t.Fatalf("department tree = status %d body=%s", deptTree.Code, deptTree.Body.String())
+	}
+
+	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"developer","nickname":"开发者","deptId":2,"status":1}`, adminToken)
+	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
+	assignedRoles := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
+	assertEnvelopeCode(t, assignedRoles, http.StatusOK, 200, "success")
+	userPage := serveJSON(router, http.MethodGet, "/api/system/user/page?page=1&pageSize=10", "", adminToken)
+	if userPage.Code != http.StatusOK || !strings.Contains(userPage.Body.String(), `"deptName":"研发部"`) || !strings.Contains(userPage.Body.String(), `"roleCode":"ADMIN"`) {
+		t.Fatalf("user page = status %d body=%s", userPage.Code, userPage.Body.String())
+	}
+	invalidPage := serveJSON(router, http.MethodGet, "/api/system/user/page?pageSize=501", "", adminToken)
+	assertEnvelopeCode(t, invalidPage, http.StatusBadRequest, 400, "参数错误")
+
+	userToken := loginUser(t, router, "developer", "admin123")
+	disabled := serveJSON(router, http.MethodPatch, "/api/system/user/2/status", `{"status":0}`, adminToken)
+	assertEnvelopeCode(t, disabled, http.StatusOK, 200, "success")
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+
+	enabled := serveJSON(router, http.MethodPatch, "/api/system/user/2/status", `{"status":1}`, adminToken)
+	assertEnvelopeCode(t, enabled, http.StatusOK, 200, "success")
+	userToken = loginUser(t, router, "developer", "admin123")
+	reset := serveJSON(router, http.MethodPut, "/api/system/user/2/reset-password", "", adminToken)
+	assertEnvelopeCode(t, reset, http.StatusOK, 200, "success")
+	if !strings.Contains(reset.Body.String(), `"password":"admin123"`) {
+		t.Fatalf("reset password response = %s", reset.Body.String())
+	}
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+
+	userToken = loginUser(t, router, "developer", "admin123")
+	changed := serveJSON(router, http.MethodPut, "/api/system/user/me/password", `{"oldPassword":"admin123","newPassword":"new-password"}`, userToken)
+	assertEnvelopeCode(t, changed, http.StatusOK, 200, "success")
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+	_ = loginUser(t, router, "developer", "new-password")
+
+	invalidRole := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[999]}`, adminToken)
+	assertEnvelopeCode(t, invalidRole, http.StatusOK, 404, "数据不存在")
+
+	var auditCount int64
+	if err := database.GORM.Table("sys_oper_log").Where("request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count operation audit logs: %v", err)
+	}
+	if auditCount != 7 {
+		t.Fatalf("operation audit count = %d, want 7 successful mutations", auditCount)
 	}
 }
 
@@ -316,9 +402,14 @@ func testAPIConfig() config.Config {
 
 func loginAdmin(t *testing.T, router http.Handler) string {
 	t.Helper()
-	response := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"admin123"}`, "")
+	return loginUser(t, router, "admin", "admin123")
+}
+
+func loginUser(t *testing.T, router http.Handler, username, password string) string {
+	t.Helper()
+	response := serveJSON(router, http.MethodPost, "/api/auth/login", fmt.Sprintf(`{"username":%q,"password":%q}`, username, password), "")
 	if response.Code != http.StatusOK {
-		t.Fatalf("admin login status = %d, body=%s", response.Code, response.Body.String())
+		t.Fatalf("%s login status = %d, body=%s", username, response.Code, response.Body.String())
 	}
 	var payload struct {
 		Data struct {
@@ -326,12 +417,17 @@ func loginAdmin(t *testing.T, router http.Handler) string {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode admin login: %v", err)
+		t.Fatalf("decode %s login: %v", username, err)
 	}
 	if !strings.HasPrefix(payload.Data.TokenValue, "Bearer ") {
-		t.Fatalf("admin token = %q", payload.Data.TokenValue)
+		t.Fatalf("%s token = %q", username, payload.Data.TokenValue)
 	}
 	return payload.Data.TokenValue
+}
+
+func assertUnauthenticated(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	assertEnvelopeCode(t, response, http.StatusUnauthorized, 401, "未登录或 token 已失效")
 }
 
 func serveJSON(router http.Handler, method, path, body, token string) *httptest.ResponseRecorder {

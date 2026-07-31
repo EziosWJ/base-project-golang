@@ -14,9 +14,13 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
+
+const defaultUserPassword = "admin123"
 
 // @title Base Go API
 // @version 0.1.0
@@ -50,13 +54,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), rbac.NewGORMAuditRecorder(database.GORM))
+	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
 	if err != nil {
 		slog.Error("build RBAC service", "error", err)
 		os.Exit(1)
 	}
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
+	if err != nil {
+		slog.Error("build department service", "error", err)
+		os.Exit(1)
+	}
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), usermgmt.NewRBACAuditRecorder(auditRecorder), defaultUserPassword)
+	if err != nil {
+		slog.Error("build user service", "error", err)
+		os.Exit(1)
+	}
 
-	application, err := app.New(*cfg, database, authService, rbacService)
+	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

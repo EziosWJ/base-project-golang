@@ -36,7 +36,7 @@ func testConfig(environment string, swaggerEnabled bool) config.Config {
 }
 
 func TestBuildRegistersSystemRoutes(t *testing.T) {
-	router, err := Build(testConfig("test", false), readyProbe{}, nil, nil)
+	router, err := Build(testConfig("test", false), readyProbe{}, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
@@ -62,7 +62,7 @@ func TestBuildRegistersSwaggerOnlyInDev(t *testing.T) {
 		{name: "development disabled", environment: "dev", enabled: false, wantStatus: http.StatusNotFound},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			router, err := Build(testConfig(test.environment, test.enabled), readyProbe{}, nil, nil)
+			router, err := Build(testConfig(test.environment, test.enabled), readyProbe{}, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatalf("Build() error = %v", err)
 			}
