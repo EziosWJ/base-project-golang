@@ -21,8 +21,10 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
 
@@ -64,7 +66,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil, nil, nil)
+	}, database, service, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -131,7 +133,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -199,7 +201,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil)
 	if err != nil {
 		t.Fatalf("build department and user API: %v", err)
 	}
@@ -254,6 +256,50 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if auditCount != 7 {
 		t.Fatalf("operation audit count = %d, want 7 successful mutations", auditCount)
 	}
+}
+
+func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dictRepository := dictionary.NewRepository(database.GORM)
+	dictService, err := dictionary.NewService(dictRepository, dictRepository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := loginAdmin(t, router)
+	items := serveJSON(router, http.MethodGet, "/api/system/dict/USER_STATUS/items", "", token)
+	if items.Code != http.StatusOK || !strings.Contains(items.Body.String(), `"value":"1"`) {
+		t.Fatalf("seed dict items=%d %s", items.Code, items.Body.String())
+	}
+	createdType := serveJSON(router, http.MethodPost, "/api/system/dict-type", `{"dictName":"环境","dictCode":"ENV"}`, token)
+	assertEnvelopeCode(t, createdType, http.StatusOK, 200, "success")
+	createdConfig := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"演示","configKey":"demo.enabled","configValue":"true"}`, token)
+	assertEnvelopeCode(t, createdConfig, http.StatusOK, 200, "success")
+	configPage := serveJSON(router, http.MethodGet, "/api/system/config/page?page=1&pageSize=10", "", token)
+	if configPage.Code != http.StatusOK || !strings.Contains(configPage.Body.String(), `"configKey":"demo.enabled"`) || !strings.Contains(configPage.Body.String(), `"status":1`) {
+		t.Fatalf("config page=%d %s", configPage.Code, configPage.Body.String())
+	}
+	key := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", token)
+	assertEnvelopeCode(t, key, http.StatusOK, 200, "success")
+	disabled := serveJSON(router, http.MethodPatch, "/api/system/config/1/status", `{"status":0}`, token)
+	assertEnvelopeCode(t, disabled, http.StatusOK, 200, "success")
+	missingKey := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", token)
+	assertEnvelopeCode(t, missingKey, http.StatusOK, 404, "数据不存在")
 }
 
 type temporaryPostgres struct {

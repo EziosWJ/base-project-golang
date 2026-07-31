@@ -15,8 +15,10 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
 
@@ -70,8 +72,15 @@ func main() {
 		slog.Error("build user service", "error", err)
 		os.Exit(1)
 	}
+	dictionaryRepository := dictionary.NewRepository(database.GORM)
+	dictionaryService, err := dictionary.NewService(dictionaryRepository, dictionaryRepository)
+	if err != nil {
+		slog.Error("build dictionary service", "error", err)
+		os.Exit(1)
+	}
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), auditRecorder)
 
-	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService)
+	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

@@ -10,7 +10,7 @@
 - **仓库类型**: monorepo
 - **交流 / 输出语言**: 中文
 - **项目定位**: 已有 React 管理后台及 Java 参考后端；目标是新增 Go REST API 逐步替代 Java 后端，前端保持独立部署。
-- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移 `/api/auth`、`/api/system/role`、`/api/system/menu`、`/api/system/dept` 与 `/api/system/user` 的管理接口。用户的禁用、删除、重置密码和本人改密均与撤销其全部 PostgreSQL JWT 会话处于同一事务；角色、菜单、部门和用户的成功写操作写入操作审计日志。字典、配置、文件及日志查询接口仍按 Issue 依赖顺序替代 Java 行为。
+- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移 `/api/auth`、角色、菜单、部门、用户、字典类型、字典数据与系统配置接口。用户的禁用、删除、重置密码和本人改密均与撤销其全部 PostgreSQL JWT 会话处于同一事务；所有已迁移管理模块的成功写操作写入操作审计日志。文件及日志查询接口仍按 Issue 依赖顺序替代 Java 行为。
 - **脚手架占位内容**: 脚手架里已出现大量"占位"示例（如 HelloWorld、UserTable、示例组件等），这些**不是真正的业务概念**，只是脚手架产物。真正的业务领域术语应来自后续的业务对话，而不是反向推导脚手架示例。
 
 ## 目录结构
