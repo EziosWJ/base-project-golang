@@ -13,7 +13,7 @@ import (
 	_ "github.com/EziosWJ/base-project-golang/base-go-api/docs"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
-	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
+	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 )
 
 // @title Base Go API
@@ -27,7 +27,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	application, err := app.New(*cfg, unavailableReadiness{})
+	database, err := platformdatabase.Open(context.Background(), cfg.Database)
+	if err != nil {
+		slog.Error("open database", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := database.Close(); err != nil {
+			applicationLogger := slog.Default()
+			applicationLogger.Error("close database", "error", err)
+		}
+	}()
+
+	application, err := app.New(*cfg, database)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)
@@ -60,14 +72,4 @@ func main() {
 		os.Exit(1)
 	}
 	application.Logger.Info("HTTP server stopped")
-}
-
-// unavailableReadiness keeps /ready honest until Issue #11 wires the database
-// pool into the composition root.
-type unavailableReadiness struct{}
-
-var _ platformhttp.ReadinessChecker = unavailableReadiness{}
-
-func (unavailableReadiness) Ready(context.Context) error {
-	return errors.New("database readiness probe is not configured")
 }

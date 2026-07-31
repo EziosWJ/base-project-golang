@@ -10,7 +10,7 @@
 - **仓库类型**: monorepo
 - **交流 / 输出语言**: 中文
 - **项目定位**: 已有 React 管理后台及 Java 参考后端；目标是新增 Go REST API 逐步替代 Java 后端，前端保持独立部署。
-- **当前后端事实**: 仓库中仅有 `base-api/` Java Maven 服务；尚不存在 `base-go-api/`、`go.mod` 或 Go 源码。不得将下文的 Go 目标架构写成已实现事实。
+- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），但尚未迁移任何业务接口或业务表。后续实现必须以 Issue 依赖顺序逐步替代 Java 行为。
 - **脚手架占位内容**: 脚手架里已出现大量"占位"示例（如 HelloWorld、UserTable、示例组件等），这些**不是真正的业务概念**，只是脚手架产物。真正的业务领域术语应来自后续的业务对话，而不是反向推导脚手架示例。
 
 ## 目录结构
@@ -19,7 +19,7 @@
 /
 ├── react-admin/      # 前端（管理后台 SPA）
 ├── base-api/         # 现有 Java API（行为与接口参考）
-├── base-go-api/      # 规划中的 Go REST API（当前尚未创建）
+├── base-go-api/      # Go REST API（平台骨架已创建，业务模块逐步迁移）
 ├── record/           # 项目过程记录
 ├── docs/
 │   ├── adr/          # 架构决策记录（ADR）
@@ -46,7 +46,7 @@
 - 横切关注点: spring-boot-starter-aop
 - 运行时数据库配置: MySQL JDBC；`application.yml` 的默认连接仍指向 MySQL。
 
-### 目标 Go 后端（已决策，尚未落地）
+### 目标 Go 后端（架构已决策，平台骨架已落地）
 
 - 形态: 模块化单体（Modular Monolith），只提供 REST API；不提前拆微服务。
 - Web: Gin；数据访问: GORM + Go 标准 `database/sql`；Schema: Goose migration。
@@ -120,7 +120,7 @@ base-go-api/
 
 ## 现状与目标差异
 
-- Go 服务及其 Gin、GORM、Goose、JWT、Prometheus、`log/slog`、Excelize 和 Docker Compose 依赖尚未创建或安装，当前不能执行 Go 的格式化、测试、静态检查命令。
+- Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose 与 Swagger 平台能力，并可执行格式化、测试与静态检查；JWT、Excelize 及业务模块仍按 Issue 顺序实施。
 - Java 服务仍使用 Spring Boot、MyBatis-Plus、Sa-Token 和 MySQL JDBC，且其默认配置仍为 MySQL；这与 Go 目标架构不同，迁移前不得擅自把 Java 行为改写为目标实现。
 - ADR-0002 规定迁移期间保持既有 `/api/**`、响应结构和 Bearer Token 外部契约；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
 

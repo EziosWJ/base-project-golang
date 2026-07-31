@@ -36,7 +36,7 @@ func RegisterSystemRoutes(router gin.IRouter, routes SystemRoutes) {
 
 func readinessHandler(checker ReadinessChecker) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if checker == nil || checker.Ready(c.Request.Context()) == nil {
+		if checker != nil && checker.Ready(c.Request.Context()) == nil {
 			OK(c, gin.H{"status": "ok"})
 			return
 		}
