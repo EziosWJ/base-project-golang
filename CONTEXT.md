@@ -10,7 +10,7 @@
 - **仓库类型**: monorepo
 - **交流 / 输出语言**: 中文
 - **项目定位**: 已有 React 管理后台及 Java 参考后端；目标是新增 Go REST API 逐步替代 Java 后端，前端保持独立部署。
-- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），但尚未迁移任何业务接口或业务表。后续实现必须以 Issue 依赖顺序逐步替代 Java 行为。
+- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移 `/api/auth` 的登录、登出、当前用户和当前菜单。用户、部门、角色、菜单、认证会话与登录日志表只服务于认证主链路；其余业务接口仍按 Issue 依赖顺序替代 Java 行为。
 - **脚手架占位内容**: 脚手架里已出现大量"占位"示例（如 HelloWorld、UserTable、示例组件等），这些**不是真正的业务概念**，只是脚手架产物。真正的业务领域术语应来自后续的业务对话，而不是反向推导脚手架示例。
 
 ## 目录结构
@@ -120,7 +120,7 @@ base-go-api/
 
 ## 现状与目标差异
 
-- Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose 与 Swagger 平台能力，并可执行格式化、测试与静态检查；JWT、Excelize 及业务模块仍按 Issue 顺序实施。
+- Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose、Swagger 与 JWT 会话认证能力，并可执行格式化、测试与静态检查；Excelize 及其余业务模块仍按 Issue 顺序实施。
 - Java 服务仍使用 Spring Boot、MyBatis-Plus、Sa-Token 和 MySQL JDBC，且其默认配置仍为 MySQL；这与 Go 目标架构不同，迁移前不得擅自把 Java 行为改写为目标实现。
 - ADR-0002 规定迁移期间保持既有 `/api/**`、响应结构和 Bearer Token 外部契约；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
 

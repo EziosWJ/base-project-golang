@@ -1,8 +1,218 @@
 basePath: /
+definitions:
+  auth.LoginResult:
+    properties:
+      expiresIn:
+        type: integer
+      tokenName:
+        type: string
+      tokenValue:
+        type: string
+    type: object
+  auth.currentUserDeptResponse:
+    properties:
+      deptCode:
+        type: string
+      deptName:
+        type: string
+      id:
+        type: integer
+    type: object
+  auth.currentUserMenuResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/auth.currentUserMenuResponse'
+        type: array
+      component:
+        type: string
+      icon:
+        type: string
+      id:
+        type: integer
+      menuName:
+        type: string
+      menuType:
+        type: string
+      parentId:
+        type: integer
+      path:
+        type: string
+      permissionCode:
+        type: string
+      sortOrder:
+        type: integer
+      visible:
+        type: integer
+    type: object
+  auth.currentUserMenusResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/auth.currentUserMenuResponse'
+        type: array
+      message:
+        type: string
+    type: object
+  auth.currentUserResponse:
+    properties:
+      avatar:
+        type: string
+      dept:
+        $ref: '#/definitions/auth.currentUserDeptResponse'
+      email:
+        type: string
+      id:
+        type: integer
+      lastLoginIp:
+        type: string
+      lastLoginTime:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/auth.currentUserRoleResponse'
+        type: array
+      username:
+        type: string
+    type: object
+  auth.currentUserResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/auth.currentUserResponse'
+      message:
+        type: string
+    type: object
+  auth.currentUserRoleResponse:
+    properties:
+      id:
+        type: integer
+      roleCode:
+        type: string
+      roleName:
+        type: string
+    type: object
+  auth.emptyResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  auth.errorResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  auth.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  auth.loginResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/auth.LoginResult'
+      message:
+        type: string
+    type: object
 info:
   contact: {}
   description: Go backend migration platform API.
   title: Base Go API
   version: 0.1.0
-paths: {}
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登录请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.loginResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponseEnvelope'
+      summary: 登录
+      tags:
+      - 认证
+  /api/auth/logout:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.emptyResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponseEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 退出登录
+      tags:
+      - 认证
+  /api/auth/me:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.currentUserResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponseEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前用户信息
+      tags:
+      - 认证
+  /api/auth/menus:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.currentUserMenusResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponseEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前用户可见菜单
+      tags:
+      - 认证
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

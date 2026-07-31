@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -14,6 +16,7 @@ var (
 	gooseDownMarker = regexp.MustCompile(`(?m)^-- \+goose Down\s*$`)
 	schemaDML       = regexp.MustCompile(`(?im)^\s*(INSERT|UPDATE|DELETE|MERGE)\b`)
 	seedDDL         = regexp.MustCompile(`(?im)^\s*(CREATE|ALTER|DROP|TRUNCATE)\b`)
+	bcryptHash      = regexp.MustCompile(`\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}`)
 )
 
 func TestMigrationStreamsHaveValidGooseFiles(t *testing.T) {
@@ -26,6 +29,17 @@ func TestMigrationStreamsHaveValidGooseFiles(t *testing.T) {
 	// An empty seed stream is valid until a feature owns both its schema and
 	// built-in data. When seed SQL appears, it must still be valid Goose SQL.
 	assertGooseFiles(t, migrationFiles(t, "seed"))
+}
+
+func TestAdminSeedPasswordMatchesJavaContract(t *testing.T) {
+	contents := readFile(t, filepath.Join("seed", "00001_auth_seed.sql"))
+	hash := bcryptHash.Find(contents)
+	if hash == nil {
+		t.Fatal("authentication seed must contain a BCrypt password hash")
+	}
+	if err := bcrypt.CompareHashAndPassword(hash, []byte("admin123")); err != nil {
+		t.Fatalf("administrator seed password does not match admin123: %v", err)
+	}
 }
 
 func TestSchemaAndSeedResponsibilitiesStaySeparate(t *testing.T) {

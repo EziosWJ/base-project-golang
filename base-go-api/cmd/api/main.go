@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/EziosWJ/base-project-golang/base-go-api/docs"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 )
@@ -20,6 +21,9 @@ import (
 // @version 0.1.0
 // @description Go backend migration platform API.
 // @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -39,7 +43,13 @@ func main() {
 		}
 	}()
 
-	application, err := app.New(*cfg, database)
+	authService, err := newAuthService(database, cfg.JWT)
+	if err != nil {
+		slog.Error("build authentication service", "error", err)
+		os.Exit(1)
+	}
+
+	application, err := app.New(*cfg, database, authService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)
@@ -72,4 +82,17 @@ func main() {
 		os.Exit(1)
 	}
 	application.Logger.Info("HTTP server stopped")
+}
+
+func newAuthService(database *platformdatabase.Database, jwtConfig config.JWTConfig) (*auth.Service, error) {
+	tokens, err := auth.NewTokenManager(auth.TokenConfig{
+		SigningKey: jwtConfig.Secret,
+		Issuer:     jwtConfig.Issuer,
+		Audience:   jwtConfig.Audience,
+		TTL:        jwtConfig.TTL,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return auth.NewService(auth.NewRepository(database.GORM), tokens)
 }

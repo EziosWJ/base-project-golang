@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
 )
@@ -20,7 +21,7 @@ type Application struct {
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
 // so that the application layer does not depend on a concrete database driver.
-func New(cfg config.Config, readiness platformhttp.ReadinessChecker) (*Application, error) {
+func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service) (*Application, error) {
 	logger, err := newLogger(cfg)
 	if err != nil {
 		return nil, err
@@ -44,6 +45,13 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker) (*Applicati
 	platformhttp.RegisterSystemRoutes(router, platformhttp.SystemRoutes{
 		Readiness: readiness,
 	})
+	if authService != nil {
+		handler, err := auth.NewHandler(authService, authService)
+		if err != nil {
+			return nil, fmt.Errorf("create authentication handler: %w", err)
+		}
+		auth.RegisterRoutes(router, handler)
+	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)
@@ -53,8 +61,8 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker) (*Applicati
 }
 
 // Build constructs a router for callers that do not need the process logger.
-func Build(cfg config.Config, readiness platformhttp.ReadinessChecker) (*gin.Engine, error) {
-	application, err := New(cfg, readiness)
+func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service) (*gin.Engine, error) {
+	application, err := New(cfg, readiness, authService)
 	if err != nil {
 		return nil, err
 	}
