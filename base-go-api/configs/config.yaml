@@ -1,0 +1,48 @@
+service:
+  name: base-go-api
+
+http:
+  address: ":8080"
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+  shutdown_timeout: 10s
+
+swagger:
+  enabled: false
+
+cors:
+  allowed_origins:
+    - "*"
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Authorization
+    - Content-Type
+    - X-Request-ID
+  exposed_headers:
+    - X-Request-ID
+  max_age: 12h
+  allow_credentials: false
+
+database:
+  driver: postgres
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 30m
+  conn_max_idle_time: 5m
+
+jwt:
+  issuer: base-go-api
+  audience: react-admin
+  ttl: 2h
+
+log:
+  level: info
+  format: json
+  add_source: false
