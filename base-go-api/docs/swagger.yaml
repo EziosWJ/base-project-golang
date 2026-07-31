@@ -131,6 +131,73 @@ definitions:
       message:
         type: string
     type: object
+  rbac.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  rbac.batchRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  rbac.menuRequest:
+    properties:
+      component:
+        type: string
+      externalUrl:
+        type: string
+      icon:
+        type: string
+      menuName:
+        type: string
+      menuType:
+        type: string
+      parentId:
+        type: integer
+      path:
+        type: string
+      permissionCode:
+        type: string
+      remark:
+        type: string
+      sortOrder:
+        type: integer
+      status:
+        type: integer
+      visible:
+        type: integer
+    type: object
+  rbac.menusRequest:
+    properties:
+      menuIds:
+        items:
+          type: integer
+        type: array
+    type: object
+  rbac.roleRequest:
+    properties:
+      remark:
+        type: string
+      roleCode:
+        type: string
+      roleName:
+        type: string
+      sortOrder:
+        type: integer
+      status:
+        type: integer
+    type: object
+  rbac.statusRequest:
+    properties:
+      status:
+        type: integer
+    type: object
 info:
   contact: {}
   description: Go backend migration platform API.
@@ -210,6 +277,476 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
+  /api/system/menu:
+    post:
+      parameters:
+      - description: 菜单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.menuRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 新增菜单
+      tags:
+      - 菜单管理
+  /api/system/menu/{id}:
+    delete:
+      parameters:
+      - description: 菜单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除菜单
+      tags:
+      - 菜单管理
+    get:
+      parameters:
+      - description: 菜单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 菜单详情
+      tags:
+      - 菜单管理
+    put:
+      parameters:
+      - description: 菜单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 菜单
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.menuRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改菜单
+      tags:
+      - 菜单管理
+  /api/system/menu/{id}/status:
+    patch:
+      parameters:
+      - description: 菜单 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.statusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改菜单状态
+      tags:
+      - 菜单管理
+  /api/system/menu/batch-delete:
+    post:
+      parameters:
+      - description: 菜单 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.batchRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量删除菜单
+      tags:
+      - 菜单管理
+  /api/system/menu/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 菜单名称
+        in: query
+        name: menuName
+        type: string
+      - description: 菜单类型
+        in: query
+        name: menuType
+        type: string
+      - description: 状态：0 或 1
+        in: query
+        name: status
+        type: integer
+      - description: 可见：0 或 1
+        in: query
+        name: visible
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 菜单分页
+      tags:
+      - 菜单管理
+  /api/system/menu/tree:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 菜单树
+      tags:
+      - 菜单管理
+  /api/system/role:
+    post:
+      parameters:
+      - description: 角色
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.roleRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 新增角色
+      tags:
+      - 角色管理
+  /api/system/role/{id}:
+    delete:
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除角色
+      tags:
+      - 角色管理
+    get:
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 角色详情
+      tags:
+      - 角色管理
+    put:
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.roleRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改角色
+      tags:
+      - 角色管理
+  /api/system/role/{id}/menus:
+    put:
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 菜单 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.menusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 分配角色菜单
+      tags:
+      - 角色管理
+  /api/system/role/{id}/status:
+    patch:
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.statusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改角色状态
+      tags:
+      - 角色管理
+  /api/system/role/batch-delete:
+    post:
+      parameters:
+      - description: 角色 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/rbac.batchRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量删除角色
+      tags:
+      - 角色管理
+  /api/system/role/options:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 启用角色选项
+      tags:
+      - 角色管理
+  /api/system/role/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 角色名称
+        in: query
+        name: roleName
+        type: string
+      - description: 角色编码
+        in: query
+        name: roleCode
+        type: string
+      - description: 状态：0 或 1
+        in: query
+        name: status
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/rbac.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 角色分页
+      tags:
+      - 角色管理
 securityDefinitions:
   BearerAuth:
     in: header

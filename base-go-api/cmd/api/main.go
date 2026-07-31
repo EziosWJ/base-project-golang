@@ -15,6 +15,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 )
 
 // @title Base Go API
@@ -49,7 +50,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	application, err := app.New(*cfg, database, authService)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), rbac.NewGORMAuditRecorder(database.GORM))
+	if err != nil {
+		slog.Error("build RBAC service", "error", err)
+		os.Exit(1)
+	}
+
+	application, err := app.New(*cfg, database, authService, rbacService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

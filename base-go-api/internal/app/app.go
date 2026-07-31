@@ -11,6 +11,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 )
 
 // Application is the assembled HTTP application and its process logger.
@@ -21,7 +22,7 @@ type Application struct {
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
 // so that the application layer does not depend on a concrete database driver.
-func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service) (*Application, error) {
+func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service) (*Application, error) {
 	logger, err := newLogger(cfg)
 	if err != nil {
 		return nil, err
@@ -52,6 +53,18 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 		}
 		auth.RegisterRoutes(router, handler)
 	}
+	if rbacService != nil {
+		if authService == nil {
+			return nil, fmt.Errorf("RBAC service requires authentication service")
+		}
+		handler, err := rbac.NewHandler(rbacService)
+		if err != nil {
+			return nil, fmt.Errorf("create RBAC handler: %w", err)
+		}
+		system := router.Group("/api/system")
+		system.Use(auth.BearerMiddleware(authService))
+		rbac.RegisterRoutes(system, handler)
+	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)
@@ -61,8 +74,8 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 }
 
 // Build constructs a router for callers that do not need the process logger.
-func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service) (*gin.Engine, error) {
-	application, err := New(cfg, readiness, authService)
+func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service) (*gin.Engine, error) {
+	application, err := New(cfg, readiness, authService, rbacService)
 	if err != nil {
 		return nil, err
 	}
