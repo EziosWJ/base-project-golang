@@ -1,6 +1,6 @@
 # Go API 兼容替代 Java system-api
 
-Status: accepted
+Status: accepted（认证内部实现部分由 ADR-0004 更新）
 
 后端迁移目标是由 `base-go-api/` 中的 Go 服务最终替代 Java `system-api`，前端无需感知后端实现变化。迁移期间保留现有 `/api/**` 路径、HTTP 方法、请求参数、`ApiResponse<T>` 响应结构、分页格式和 Bearer Token 认证；Go 端继续兼容现有逻辑数据结构，但物理存储改为 PostgreSQL 17。Java 端只作为现状和行为参考，不再为本次迁移修改，也不参与 Java/Go 双写；迁移完成后生产环境只运行 Go 服务。
 
@@ -10,13 +10,13 @@ Status: accepted
 
 本次范围只覆盖当前前端已经接入 Java 的真实 `/api/**` 接口。前端“权限点管理”页面仍使用 mock 数据，暂不新增其 Go API、PostgreSQL 表或管理能力。
 
-PostgreSQL 17 的结构使用版本化 SQL migration 管理，初始化数据与结构变更分离；生产启动不使用不可控的自动建表或 ORM 自动迁移。
+PostgreSQL 17 的结构使用版本化 SQL migration 管理，初始化数据与结构变更分离；管理员、根部门、`ADMIN`、菜单、字典和系统配置使用独立、只执行一次的 Goose seed migration，API 不在启动时自动补种。生产启动不使用不可控的自动建表或 ORM 自动迁移。
 
-认证内部实现（JWT、PostgreSQL 会话或其他方案）不属于本阶段决策。当前仅迁移前端已使用的认证 API 及其外部 HTTP 契约，不借迁移新增或完善认证、权限、缓存等能力。
+认证内部实现采用 JWT，由 Gin middleware 校验登录态；此决策更新了本 ADR 原先的进程内随机 Bearer Token 方案，详见 ADR-0004。JWT 使用 HS256，密钥经环境变量注入，包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`；不包含角色或菜单。角色、用户角色与角色菜单关系继续由数据库管理，`ADMIN` 是内置角色；首版不按 `permissionCode` 拦截接口。登录、登出、当前用户、当前菜单和受保护接口继续保持既有外部 Bearer Token 契约。会话以 PostgreSQL `auth_session` 表持久化，JWT 的 `jti` 对应会话记录；鉴权时校验会话仍有效，登出立即撤销当前会话。
 
-为使迁移后的认证 API 可运行，第一版使用进程内随机 Bearer token 会话，令牌有效期为 7,200 秒；登录、登出、当前用户、当前菜单和受保护接口沿用现有外部行为。服务重启后令牌失效；本阶段不引入 Redis、JWT 或 PostgreSQL 会话表。
+为兼容现有行为，首版 JWT 与会话有效期均为 7,200 秒；同一用户允许并发登录，每次登录创建独立会话。禁用、删除用户或重置密码时撤销该用户全部会话。密码继续使用 BCrypt；现有内置管理员种子使用 BCrypt `$2a$10` 哈希。Token claims 与续期策略尚未确定，必须在实现前补充决策；当前不引入 Redis 或复杂权限引擎。
 
-迁移时以 `react-admin` 的实际请求代码和 TypeScript 类型作为 API 契约第一来源，确保前端无需修改；Java Controller、Service 与测试仅用于补足行为和边界。核对后的契约由 Go 的 `.api` 文件和接口测试固定。
+迁移时以 `react-admin` 的实际请求代码和 TypeScript 类型作为 API 契约第一来源，确保前端无需修改；Java Controller、Service 与测试仅用于补足行为和边界。核对后的契约由 Gin Handler/DTO 注释生成的 Swagger 2.0 文档和 HTTP 接口测试固定；生成文档随代码提交，Swagger UI 只在开发环境开放。
 
 错误响应同样保持现有契约：响应体使用 `{ code, message, data }`，字段校验错误以字段名到错误消息的映射放入 `data`，认证错误保留对应 HTTP 状态。一般业务异常沿用现有“HTTP 200 且响应体 `code` 非 200”的行为，本阶段不重构错误语义。
 
