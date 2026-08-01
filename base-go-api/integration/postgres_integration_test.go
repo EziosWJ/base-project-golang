@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
@@ -135,7 +136,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create authentication service: %v", err)
 	}
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), rbac.NewGORMAuditRecorder(database.GORM))
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
@@ -180,6 +181,66 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	}
 }
 
+func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create RBAC service: %v", err)
+	}
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("build RBAC API: %v", err)
+	}
+	token := loginAdmin(t, router)
+
+	// 成功写操作后业务数据与审计日志同时存在。
+	created := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
+	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
+	var roleCount, auditCount int64
+	if err := database.GORM.Table("sys_role").Where("role_code='OPS' AND deleted=0").Count(&roleCount).Error; err != nil {
+		t.Fatalf("count roles: %v", err)
+	}
+	if roleCount != 1 {
+		t.Fatalf("role count = %d, want 1", roleCount)
+	}
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='role' AND operator_id=1 AND request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count operation logs: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("operation audit count = %d, want 1", auditCount)
+	}
+
+	// 让后续审计写入必然失败（NOT VALID 约束只校验新插入行）。
+	if err := database.GORM.Exec("ALTER TABLE sys_oper_log ADD CONSTRAINT chk_oper_status CHECK (operation_status <> 'SUCCESS') NOT VALID").Error; err != nil {
+		t.Fatalf("add audit constraint: %v", err)
+	}
+
+	// 审计写入失败时业务写入必须整体回滚。
+	attempt := serveJSON(router, http.MethodPost, "/api/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
+	if attempt.Code == http.StatusOK {
+		t.Fatalf("menu create must fail when audit write fails, body=%s", attempt.Body.String())
+	}
+	var menuCount int64
+	if err := database.GORM.Table("sys_menu").Where("menu_name='custom-menu'").Count(&menuCount).Error; err != nil {
+		t.Fatalf("count menus after failed create: %v", err)
+	}
+	if menuCount != 0 {
+		t.Fatalf("menu count = %d, want 0 after rollback", menuCount)
+	}
+}
+
 func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
@@ -194,8 +255,8 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create authentication service: %v", err)
 	}
-	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
+	auditRecorder := audit.NewRecorder(database.GORM)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
@@ -281,7 +342,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	audit := audit.NewRecorder(database.GORM)
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
 	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil, nil)
 	if err != nil {
@@ -322,7 +383,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create authentication service: %v", err)
 	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	audit := audit.NewRecorder(database.GORM)
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
 	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, audit)
 	if err != nil {
@@ -427,7 +488,7 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create authentication service: %v", err)
 	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	audit := audit.NewRecorder(database.GORM)
 	storageRoot := t.TempDir()
 	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
 	if err != nil {

@@ -29,8 +29,7 @@ func newHandlerRouter(t *testing.T, service *Service) *gin.Engine {
 
 func TestCreateRoleUsesPrincipalAndRequestMetadataForAudit(t *testing.T) {
 	store := newMemoryStore()
-	audit := new(audits)
-	service, err := NewService(store, audit)
+	service, err := NewService(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,17 +47,14 @@ func TestCreateRoleUsesPrincipalAndRequestMetadataForAudit(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
-	if len(audit.events) != 1 {
-		t.Fatalf("audit events = %d", len(audit.events))
-	}
-	event := audit.events[0]
-	if event.Action != "role.create" || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodPost || event.Metadata.RequestURL != "/api/system/role" {
+	event := store.lastEvent
+	if event.Action != "role.create" || event.ResourceID != 1 || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodPost || event.Metadata.RequestURL != "/api/system/role" {
 		t.Fatalf("audit event = %+v", event)
 	}
 }
 
 func TestRoleDetailMapsNotFoundToLegacyBusinessEnvelope(t *testing.T) {
-	service, err := NewService(newMemoryStore(), nil)
+	service, err := NewService(newMemoryStore())
 	if err != nil {
 		t.Fatal(err)
 	}
