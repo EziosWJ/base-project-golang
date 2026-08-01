@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"gorm.io/driver/postgres"
@@ -79,10 +80,43 @@ func newDialector(cfg config.DatabaseConfig) (gorm.Dialector, error) {
 	if cfg.Driver != DriverPostgres {
 		return nil, fmt.Errorf("database driver %q is not supported in the PostgreSQL-first release", cfg.Driver)
 	}
-	if strings.TrimSpace(cfg.DSN) == "" {
-		return nil, errors.New("database.dsn is required")
+	dsn, err := buildDSN(cfg)
+	if err != nil {
+		return nil, err
 	}
-	return postgres.Open(cfg.DSN), nil
+	return postgres.Open(dsn), nil
+}
+
+func buildDSN(cfg config.DatabaseConfig) (string, error) {
+	if strings.TrimSpace(cfg.URL) == "" {
+		return "", errors.New("database.url is required")
+	}
+
+	endpoint, err := url.Parse(cfg.URL)
+	if err != nil {
+		return "", fmt.Errorf("parse database.url: %w", err)
+	}
+	if endpoint.Scheme != "postgres" && endpoint.Scheme != "postgresql" {
+		return "", errors.New("database.url must use postgres or postgresql scheme")
+	}
+	if endpoint.Host == "" {
+		return "", errors.New("database.url must include host and port")
+	}
+	if strings.Trim(endpoint.Path, "/") == "" {
+		return "", errors.New("database.url must include database name")
+	}
+	if endpoint.User != nil {
+		return "", errors.New("database.url must not include username or password")
+	}
+	if strings.TrimSpace(cfg.Username) == "" {
+		return "", errors.New("database.username is required")
+	}
+	if strings.TrimSpace(cfg.Password) == "" {
+		return "", errors.New("database.password is required")
+	}
+
+	endpoint.User = url.UserPassword(cfg.Username, cfg.Password)
+	return endpoint.String(), nil
 }
 
 func configurePool(sqlDB *sql.DB, cfg config.DatabaseConfig) {

@@ -15,6 +15,12 @@ service:
   name: base-file
 http:
   address: ":8081"
+database:
+  url: postgres://localhost:5432/base_file?sslmode=disable
+  username: yaml-user
+  password: yaml-password
+jwt:
+  secret: yaml-secret
 log:
   level: info
   format: json
@@ -33,7 +39,7 @@ log:
 	t.Setenv("APP_SERVICE__NAME", "environment-variable")
 	t.Setenv("APP_HTTP__ADDRESS", ":9090")
 	t.Setenv("APP_CORS__ALLOWED_ORIGINS", "https://admin.example, https://ops.example")
-	t.Setenv("APP_DATABASE__DSN", "postgres://test:test@localhost/test?sslmode=disable")
+	t.Setenv("APP_DATABASE__USERNAME", "environment-user")
 	t.Setenv("APP_JWT__SECRET", "test-only-secret")
 
 	cfg, err := LoadFromDir(dir)
@@ -65,98 +71,35 @@ log:
 			t.Errorf("CORS.AllowedOrigins[%d] = %q, want %q", i, cfg.CORS.AllowedOrigins[i], wantOrigins[i])
 		}
 	}
-	if cfg.Database.DSN == "" || cfg.JWT.Secret == "" {
-		t.Error("secrets from environment were not loaded")
+	if cfg.Database.URL != "postgres://localhost:5432/base_file?sslmode=disable" {
+		t.Errorf("Database.URL = %q, want YAML value", cfg.Database.URL)
+	}
+	if cfg.Database.Username != "environment-user" {
+		t.Errorf("Database.Username = %q, want environment-user", cfg.Database.Username)
+	}
+	if cfg.Database.Password != "yaml-password" {
+		t.Errorf("Database.Password = %q, want YAML value", cfg.Database.Password)
+	}
+	if cfg.JWT.Secret != "test-only-secret" {
+		t.Error("JWT secret from environment was not loaded")
 	}
 	if cfg.JWT.TTL != 2*time.Hour {
 		t.Errorf("JWT.TTL = %s, want 2h", cfg.JWT.TTL)
 	}
 }
 
-func TestLoadFromDirRequiresEnvironmentSecrets(t *testing.T) {
-	tests := []struct {
-		name       string
-		dsn        string
-		secret     string
-		wantErrSub string
-	}{
-		{name: "database DSN", secret: "test-only-secret", wantErrSub: "database.dsn is required"},
-		{name: "JWT secret", dsn: "postgres://test:test@localhost/test?sslmode=disable", wantErrSub: "jwt.secret is required"},
+func TestLoadFromDirRequiresDatabaseAndJWTConfiguration(t *testing.T) {
+	dir := t.TempDir()
+	writeConfig(t, dir, "config.yaml", "{}\n")
+	t.Setenv("APP_ENV", "test")
+
+	_, err := LoadFromDir(dir)
+	if err == nil {
+		t.Fatal("LoadFromDir() error = nil, want required database and JWT configuration error")
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
-			writeConfig(t, dir, "config.yaml", "{}\n")
-			t.Setenv("APP_ENV", "test")
-			t.Setenv("APP_DATABASE__DSN", tt.dsn)
-			t.Setenv("APP_JWT__SECRET", tt.secret)
-
-			_, err := LoadFromDir(dir)
-			if err == nil || !strings.Contains(err.Error(), tt.wantErrSub) {
-				t.Fatalf("LoadFromDir() error = %v, want containing %q", err, tt.wantErrSub)
-			}
-		})
-	}
-}
-
-func TestLoadFromDirRejectsSecretsInYAML(t *testing.T) {
-	tests := []struct {
-		name        string
-		base        string
-		environment string
-		wantErrSub  string
-	}{
-		{
-			name:       "database DSN in base YAML",
-			base:       "database:\n  dsn: postgres://must-not-be-here\n",
-			wantErrSub: "database.dsn must not be set in YAML",
-		},
-		{
-			name:        "JWT secret in environment YAML",
-			base:        "{}\n",
-			environment: "jwt:\n  secret: must-not-be-here\n",
-			wantErrSub:  "jwt.secret must not be set in YAML",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dir := t.TempDir()
-			writeConfig(t, dir, "config.yaml", tt.base)
-			if tt.environment != "" {
-				writeConfig(t, dir, "config.test.yaml", tt.environment)
-			}
-			t.Setenv("APP_ENV", "test")
-			t.Setenv("APP_DATABASE__DSN", "postgres://test:test@localhost/test?sslmode=disable")
-			t.Setenv("APP_JWT__SECRET", "test-only-secret")
-
-			_, err := LoadFromDir(dir)
-			if err == nil || !strings.Contains(err.Error(), tt.wantErrSub) {
-				t.Fatalf("LoadFromDir() error = %v, want containing %q", err, tt.wantErrSub)
-			}
-		})
-	}
-}
-
-func TestCommittedYAMLContainsNoSecrets(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join("..", "..", "configs", "*.yaml"))
-	if err != nil {
-		t.Fatalf("Glob() error = %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatal("no committed YAML configuration found")
-	}
-
-	for _, name := range files {
-		contents, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatalf("ReadFile(%q) error = %v", name, err)
-		}
-		for _, forbidden := range []string{"dsn:", "secret:"} {
-			if strings.Contains(strings.ToLower(string(contents)), forbidden) {
-				t.Errorf("%s contains forbidden secret key %q", name, forbidden)
-			}
+	for _, want := range []string{"database.url is required", "database.username is required", "database.password is required", "jwt.secret is required"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("LoadFromDir() error = %v, want containing %q", err, want)
 		}
 	}
 }

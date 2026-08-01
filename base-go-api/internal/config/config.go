@@ -61,7 +61,9 @@ type CORSConfig struct {
 
 type DatabaseConfig struct {
 	Driver          string        `koanf:"driver"`
-	DSN             string        `koanf:"dsn"`
+	URL             string        `koanf:"url"`
+	Username        string        `koanf:"username"`
+	Password        string        `koanf:"password"`
 	MaxOpenConns    int           `koanf:"max_open_conns"`
 	MaxIdleConns    int           `koanf:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `koanf:"conn_max_lifetime"`
@@ -137,8 +139,14 @@ func (c Config) Validate() error {
 	if !oneOf(c.Database.Driver, "postgres", "mysql", "sqlite") {
 		errs = append(errs, errors.New("database.driver must be one of postgres, mysql, sqlite"))
 	}
-	if strings.TrimSpace(c.Database.DSN) == "" {
-		errs = append(errs, errors.New("database.dsn is required via APP_DATABASE__DSN"))
+	if strings.TrimSpace(c.Database.URL) == "" {
+		errs = append(errs, errors.New("database.url is required"))
+	}
+	if strings.TrimSpace(c.Database.Username) == "" {
+		errs = append(errs, errors.New("database.username is required"))
+	}
+	if strings.TrimSpace(c.Database.Password) == "" {
+		errs = append(errs, errors.New("database.password is required"))
 	}
 	if c.Database.MaxOpenConns <= 0 {
 		errs = append(errs, errors.New("database.max_open_conns must be greater than zero"))
@@ -160,7 +168,7 @@ func (c Config) Validate() error {
 	}
 
 	if strings.TrimSpace(c.JWT.Secret) == "" {
-		errs = append(errs, errors.New("jwt.secret is required via APP_JWT__SECRET"))
+		errs = append(errs, errors.New("jwt.secret is required"))
 	}
 	if strings.TrimSpace(c.JWT.Issuer) == "" {
 		errs = append(errs, errors.New("jwt.issuer is required"))

@@ -1,6 +1,6 @@
 # base-go-api 开发运行
 
-Go API 使用 PostgreSQL 作为首发数据库。开发 Compose 创建的是专用本机数据库，不会连接部署数据库。
+Go API 使用 PostgreSQL 作为首发数据库。开发 Compose 创建的是专用本机数据库，不会连接部署数据库。应用配置按 `config.yaml`、`config.{APP_ENV}.yaml`、`APP_` 环境变量的顺序覆盖；数据库 URL、用户名、密码和 JWT 密钥都可以写在 YAML 中，环境变量仅作为覆盖方式。
 
 ## 启动开发环境
 
@@ -27,9 +27,25 @@ docker volume rm base_go_api_postgres_data
 
 `migrate` 是一次性容器：它显式执行 `migrate up --kind all`，按顺序应用 Goose schema 和 seed migration；API 进程不会执行 migration 或 GORM AutoMigrate。
 
+## YAML 数据库配置
+
+本机直接运行 `go run ./cmd/api` 或通过 IDE 调试时，编辑 `configs/config.dev.yaml`：
+
+```yaml
+database:
+  url: postgres://127.0.0.1:54329/base_go_api?sslmode=disable
+  username: base_go_api
+  password: your-local-password
+
+jwt:
+  secret: a-random-local-development-secret
+```
+
+`database.url` 必须不含用户名和密码；程序会将 `username`、`password` 合成为 PostgreSQL 连接串。Docker Compose 会使用 `.env` 中的 `POSTGRES_*` 和 `APP_JWT__SECRET` 覆盖这些 YAML 值，以便不修改工作区配置即可启动容器。
+
 ## PostgreSQL 集成测试
 
-集成测试不会读取或使用 `APP_DATABASE__DSN`。它通过 Docker 启动带随机名称和随机本机端口的 PostgreSQL 17 容器，再把临时 DSN 仅传给 migration 子进程。
+集成测试不会读取工作区数据库配置。它通过 Docker 启动带随机名称和随机本机端口的 PostgreSQL 17 容器，再把临时数据库配置仅传给 migration 子进程。
 
 ```zsh
 cd base-go-api

@@ -16,14 +16,6 @@ import (
 
 const delimiter = "."
 
-var secretYAMLKeys = []struct {
-	key string
-	env string
-}{
-	{key: "database.dsn", env: "APP_DATABASE__DSN"},
-	{key: "jwt.secret", env: "APP_JWT__SECRET"},
-}
-
 // Load reads configuration from DefaultDir.
 func Load() (*Config, error) {
 	return LoadFromDir(DefaultDir)
@@ -51,12 +43,6 @@ func LoadFromDir(dir string) (*Config, error) {
 	environmentPath := filepath.Join(dir, "config."+environment+".yaml")
 	if err := loadYAML(k, environmentPath, false); err != nil {
 		return nil, err
-	}
-
-	for _, secret := range secretYAMLKeys {
-		if k.Exists(secret.key) {
-			return nil, fmt.Errorf("%s must not be set in YAML; use %s", secret.key, secret.env)
-		}
 	}
 
 	// APP_ENV is the authoritative environment selector. Do not allow a YAML

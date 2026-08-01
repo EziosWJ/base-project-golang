@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -676,23 +677,27 @@ func runMigrations(t *testing.T, root, dsn string) {
 
 	command := exec.CommandContext(ctx, "go", "run", "./cmd/migrate", "up", "--kind", "all")
 	command.Dir = root
-	command.Env = integrationEnvironment(dsn)
+	command.Env = integrationEnvironment(t, dsn)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("run migrations against temporary PostgreSQL: %v\n%s", err, output)
 	}
 }
 
-func integrationEnvironment(dsn string) []string {
-	environment := make([]string, 0, len(os.Environ())+3)
+func integrationEnvironment(t *testing.T, dsn string) []string {
+	t.Helper()
+	databaseConfig := databaseConfigFromDSN(t, dsn)
+	environment := make([]string, 0, len(os.Environ())+5)
 	for _, entry := range os.Environ() {
-		if strings.HasPrefix(entry, "APP_DATABASE__DSN=") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") {
+		if strings.HasPrefix(entry, "APP_DATABASE__") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") {
 			continue
 		}
 		environment = append(environment, entry)
 	}
 	return append(environment,
 		"APP_ENV=test",
-		"APP_DATABASE__DSN="+dsn,
+		"APP_DATABASE__URL="+databaseConfig.URL,
+		"APP_DATABASE__USERNAME="+databaseConfig.Username,
+		"APP_DATABASE__PASSWORD="+databaseConfig.Password,
 		"APP_JWT__SECRET=integration-test-secret-that-is-never-deployed",
 	)
 }
@@ -725,16 +730,37 @@ func verifyDatabaseReadiness(t *testing.T, dsn string) {
 
 func openTemporaryDatabase(t *testing.T, dsn string) *platformdatabase.Database {
 	t.Helper()
-	database, err := platformdatabase.Open(context.Background(), config.DatabaseConfig{
-		Driver:       platformdatabase.DriverPostgres,
-		DSN:          dsn,
-		MaxOpenConns: 2,
-		MaxIdleConns: 1,
-	})
+	databaseConfig := databaseConfigFromDSN(t, dsn)
+	databaseConfig.Driver = platformdatabase.DriverPostgres
+	databaseConfig.MaxOpenConns = 2
+	databaseConfig.MaxIdleConns = 1
+	database, err := platformdatabase.Open(context.Background(), databaseConfig)
 	if err != nil {
 		t.Fatalf("open database for readiness check: %v", err)
 	}
 	return database
+}
+
+func databaseConfigFromDSN(t *testing.T, dsn string) config.DatabaseConfig {
+	t.Helper()
+	endpoint, err := url.Parse(dsn)
+	if err != nil {
+		t.Fatalf("parse temporary PostgreSQL DSN: %v", err)
+	}
+	if endpoint.User == nil {
+		t.Fatal("temporary PostgreSQL DSN does not contain username and password")
+	}
+	password, hasPassword := endpoint.User.Password()
+	if !hasPassword {
+		t.Fatal("temporary PostgreSQL DSN does not contain username and password")
+	}
+	username := endpoint.User.Username()
+	endpoint.User = nil
+	return config.DatabaseConfig{
+		URL:      endpoint.String(),
+		Username: username,
+		Password: password,
+	}
 }
 
 func mustTokenManager(t *testing.T) *auth.TokenManager {
