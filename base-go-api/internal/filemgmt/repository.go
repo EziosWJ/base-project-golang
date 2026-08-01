@@ -56,7 +56,8 @@ func (r *Repository) Create(ctx context.Context, f File, e AuditEvent) (File, er
 			return err
 		}
 		e.ResourceID = f.ID
-		if err := tx.Model(&File{}).Where("id=? AND deleted=0", f.ID).Update("access_url", "/api/system/file/"+strconv.FormatInt(f.ID, 10)+"/view").Error; err != nil {
+		f.AccessURL = "/api/system/file/" + strconv.FormatInt(f.ID, 10) + "/view"
+		if err := tx.Model(&File{}).Where("id=? AND deleted=0", f.ID).Update("access_url", f.AccessURL).Error; err != nil {
 			return err
 		}
 		return audit.RecordOn(ctx, tx, e)
