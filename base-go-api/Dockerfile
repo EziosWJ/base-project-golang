@@ -16,6 +16,9 @@ FROM alpine:3.22 AS runtime
 RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
 COPY configs ./configs
+# Named-volume mount point: must exist and be writable by the app user,
+# otherwise file uploads fail with permission denied after the first boot.
+RUN mkdir -p /var/lib/base-go-api/uploads && chown -R app:app /var/lib/base-go-api
 USER app
 
 FROM runtime AS api
