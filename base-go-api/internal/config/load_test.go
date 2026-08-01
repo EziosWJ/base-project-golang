@@ -106,24 +106,27 @@ func TestLoadFromDirRequiresDatabaseAndJWTConfiguration(t *testing.T) {
 
 // TestLoadFromDirDevSucceedsWithoutEnvironmentYAML documents that the actual
 // environment YAML is optional: with only config.yaml present, APP_ENV=dev
-// must load successfully once required secrets are supplied through APP_
-// variables. This is exactly what Docker Compose relies on, since it never
-// sees a config.dev.yaml inside the image.
+// and APP_ overrides must still produce the intended development settings.
+// This is exactly what Docker Compose relies on, since it never sees a
+// config.dev.yaml inside the image.
 func TestLoadFromDirDevSucceedsWithoutEnvironmentYAML(t *testing.T) {
 	dir := t.TempDir()
 	writeConfig(t, dir, "config.yaml", `
 swagger:
-  enabled: true
+  enabled: false
 database:
   url: postgres://postgres:5432/base_go_api?sslmode=disable
 log:
-  level: debug
-  format: text
+  level: info
+  format: json
 `)
 	t.Setenv("APP_ENV", "dev")
 	t.Setenv("APP_DATABASE__USERNAME", "compose-user")
 	t.Setenv("APP_DATABASE__PASSWORD", "compose-password")
 	t.Setenv("APP_JWT__SECRET", "compose-secret")
+	t.Setenv("APP_SWAGGER__ENABLED", "true")
+	t.Setenv("APP_LOG__LEVEL", "debug")
+	t.Setenv("APP_LOG__FORMAT", "text")
 
 	cfg, err := LoadFromDir(dir)
 	if err != nil {
@@ -134,10 +137,10 @@ log:
 		t.Errorf("Environment = %q, want dev", cfg.Environment)
 	}
 	if cfg.Swagger.Enabled != true {
-		t.Errorf("Swagger.Enabled = %v, want true from config.yaml", cfg.Swagger.Enabled)
+		t.Errorf("Swagger.Enabled = %v, want true from APP_ override", cfg.Swagger.Enabled)
 	}
 	if cfg.Log.Level != "debug" || cfg.Log.Format != "text" {
-		t.Errorf("Log = (%s, %s), want (debug, text) from config.yaml", cfg.Log.Level, cfg.Log.Format)
+		t.Errorf("Log = (%s, %s), want (debug, text) from APP_ overrides", cfg.Log.Level, cfg.Log.Format)
 	}
 	if cfg.Database.Username != "compose-user" || cfg.Database.Password != "compose-password" {
 		t.Errorf("Database.Username/Password = (%s, %s), want compose env values", cfg.Database.Username, cfg.Database.Password)

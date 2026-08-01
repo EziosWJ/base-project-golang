@@ -26,6 +26,8 @@ services:
       APP_DATABASE__USERNAME: ${POSTGRES_USER:-base_go_api}
       APP_DATABASE__PASSWORD: ${POSTGRES_PASSWORD}
       APP_JWT__SECRET: ${APP_JWT__SECRET:?set APP_JWT__SECRET in .env}
+      APP_LOG__LEVEL: debug
+      APP_LOG__FORMAT: text
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,6 +44,9 @@ services:
       APP_DATABASE__USERNAME: ${POSTGRES_USER:-base_go_api}
       APP_DATABASE__PASSWORD: ${POSTGRES_PASSWORD}
       APP_JWT__SECRET: ${APP_JWT__SECRET:?set APP_JWT__SECRET in .env}
+      APP_SWAGGER__ENABLED: "true"
+      APP_LOG__LEVEL: debug
+      APP_LOG__FORMAT: text
     depends_on:
       migrate:
         condition: service_completed_successfully

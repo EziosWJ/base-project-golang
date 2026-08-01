@@ -19,9 +19,8 @@ const (
 	EnvironmentProd = "prod"
 )
 
-// Config contains all process-level configuration. Secrets are intentionally
-// represented here, but the loader only accepts them from APP_ environment
-// variables and never from YAML files.
+// Config contains all process-level configuration. Environment-specific YAML
+// may contain deployment credentials; APP_ environment variables override YAML.
 type Config struct {
 	Environment string         `koanf:"env"`
 	Service     ServiceConfig  `koanf:"service"`
