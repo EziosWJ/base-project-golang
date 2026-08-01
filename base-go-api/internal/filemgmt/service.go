@@ -2,31 +2,21 @@ package filemgmt
 
 import (
 	"context"
+	"log/slog"
 	"mime/multipart"
-	"strconv"
 	"strings"
-
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 )
 
 type Service struct {
 	store   Store
 	storage Storage
-	audit   AuditRecorder
 }
 
-type noopAudit struct{}
-
-func (noopAudit) Record(context.Context, rbac.AuditEvent) error { return nil }
-
-func NewService(store Store, storage Storage, audit AuditRecorder) (*Service, error) {
+func NewService(store Store, storage Storage) (*Service, error) {
 	if store == nil || storage == nil {
 		return nil, ErrInvalid
 	}
-	if audit == nil {
-		audit = noopAudit{}
-	}
-	return &Service{store: store, storage: storage, audit: audit}, nil
+	return &Service{store: store, storage: storage}, nil
 }
 
 func (s *Service) Upload(ctx context.Context, m AuditMetadata, header *multipart.FileHeader, businessModule, remark string) (File, error) {
@@ -46,19 +36,20 @@ func (s *Service) Upload(ctx context.Context, m AuditMetadata, header *multipart
 		return File{}, err
 	}
 	f := File{OriginalName: header.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: header.Header.Get("Content-Type"), FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
-	f, err = s.store.Create(ctx, f)
+	f, err = s.store.Create(ctx, f, AuditEvent{Action: "file.upload", Resource: "file", ResourceID: 0, Summary: "上传文件", Metadata: m})
 	if err != nil {
-		_ = s.storage.Remove(ctx, stored.Path)
-		return File{}, err
-	}
-	f.AccessURL = "/api/system/file/" + strconv.FormatInt(f.ID, 10) + "/view"
-	if err = s.store.SetAccessURL(ctx, f.ID, f.AccessURL); err != nil {
-		return File{}, err
-	}
-	if err = s.audit.Record(ctx, rbac.AuditEvent{Action: "file.upload", Resource: "file", ResourceID: f.ID, Summary: "上传文件", Metadata: m}); err != nil {
+		s.compensate(ctx, stored.Path)
 		return File{}, err
 	}
 	return f, nil
+}
+
+// compensate deletes the physical file written before a failed database
+// transaction. Compensation failure is logged, leaving a best-effort orphan.
+func (s *Service) compensate(ctx context.Context, storagePath string) {
+	if err := s.storage.Remove(ctx, storagePath); err != nil {
+		slog.Error("补偿删除物理文件失败", "storagePath", storagePath, "error", err)
+	}
 }
 
 func (s *Service) UploadBatch(ctx context.Context, m AuditMetadata, headers []*multipart.FileHeader, businessModule, remark string) (BatchUploadResult, error) {
@@ -103,35 +94,21 @@ func (s *Service) Update(ctx context.Context, m AuditMetadata, id int64, in Upda
 	if _, err := s.store.Find(ctx, id); err != nil {
 		return err
 	}
-	if err := s.store.Update(ctx, id, in); err != nil {
-		return err
-	}
-	return s.audit.Record(ctx, rbac.AuditEvent{Action: "file.update", Resource: "file", ResourceID: id, Summary: "更新文件", Metadata: m})
+	return s.store.Update(ctx, id, in, AuditEvent{Action: "file.update", Resource: "file", ResourceID: id, Summary: "更新文件", Metadata: m})
 }
 
 func (s *Service) Delete(ctx context.Context, m AuditMetadata, id int64) error {
 	if _, err := s.store.Find(ctx, id); err != nil {
 		return err
 	}
-	if err := s.store.Delete(ctx, id); err != nil {
-		return err
-	}
-	return s.audit.Record(ctx, rbac.AuditEvent{Action: "file.delete", Resource: "file", ResourceID: id, Summary: "删除文件", Metadata: m})
+	return s.store.Delete(ctx, id, AuditEvent{Action: "file.delete", Resource: "file", ResourceID: id, Summary: "删除文件", Metadata: m})
 }
 
 func (s *Service) DeleteBatch(ctx context.Context, m AuditMetadata, ids []int64) error {
 	if len(ids) == 0 {
 		return ErrInvalid
 	}
-	if err := s.store.DeleteBatch(ctx, ids); err != nil {
-		return err
-	}
-	for _, id := range ids {
-		if err := s.audit.Record(ctx, rbac.AuditEvent{Action: "file.delete", Resource: "file", ResourceID: id, Summary: "删除文件", Metadata: m}); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.store.DeleteBatch(ctx, ids, AuditEvent{Action: "file.delete", Resource: "file", ResourceID: 0, Summary: "删除文件", Metadata: m})
 }
 
 func (s *Service) SetStatus(ctx context.Context, m AuditMetadata, id int64, status int) error {
@@ -141,10 +118,7 @@ func (s *Service) SetStatus(ctx context.Context, m AuditMetadata, id int64, stat
 	if _, err := s.store.Find(ctx, id); err != nil {
 		return err
 	}
-	if err := s.store.SetStatus(ctx, id, status); err != nil {
-		return err
-	}
-	return s.audit.Record(ctx, rbac.AuditEvent{Action: "file.status", Resource: "file", ResourceID: id, Summary: "更新文件状态", Metadata: m})
+	return s.store.SetStatus(ctx, id, status, AuditEvent{Action: "file.status", Resource: "file", ResourceID: id, Summary: "更新文件状态", Metadata: m})
 }
 
 func (s *Service) Open(ctx context.Context, id int64, _ bool) (FileResource, error) {

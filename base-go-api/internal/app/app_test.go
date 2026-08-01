@@ -82,7 +82,7 @@ func (f *fakeStores) deps() Dependencies {
 		panic(err)
 	}
 	configService := sysconfig.NewService(emptyConfigStore{})
-	fileService, err := filemgmt.NewService(emptyFileStore{}, f.file, nil)
+	fileService, err := filemgmt.NewService(emptyFileStore{}, f.file)
 	if err != nil {
 		panic(err)
 	}
@@ -396,16 +396,17 @@ func (emptyFileStore) Page(context.Context, filemgmt.FilePageQuery) (filemgmt.Pa
 	return filemgmt.Page[filemgmt.File]{}, nil
 }
 func (emptyFileStore) Find(context.Context, int64) (*filemgmt.File, error) { return nil, nil }
-func (emptyFileStore) Create(context.Context, filemgmt.File) (filemgmt.File, error) {
+func (emptyFileStore) Create(context.Context, filemgmt.File, filemgmt.AuditEvent) (filemgmt.File, error) {
 	return filemgmt.File{}, nil
 }
-func (emptyFileStore) SetAccessURL(context.Context, int64, string) error { return nil }
-func (emptyFileStore) Update(context.Context, int64, filemgmt.UpdateInput) error {
+func (emptyFileStore) Update(context.Context, int64, filemgmt.UpdateInput, filemgmt.AuditEvent) error {
 	return nil
 }
-func (emptyFileStore) Delete(context.Context, int64) error         { return nil }
-func (emptyFileStore) DeleteBatch(context.Context, []int64) error  { return nil }
-func (emptyFileStore) SetStatus(context.Context, int64, int) error { return nil }
+func (emptyFileStore) Delete(context.Context, int64, filemgmt.AuditEvent) error { return nil }
+func (emptyFileStore) DeleteBatch(context.Context, []int64, filemgmt.AuditEvent) error {
+	return nil
+}
+func (emptyFileStore) SetStatus(context.Context, int64, int, filemgmt.AuditEvent) error { return nil }
 
 type emptyLogStore struct{}
 

@@ -82,7 +82,7 @@ func newHandlerRouter(t *testing.T, service HandlerService) *gin.Engine {
 	return router
 }
 
-func newServiceRouter(t *testing.T, store Store, storage Storage) (*gin.Engine, *memoryStore, *memoryAudit) {
+func newServiceRouter(t *testing.T, store Store, storage Storage) (*gin.Engine, *memoryStore) {
 	t.Helper()
 	if storage == nil {
 		var err error
@@ -91,12 +91,11 @@ func newServiceRouter(t *testing.T, store Store, storage Storage) (*gin.Engine, 
 			t.Fatal(err)
 		}
 	}
-	audit := new(memoryAudit)
-	service, err := NewService(store, storage, audit)
+	service, err := NewService(store, storage)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return newHandlerRouter(t, service), store.(*memoryStore), audit
+	return newHandlerRouter(t, service), store.(*memoryStore)
 }
 
 func authenticated(request *http.Request) *http.Request {
@@ -144,7 +143,7 @@ func wantNotFoundEnvelope(t *testing.T, response *httptest.ResponseRecorder) {
 
 func TestUploadContractServesFileMetadata(t *testing.T) {
 	t.Parallel()
-	router, store, audit := newServiceRouter(t, new(memoryStore), nil)
+	router, store := newServiceRouter(t, new(memoryStore), nil)
 	contentType, body := multipartBody(t, uploadOption{field: "file", filename: "greeting.txt", content: "hello", contentType: "text/plain", businessModule: "system", remark: "example"})
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload", contentType, body)))
@@ -153,14 +152,14 @@ func TestUploadContractServesFileMetadata(t *testing.T) {
 	if data["id"].(float64) != 1 || data["originalName"] != "greeting.txt" || data["fileSize"].(float64) != 5 || data["mimeType"] != "text/plain" || data["accessUrl"] != "/api/system/file/1/view" || data["businessModule"] != "system" || data["remark"] != "example" || data["status"].(float64) != 1 {
 		t.Fatalf("data=%v", data)
 	}
-	if store.file.AccessURL != data["accessUrl"] || len(audit.events) != 1 || audit.events[0].Action != "file.upload" || audit.events[0].ResourceID != 1 {
-		t.Fatalf("store=%+v audit=%+v", store.file, audit.events)
+	if store.file.AccessURL != data["accessUrl"] || len(store.events) != 1 || store.events[0].Action != "file.upload" || store.events[0].ResourceID != 1 {
+		t.Fatalf("store=%+v audit=%+v", store.file, store.events)
 	}
 }
 
 func TestUploadContractRejectsMissingFile(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload", "multipart/form-data; boundary=only", nil)))
 	wantValidationError(t, response, "file")
@@ -168,7 +167,7 @@ func TestUploadContractRejectsMissingFile(t *testing.T) {
 
 func TestUploadContractRejectsOversizeFile(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	contentType, body := multipartBody(t, uploadOption{field: "file", filename: "huge.bin", content: strings.Repeat("x", MaxFileSize+1)})
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload", contentType, body)))
@@ -181,7 +180,7 @@ func TestUploadContractRejectsOversizeFile(t *testing.T) {
 
 func TestUploadContractValidatesMetadata(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	for _, test := range []struct {
 		name      string
 		option    uploadOption
@@ -201,7 +200,7 @@ func TestUploadContractValidatesMetadata(t *testing.T) {
 
 func TestUploadBatchContractServesPerFileResults(t *testing.T) {
 	t.Parallel()
-	router, _, audit := newServiceRouter(t, new(memoryStore), nil)
+	router, store := newServiceRouter(t, new(memoryStore), nil)
 	contentType, body := multipartBody(t,
 		uploadOption{field: "files", filename: "one.txt", content: "1"},
 		uploadOption{field: "files", filename: "two.txt", content: "22"},
@@ -216,14 +215,14 @@ func TestUploadBatchContractServesPerFileResults(t *testing.T) {
 	if _, ok := data["failed"].([]any); !ok {
 		t.Fatalf("failed must be an array, got %v", data["failed"])
 	}
-	if len(audit.events) != 2 || audit.events[0].Action != "file.upload" || audit.events[1].Action != "file.upload" {
-		t.Fatalf("audit=%+v", audit.events)
+	if len(store.events) != 2 || store.events[0].Action != "file.upload" || store.events[1].Action != "file.upload" {
+		t.Fatalf("audit=%+v", store.events)
 	}
 }
 
 func TestUploadBatchContractRejectsEmptyFiles(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload-batch", "multipart/form-data; boundary=only", nil)))
 	wantValidationError(t, response, "files")
@@ -244,7 +243,7 @@ func TestPageContractValidatesPagination(t *testing.T) {
 		{name: "status invalid", path: "/api/system/file/page?status=2", wantField: "status"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+			router, _ := newServiceRouter(t, new(memoryStore), nil)
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, test.path, nil)))
 			wantValidationError(t, response, test.wantField)
@@ -255,10 +254,10 @@ func TestPageContractValidatesPagination(t *testing.T) {
 func TestPageContractFiltersByQuery(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "report.pdf", BusinessModule: "system", MimeType: "application/pdf", Status: StatusEnabled})
-	store.Create(nil, File{OriginalName: "photo.png", BusinessModule: "avatar", MimeType: "image/png", Status: StatusEnabled})
-	store.Create(nil, File{OriginalName: "draft.pdf", BusinessModule: "system", MimeType: "application/pdf", Status: StatusDisabled})
-	router, _, _ := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "report.pdf", BusinessModule: "system", MimeType: "application/pdf", Status: StatusEnabled})
+	store.seed(File{OriginalName: "photo.png", BusinessModule: "avatar", MimeType: "image/png", Status: StatusEnabled})
+	store.seed(File{OriginalName: "draft.pdf", BusinessModule: "system", MimeType: "application/pdf", Status: StatusDisabled})
+	router, _ := newServiceRouter(t, store, nil)
 	for _, test := range []struct {
 		name      string
 		path      string
@@ -285,8 +284,8 @@ func TestPageContractFiltersByQuery(t *testing.T) {
 func TestDetailContractServesRecordAndNotFoundEnvelope(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "report.pdf", MimeType: "application/pdf", FileSize: 5})
-	router, _, _ := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "report.pdf", MimeType: "application/pdf", FileSize: 5})
+	router, _ := newServiceRouter(t, store, nil)
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, "/api/system/file/1", nil)))
@@ -303,7 +302,7 @@ func TestDetailContractServesRecordAndNotFoundEnvelope(t *testing.T) {
 
 func TestDetailContractRejectsInvalidID(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, "/api/system/file/abc", nil)))
 	wantValidationError(t, response, "id")
@@ -312,8 +311,8 @@ func TestDetailContractRejectsInvalidID(t *testing.T) {
 func TestUpdateContractServesMutationAndAudits(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", BusinessModule: "old"})
-	router, _, audit := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "a.txt", BusinessModule: "old"})
+	router, _ := newServiceRouter(t, store, nil)
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPut, "/api/system/file/1", strings.NewReader(`{"businessModule":"system","remark":"新备注"}`))
@@ -323,14 +322,14 @@ func TestUpdateContractServesMutationAndAudits(t *testing.T) {
 	if store.file.BusinessModule != "system" || store.file.Remark == nil || *store.file.Remark != "新备注" {
 		t.Fatalf("store=%+v", store.file)
 	}
-	if len(audit.events) != 1 || audit.events[0].Action != "file.update" || audit.events[0].ResourceID != 1 {
-		t.Fatalf("audit=%+v", audit.events)
+	if len(store.events) != 1 || store.events[0].Action != "file.update" || store.events[0].ResourceID != 1 {
+		t.Fatalf("audit=%+v", store.events)
 	}
 }
 
 func TestUpdateContractValidatesMetadata(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	for _, test := range []struct {
 		name      string
 		body      string
@@ -352,7 +351,7 @@ func TestUpdateContractValidatesMetadata(t *testing.T) {
 
 func TestUpdateContractMapsNotFound(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPut, "/api/system/file/99", strings.NewReader(`{"businessModule":"system"}`))
 	request.Header.Set("Content-Type", "application/json")
@@ -371,8 +370,8 @@ func TestDeleteContractKeepsPhysicalFileAndAudits(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", StoragePath: stored.Path, FileSize: 1})
-	router, _, audit := newServiceRouter(t, store, storage)
+	store.seed(File{OriginalName: "a.txt", StoragePath: stored.Path, FileSize: 1})
+	router, _ := newServiceRouter(t, store, storage)
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodDelete, "/api/system/file/1", nil)))
@@ -385,14 +384,14 @@ func TestDeleteContractKeepsPhysicalFileAndAudits(t *testing.T) {
 		t.Fatalf("physical file must remain after metadata delete: %v", err)
 	}
 	_ = resource.Close()
-	if len(audit.events) != 1 || audit.events[0].Action != "file.delete" || audit.events[0].ResourceID != 1 {
-		t.Fatalf("audit=%+v", audit.events)
+	if len(store.events) != 1 || store.events[0].Action != "file.delete" || store.events[0].ResourceID != 1 {
+		t.Fatalf("audit=%+v", store.events)
 	}
 }
 
 func TestDeleteContractMapsNotFound(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodDelete, "/api/system/file/99", nil)))
 	wantNotFoundEnvelope(t, response)
@@ -400,7 +399,7 @@ func TestDeleteContractMapsNotFound(t *testing.T) {
 
 func TestBatchDeleteContractValidatesIDs(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	for _, test := range []struct {
 		name string
 		body string
@@ -423,9 +422,9 @@ func TestBatchDeleteContractValidatesIDs(t *testing.T) {
 func TestBatchDeleteContractDeletesAllAndAudits(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", StoragePath: "2026/07/31/a.txt"})
-	store.Create(nil, File{OriginalName: "b.txt", StoragePath: "2026/07/31/b.txt"})
-	router, _, audit := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "a.txt", StoragePath: "2026/07/31/a.txt"})
+	store.seed(File{OriginalName: "b.txt", StoragePath: "2026/07/31/b.txt"})
+	router, _ := newServiceRouter(t, store, nil)
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/api/system/file/batch-delete", strings.NewReader(`{"ids":[1,2]}`))
@@ -437,32 +436,32 @@ func TestBatchDeleteContractDeletesAllAndAudits(t *testing.T) {
 			t.Fatalf("record %d must be soft-deleted: %+v", file.ID, file)
 		}
 	}
-	if len(audit.events) != 2 || audit.events[0].Action != "file.delete" || audit.events[0].ResourceID != 1 || audit.events[1].ResourceID != 2 {
-		t.Fatalf("audit=%+v", audit.events)
+	if len(store.events) != 2 || store.events[0].Action != "file.delete" || store.events[0].ResourceID != 1 || store.events[1].ResourceID != 2 {
+		t.Fatalf("audit=%+v", store.events)
 	}
 }
 
 func TestBatchDeleteContractIsAtomicWhenAnyFileIsMissing(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", StoragePath: "2026/07/31/a.txt"})
-	router, _, audit := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "a.txt", StoragePath: "2026/07/31/a.txt"})
+	router, _ := newServiceRouter(t, store, nil)
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/api/system/file/batch-delete", strings.NewReader(`{"ids":[1,99]}`))
 	request.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(response, authenticated(request))
 	wantNotFoundEnvelope(t, response)
-	if store.file.Deleted != 0 || len(audit.events) != 0 {
-		t.Fatalf("store=%+v audit=%+v", store.file, audit.events)
+	if store.file.Deleted != 0 || len(store.events) != 0 {
+		t.Fatalf("store=%+v audit=%+v", store.file, store.events)
 	}
 }
 
 func TestStatusContractServesMutationAndAudits(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", Status: StatusEnabled})
-	router, _, audit := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "a.txt", Status: StatusEnabled})
+	router, _ := newServiceRouter(t, store, nil)
 
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPatch, "/api/system/file/1/status", strings.NewReader(`{"status":0}`))
@@ -472,14 +471,14 @@ func TestStatusContractServesMutationAndAudits(t *testing.T) {
 	if store.file.Status != StatusDisabled {
 		t.Fatalf("store=%+v", store.file)
 	}
-	if len(audit.events) != 1 || audit.events[0].Action != "file.status" || audit.events[0].ResourceID != 1 {
-		t.Fatalf("audit=%+v", audit.events)
+	if len(store.events) != 1 || store.events[0].Action != "file.status" || store.events[0].ResourceID != 1 {
+		t.Fatalf("audit=%+v", store.events)
 	}
 }
 
 func TestStatusContractRejectsInvalidStatus(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	for _, test := range []struct {
 		name string
 		body string
@@ -510,8 +509,8 @@ func TestStreamContractServesDownloadAndView(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "hello.txt", MimeType: "text/plain; charset=utf-8", FileSize: int64(len(content)), StoragePath: stored.Path})
-	router, _, _ := newServiceRouter(t, store, storage)
+	store.seed(File{OriginalName: "hello.txt", MimeType: "text/plain; charset=utf-8", FileSize: int64(len(content)), StoragePath: stored.Path})
+	router, _ := newServiceRouter(t, store, storage)
 
 	for _, test := range []struct {
 		name       string
@@ -543,8 +542,8 @@ func TestStreamContractServesDownloadAndView(t *testing.T) {
 func TestStreamContractMapsMissingFileToNotFoundEnvelope(t *testing.T) {
 	t.Parallel()
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "ghost.txt", MimeType: "text/plain", FileSize: 3, StoragePath: "2026/07/31/ghost.txt"})
-	router, _, _ := newServiceRouter(t, store, nil)
+	store.seed(File{OriginalName: "ghost.txt", MimeType: "text/plain", FileSize: 3, StoragePath: "2026/07/31/ghost.txt"})
+	router, _ := newServiceRouter(t, store, nil)
 	for _, path := range []string{"/api/system/file/1/download", "/api/system/file/1/view"} {
 		response := httptest.NewRecorder()
 		router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, path, nil)))
@@ -563,8 +562,8 @@ func TestStreamContractEscapesFilenameInDisposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "测试 文件.txt", MimeType: "text/plain", FileSize: 1, StoragePath: stored.Path})
-	router, _, _ := newServiceRouter(t, store, storage)
+	store.seed(File{OriginalName: "测试 文件.txt", MimeType: "text/plain", FileSize: 1, StoragePath: stored.Path})
+	router, _ := newServiceRouter(t, store, storage)
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, "/api/system/file/1/download", nil)))
@@ -579,7 +578,7 @@ func TestStreamContractEscapesFilenameInDisposition(t *testing.T) {
 
 func TestRoutesRegistered(t *testing.T) {
 	t.Parallel()
-	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
+	router, _ := newServiceRouter(t, new(memoryStore), nil)
 	want := map[string]string{
 		"POST /api/system/file/upload":       "",
 		"POST /api/system/file/upload-batch": "",
@@ -602,7 +601,7 @@ func TestRoutesRegistered(t *testing.T) {
 
 func TestAuditMetadataCarriesRequestContext(t *testing.T) {
 	t.Parallel()
-	router, _, audit := newServiceRouter(t, new(memoryStore), nil)
+	router, store := newServiceRouter(t, new(memoryStore), nil)
 	contentType, body := multipartBody(t, uploadOption{field: "file", filename: "a.txt", content: "x"})
 	request := multipartRequest(t, http.MethodPost, "/api/system/file/upload", contentType, body)
 	request.Header.Set(platformhttp.RequestIDHeader, "request-42")
@@ -611,7 +610,7 @@ func TestAuditMetadataCarriesRequestContext(t *testing.T) {
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(request))
 	wantEnvelopeOK(t, response)
-	event := audit.events[0]
+	event := store.events[0]
 	if event.Action != "file.upload" || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.UserAgent != "handler-test" || event.Metadata.RequestMethod != http.MethodPost || event.Metadata.RequestURL != "/api/system/file/upload" {
 		t.Fatalf("audit event = %+v", event)
 	}

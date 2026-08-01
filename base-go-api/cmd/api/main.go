@@ -86,7 +86,7 @@ func main() {
 		slog.Error("build file storage", "error", err)
 		os.Exit(1)
 	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, auditRecorder)
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
 	if err != nil {
 		slog.Error("build file service", "error", err)
 		os.Exit(1)

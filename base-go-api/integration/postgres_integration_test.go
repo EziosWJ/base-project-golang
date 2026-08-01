@@ -542,13 +542,12 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create authentication service: %v", err)
 	}
-	audit := audit.NewRecorder(database.GORM)
 	storageRoot := t.TempDir()
 	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
 	if err != nil {
 		t.Fatalf("create file storage: %v", err)
 	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, audit)
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
 	if err != nil {
 		t.Fatalf("create file service: %v", err)
 	}
