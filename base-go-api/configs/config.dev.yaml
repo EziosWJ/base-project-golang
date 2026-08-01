@@ -2,9 +2,9 @@ swagger:
   enabled: true
 
 database:
-  url: postgres://127.0.0.1:54329/base_go_api?sslmode=disable
-  username: base_go_api
-  password: replace-with-a-local-development-password
+  url: postgres://192.168.1.48:5432/base_project_golang?sslmode=disable
+  username: pgsql
+  password: pgsql
 
 jwt:
   secret: replace-with-a-random-local-development-jwt-secret
