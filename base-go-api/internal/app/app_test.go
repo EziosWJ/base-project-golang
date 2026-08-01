@@ -64,7 +64,7 @@ func (f *fakeStores) deps() Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	rbacService, err := rbac.NewService(emptyRBACStore{}, nil)
+	rbacService, err := rbac.NewService(emptyRBACStore{})
 	if err != nil {
 		panic(err)
 	}
@@ -240,13 +240,14 @@ func (emptyRBACStore) FindRole(context.Context, int64) (*rbac.Role, error) {
 	return nil, nil
 }
 func (emptyRBACStore) RoleCodeExists(context.Context, string, int64) (bool, error) { return false, nil }
-func (emptyRBACStore) CreateRole(context.Context, rbac.Role) (rbac.Role, error)   { return rbac.Role{}, nil }
-func (emptyRBACStore) UpdateRole(context.Context, rbac.Role) (rbac.Role, error)   { return rbac.Role{}, nil }
+func (emptyRBACStore) CreateRole(context.Context, rbac.Role, rbac.AuditEvent) (rbac.Role, error) { return rbac.Role{}, nil }
+func (emptyRBACStore) UpdateRole(context.Context, rbac.Role, rbac.AuditEvent) (rbac.Role, error) { return rbac.Role{}, nil }
 func (emptyRBACStore) CountUsersByRole(context.Context, int64) (int64, error)     { return 0, nil }
-func (emptyRBACStore) DeleteRole(context.Context, int64) error                    { return nil }
-func (emptyRBACStore) SetRoleStatus(context.Context, int64, int) error            { return nil }
+func (emptyRBACStore) DeleteRole(context.Context, int64, rbac.AuditEvent) error   { return nil }
+func (emptyRBACStore) DeleteRoles(context.Context, []int64, rbac.AuditEvent) error { return nil }
+func (emptyRBACStore) SetRoleStatus(context.Context, int64, int, rbac.AuditEvent) error { return nil }
 func (emptyRBACStore) RoleMenuIDs(context.Context, int64) ([]int64, error)        { return nil, nil }
-func (emptyRBACStore) ReplaceRoleMenus(context.Context, int64, []int64) error     { return nil }
+func (emptyRBACStore) ReplaceRoleMenus(context.Context, int64, []int64, rbac.AuditEvent) error { return nil }
 func (emptyRBACStore) EnabledRoles(context.Context) ([]rbac.Role, error)          { return nil, nil }
 func (emptyRBACStore) ListMenus(context.Context) ([]rbac.Menu, error)             { return nil, nil }
 func (emptyRBACStore) PageMenus(context.Context, rbac.MenuPageQuery) (rbac.Page[rbac.Menu], error) {
@@ -256,12 +257,13 @@ func (emptyRBACStore) FindMenu(context.Context, int64) (*rbac.Menu, error) { ret
 func (emptyRBACStore) PermissionCodeExists(context.Context, string, int64) (bool, error) {
 	return false, nil
 }
-func (emptyRBACStore) CreateMenu(context.Context, rbac.Menu) (rbac.Menu, error) { return rbac.Menu{}, nil }
-func (emptyRBACStore) UpdateMenu(context.Context, rbac.Menu) (rbac.Menu, error) { return rbac.Menu{}, nil }
+func (emptyRBACStore) CreateMenu(context.Context, rbac.Menu, rbac.AuditEvent) (rbac.Menu, error) { return rbac.Menu{}, nil }
+func (emptyRBACStore) UpdateMenu(context.Context, rbac.Menu, rbac.AuditEvent) (rbac.Menu, error) { return rbac.Menu{}, nil }
 func (emptyRBACStore) CountChildren(context.Context, int64) (int64, error)       { return 0, nil }
 func (emptyRBACStore) CountRolesByMenu(context.Context, int64) (int64, error)    { return 0, nil }
-func (emptyRBACStore) DeleteMenu(context.Context, int64) error                   { return nil }
-func (emptyRBACStore) SetMenuStatus(context.Context, int64, int) error           { return nil }
+func (emptyRBACStore) DeleteMenu(context.Context, int64, rbac.AuditEvent) error  { return nil }
+func (emptyRBACStore) DeleteMenus(context.Context, []int64, rbac.AuditEvent) error { return nil }
+func (emptyRBACStore) SetMenuStatus(context.Context, int64, int, rbac.AuditEvent) error { return nil }
 
 type emptyDeptStore struct{}
 
