@@ -2,12 +2,22 @@ package app
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
 
 type readyProbe struct {
@@ -35,8 +45,64 @@ func testConfig(environment string, swaggerEnabled bool) config.Config {
 	}
 }
 
+// fakeStores provide enough in-memory state to construct every real business
+// service without a database.
+type fakeStores struct {
+	auth auth.Store
+	file filemgmt.Storage
+}
+
+func newFakeStores() *fakeStores {
+	return &fakeStores{
+		auth: &authMemoryStore{users: map[string]auth.User{}, sessions: map[string]auth.AuthSession{}},
+		file: memoryStorage{},
+	}
+}
+
+func (f *fakeStores) deps() Dependencies {
+	authService, err := auth.NewService(f.auth, &auth.TokenManager{})
+	if err != nil {
+		panic(err)
+	}
+	rbacService, err := rbac.NewService(emptyRBACStore{}, nil)
+	if err != nil {
+		panic(err)
+	}
+	deptService, err := dept.NewService(emptyDeptStore{}, nil)
+	if err != nil {
+		panic(err)
+	}
+	userService, err := usermgmt.NewService(emptyUserStore{}, nil, "admin123")
+	if err != nil {
+		panic(err)
+	}
+	dictionaryService, err := dictionary.NewService(emptyDictionaryStore{}, nil)
+	if err != nil {
+		panic(err)
+	}
+	configService := sysconfig.NewService(emptyConfigStore{}, nil)
+	fileService, err := filemgmt.NewService(emptyFileStore{}, f.file, nil)
+	if err != nil {
+		panic(err)
+	}
+	logService, err := logmgmt.NewService(emptyLogStore{}, configService, nil)
+	if err != nil {
+		panic(err)
+	}
+	return Dependencies{
+		Auth:       authService,
+		RBAC:       rbacService,
+		Department: deptService,
+		User:       userService,
+		Dictionary: dictionaryService,
+		SysConfig:  configService,
+		File:       fileService,
+		Log:        logService,
+	}
+}
+
 func TestBuildRegistersSystemRoutes(t *testing.T) {
-	router, err := Build(testConfig("test", false), readyProbe{}, nil, nil, nil, nil, nil, nil, nil, nil)
+	router, err := Build(testConfig("test", false), readyProbe{}, newFakeStores().deps())
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
@@ -47,6 +113,61 @@ func TestBuildRegistersSystemRoutes(t *testing.T) {
 		if response.Code != http.StatusOK {
 			t.Errorf("GET %s status = %d, want %d", path, response.Code, http.StatusOK)
 		}
+	}
+}
+
+func TestBuildRegistersAllSystemManagementRoutes(t *testing.T) {
+	router, err := Build(testConfig("test", false), readyProbe{}, newFakeStores().deps())
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	// Every module route must exist behind bearer auth; an unauthenticated
+	// request proves the route is registered without exercising handlers.
+	for _, path := range []string{
+		"/api/system/role/page",
+		"/api/system/dept/tree",
+		"/api/system/user/page",
+		"/api/system/dict-type/page",
+		"/api/system/config/page",
+		"/api/system/file/page",
+		"/api/system/login-log/page",
+	} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusUnauthorized {
+			t.Errorf("GET %s status = %d, want %d (route must be registered)", path, response.Code, http.StatusUnauthorized)
+		}
+	}
+}
+
+func TestNewFailsWhenRequiredServiceMissing(t *testing.T) {
+	full := newFakeStores().deps()
+	for _, test := range []struct {
+		name   string
+		mutate func(*Dependencies)
+		want   string
+	}{
+		{name: "auth", mutate: func(d *Dependencies) { d.Auth = nil }, want: "auth service is required"},
+		{name: "rbac", mutate: func(d *Dependencies) { d.RBAC = nil }, want: "rbac service is required"},
+		{name: "department", mutate: func(d *Dependencies) { d.Department = nil }, want: "department service is required"},
+		{name: "user", mutate: func(d *Dependencies) { d.User = nil }, want: "user service is required"},
+		{name: "dictionary", mutate: func(d *Dependencies) { d.Dictionary = nil }, want: "dictionary service is required"},
+		{name: "sysconfig", mutate: func(d *Dependencies) { d.SysConfig = nil }, want: "sysconfig service is required"},
+		{name: "file", mutate: func(d *Dependencies) { d.File = nil }, want: "file service is required"},
+		{name: "log", mutate: func(d *Dependencies) { d.Log = nil }, want: "log service is required"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			deps := full
+			test.mutate(&deps)
+			_, err := New(testConfig("test", false), readyProbe{}, deps)
+			if err == nil {
+				t.Fatalf("New() error = nil, want %q", test.want)
+			}
+			if !strings.Contains(err.Error(), test.want) {
+				t.Errorf("New() error = %q, want it to contain %q", err.Error(), test.want)
+			}
+		})
 	}
 }
 
@@ -62,7 +183,7 @@ func TestBuildRegistersSwaggerOnlyInDev(t *testing.T) {
 		{name: "development disabled", environment: "dev", enabled: false, wantStatus: http.StatusNotFound},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			router, err := Build(testConfig(test.environment, test.enabled), readyProbe{}, nil, nil, nil, nil, nil, nil, nil, nil)
+			router, err := Build(testConfig(test.environment, test.enabled), readyProbe{}, newFakeStores().deps())
 			if err != nil {
 				t.Fatalf("Build() error = %v", err)
 			}
@@ -75,3 +196,206 @@ func TestBuildRegistersSwaggerOnlyInDev(t *testing.T) {
 		})
 	}
 }
+
+// --- in-memory stores that satisfy the module Store interfaces ---
+
+type authMemoryStore struct {
+	users    map[string]auth.User
+	sessions map[string]auth.AuthSession
+}
+
+func (s *authMemoryStore) FindUserByUsername(_ context.Context, username string) (*auth.User, error) {
+	u, ok := s.users[username]
+	if !ok {
+		return nil, auth.ErrUserNotFound
+	}
+	return &u, nil
+}
+
+func (s *authMemoryStore) RecordLoginFailure(context.Context, auth.LoginLog) error { return nil }
+func (s *authMemoryStore) CompleteLogin(_ context.Context, userID int64, loginTime time.Time, loginIP string, session auth.AuthSession, log auth.LoginLog) error {
+	s.sessions[session.JTI] = session
+	return nil
+}
+func (s *authMemoryStore) IsSessionActive(context.Context, int64, string, time.Time) (bool, error) {
+	return true, nil
+}
+func (s *authMemoryStore) RevokeSession(context.Context, int64, string, time.Time) error { return nil }
+func (s *authMemoryStore) RevokeSessionsByUserID(context.Context, int64, time.Time) error {
+	return nil
+}
+func (s *authMemoryStore) FindCurrentUser(context.Context, int64) (*auth.CurrentUser, error) {
+	return nil, auth.ErrUserNotFound
+}
+func (s *authMemoryStore) FindVisibleMenusByUserID(context.Context, int64) ([]auth.CurrentUserMenu, error) {
+	return nil, nil
+}
+
+type emptyRBACStore struct{}
+
+func (emptyRBACStore) PageRoles(context.Context, rbac.RolePageQuery) (rbac.Page[rbac.Role], error) {
+	return rbac.Page[rbac.Role]{}, nil
+}
+func (emptyRBACStore) FindRole(context.Context, int64) (*rbac.Role, error) {
+	return nil, nil
+}
+func (emptyRBACStore) RoleCodeExists(context.Context, string, int64) (bool, error) { return false, nil }
+func (emptyRBACStore) CreateRole(context.Context, rbac.Role) (rbac.Role, error)   { return rbac.Role{}, nil }
+func (emptyRBACStore) UpdateRole(context.Context, rbac.Role) (rbac.Role, error)   { return rbac.Role{}, nil }
+func (emptyRBACStore) CountUsersByRole(context.Context, int64) (int64, error)     { return 0, nil }
+func (emptyRBACStore) DeleteRole(context.Context, int64) error                    { return nil }
+func (emptyRBACStore) SetRoleStatus(context.Context, int64, int) error            { return nil }
+func (emptyRBACStore) RoleMenuIDs(context.Context, int64) ([]int64, error)        { return nil, nil }
+func (emptyRBACStore) ReplaceRoleMenus(context.Context, int64, []int64) error     { return nil }
+func (emptyRBACStore) EnabledRoles(context.Context) ([]rbac.Role, error)          { return nil, nil }
+func (emptyRBACStore) ListMenus(context.Context) ([]rbac.Menu, error)             { return nil, nil }
+func (emptyRBACStore) PageMenus(context.Context, rbac.MenuPageQuery) (rbac.Page[rbac.Menu], error) {
+	return rbac.Page[rbac.Menu]{}, nil
+}
+func (emptyRBACStore) FindMenu(context.Context, int64) (*rbac.Menu, error) { return nil, nil }
+func (emptyRBACStore) PermissionCodeExists(context.Context, string, int64) (bool, error) {
+	return false, nil
+}
+func (emptyRBACStore) CreateMenu(context.Context, rbac.Menu) (rbac.Menu, error) { return rbac.Menu{}, nil }
+func (emptyRBACStore) UpdateMenu(context.Context, rbac.Menu) (rbac.Menu, error) { return rbac.Menu{}, nil }
+func (emptyRBACStore) CountChildren(context.Context, int64) (int64, error)       { return 0, nil }
+func (emptyRBACStore) CountRolesByMenu(context.Context, int64) (int64, error)    { return 0, nil }
+func (emptyRBACStore) DeleteMenu(context.Context, int64) error                   { return nil }
+func (emptyRBACStore) SetMenuStatus(context.Context, int64, int) error           { return nil }
+
+type emptyDeptStore struct{}
+
+func (emptyDeptStore) List(context.Context) ([]dept.Dept, error)              { return nil, nil }
+func (emptyDeptStore) Page(context.Context, dept.Query) (dept.Page, error)    { return dept.Page{}, nil }
+func (emptyDeptStore) Find(context.Context, int64) (*dept.Dept, error)        { return nil, nil }
+func (emptyDeptStore) CodeExists(context.Context, string, int64) (bool, error) { return false, nil }
+func (emptyDeptStore) Create(context.Context, dept.Dept) (dept.Dept, error)   { return dept.Dept{}, nil }
+func (emptyDeptStore) Update(context.Context, dept.Dept) (dept.Dept, error)   { return dept.Dept{}, nil }
+func (emptyDeptStore) Delete(context.Context, int64) error                     { return nil }
+func (emptyDeptStore) SetStatus(context.Context, int64, int) error             { return nil }
+func (emptyDeptStore) CountChildren(context.Context, int64) (int64, error)     { return 0, nil }
+func (emptyDeptStore) CountUsers(context.Context, int64) (int64, error)        { return 0, nil }
+
+type emptyUserStore struct{}
+
+func (emptyUserStore) Page(context.Context, usermgmt.PageQuery) (usermgmt.Page[usermgmt.User], error) {
+	return usermgmt.Page[usermgmt.User]{}, nil
+}
+func (emptyUserStore) Find(context.Context, int64) (*usermgmt.User, error) { return nil, nil }
+func (emptyUserStore) UsernameExists(context.Context, string, int64) (bool, error) {
+	return false, nil
+}
+func (emptyUserStore) DeptExists(context.Context, int64) (bool, error)      { return false, nil }
+func (emptyUserStore) RolesExist(context.Context, []int64) (bool, error)    { return false, nil }
+func (emptyUserStore) Create(context.Context, usermgmt.User) (usermgmt.User, error) {
+	return usermgmt.User{}, nil
+}
+func (emptyUserStore) Update(context.Context, usermgmt.User, bool) error { return nil }
+func (emptyUserStore) Delete(context.Context, int64) error               { return nil }
+func (emptyUserStore) AssignRoles(context.Context, int64, []int64) error { return nil }
+func (emptyUserStore) ResetPassword(context.Context, int64, string) error {
+	return nil
+}
+func (emptyUserStore) ChangePassword(context.Context, int64, string) error { return nil }
+func (emptyUserStore) UpdateAvatar(context.Context, int64, *string) error  { return nil }
+
+type emptyDictionaryStore struct{}
+
+func (emptyDictionaryStore) PageTypes(context.Context, dictionary.TypePageQuery) (dictionary.Page[dictionary.DictType], error) {
+	return dictionary.Page[dictionary.DictType]{}, nil
+}
+func (emptyDictionaryStore) FindType(context.Context, int64) (*dictionary.DictType, error) {
+	return nil, nil
+}
+func (emptyDictionaryStore) DictCodeExists(context.Context, string, int64) (bool, error) {
+	return false, nil
+}
+func (emptyDictionaryStore) CreateType(context.Context, dictionary.DictType) (dictionary.DictType, error) {
+	return dictionary.DictType{}, nil
+}
+func (emptyDictionaryStore) UpdateType(context.Context, dictionary.DictType) (dictionary.DictType, error) {
+	return dictionary.DictType{}, nil
+}
+func (emptyDictionaryStore) CountDataByType(context.Context, int64) (int64, error) { return 0, nil }
+func (emptyDictionaryStore) DeleteTypes(context.Context, []int64) error            { return nil }
+func (emptyDictionaryStore) SetTypeStatus(context.Context, int64, int) error       { return nil }
+func (emptyDictionaryStore) PageData(context.Context, dictionary.DataPageQuery) (dictionary.Page[dictionary.DictData], error) {
+	return dictionary.Page[dictionary.DictData]{}, nil
+}
+func (emptyDictionaryStore) FindData(context.Context, int64) (*dictionary.DictData, error) {
+	return nil, nil
+}
+func (emptyDictionaryStore) DictValueExists(context.Context, int64, string, int64) (bool, error) {
+	return false, nil
+}
+func (emptyDictionaryStore) CreateData(context.Context, dictionary.DictData) (dictionary.DictData, error) {
+	return dictionary.DictData{}, nil
+}
+func (emptyDictionaryStore) UpdateData(context.Context, dictionary.DictData) (dictionary.DictData, error) {
+	return dictionary.DictData{}, nil
+}
+func (emptyDictionaryStore) DeleteData(context.Context, []int64) error      { return nil }
+func (emptyDictionaryStore) Items(context.Context, string) ([]dictionary.DictItem, error) {
+	return nil, nil
+}
+
+type emptyConfigStore struct{}
+
+func (emptyConfigStore) Page(context.Context, sysconfig.Query) (sysconfig.Page, error) {
+	return sysconfig.Page{}, nil
+}
+func (emptyConfigStore) Find(context.Context, int64) (*sysconfig.Config, error) { return nil, nil }
+func (emptyConfigStore) ByKey(context.Context, string) (*sysconfig.ByKey, error) {
+	return nil, nil
+}
+func (emptyConfigStore) KeyExists(context.Context, string, int64) (bool, error) { return false, nil }
+func (emptyConfigStore) Create(context.Context, sysconfig.Config) (sysconfig.Config, error) {
+	return sysconfig.Config{}, nil
+}
+func (emptyConfigStore) Update(context.Context, sysconfig.Config) error { return nil }
+func (emptyConfigStore) Delete(context.Context, int64) error            { return nil }
+func (emptyConfigStore) SetStatus(context.Context, int64, int) error    { return nil }
+
+type emptyFileStore struct{}
+
+func (emptyFileStore) Page(context.Context, filemgmt.FilePageQuery) (filemgmt.Page[filemgmt.File], error) {
+	return filemgmt.Page[filemgmt.File]{}, nil
+}
+func (emptyFileStore) Find(context.Context, int64) (*filemgmt.File, error) { return nil, nil }
+func (emptyFileStore) Create(context.Context, filemgmt.File) (filemgmt.File, error) {
+	return filemgmt.File{}, nil
+}
+func (emptyFileStore) SetAccessURL(context.Context, int64, string) error    { return nil }
+func (emptyFileStore) Update(context.Context, int64, filemgmt.UpdateInput) error {
+	return nil
+}
+func (emptyFileStore) Delete(context.Context, int64) error         { return nil }
+func (emptyFileStore) DeleteBatch(context.Context, []int64) error { return nil }
+func (emptyFileStore) SetStatus(context.Context, int64, int) error { return nil }
+
+type emptyLogStore struct{}
+
+func (emptyLogStore) LoginLogPage(context.Context, logmgmt.LoginLogPageQuery) (logmgmt.Page[logmgmt.LoginLog], error) {
+	return logmgmt.Page[logmgmt.LoginLog]{}, nil
+}
+func (emptyLogStore) FindLoginLog(context.Context, int64) (*logmgmt.LoginLog, error) {
+	return nil, nil
+}
+func (emptyLogStore) ClearLoginLogs(context.Context) error { return nil }
+func (emptyLogStore) OperLogPage(context.Context, logmgmt.OperLogPageQuery) (logmgmt.Page[logmgmt.OperLogRecord], error) {
+	return logmgmt.Page[logmgmt.OperLogRecord]{}, nil
+}
+func (emptyLogStore) FindOperLog(context.Context, int64) (*logmgmt.OperLogDetail, error) {
+	return nil, nil
+}
+func (emptyLogStore) ClearOperLogs(context.Context) error { return nil }
+
+type memoryStorage struct{}
+
+func (memoryStorage) Save(context.Context, string, io.Reader) (filemgmt.StoredFile, error) {
+	return filemgmt.StoredFile{}, nil
+}
+func (memoryStorage) Open(context.Context, string) (io.ReadSeekCloser, error) {
+	return nil, filemgmt.ErrNotFound
+}
+func (memoryStorage) Remove(context.Context, string) error { return nil }

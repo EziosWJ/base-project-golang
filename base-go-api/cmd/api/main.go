@@ -97,7 +97,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService, fileService, logService)
+	application, err := app.New(*cfg, database, app.Dependencies{
+		Auth:       authService,
+		RBAC:       rbacService,
+		Department: deptService,
+		User:       userService,
+		Dictionary: dictionaryService,
+		SysConfig:  configService,
+		File:       fileService,
+		Log:        logService,
+	})
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

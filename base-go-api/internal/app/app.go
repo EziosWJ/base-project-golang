@@ -20,6 +20,19 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/usermgmt"
 )
 
+// Dependencies holds the named business services the HTTP application assembles.
+// All fields are required; a missing service fails application construction.
+type Dependencies struct {
+	Auth       *auth.Service
+	RBAC       *rbac.Service
+	Department *dept.Service
+	User       *usermgmt.Service
+	Dictionary *dictionary.Service
+	SysConfig  *sysconfig.Service
+	File       *filemgmt.Service
+	Log        *logmgmt.Service
+}
+
 // Application is the assembled HTTP application and its process logger.
 type Application struct {
 	Router *gin.Engine
@@ -28,7 +41,11 @@ type Application struct {
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
 // so that the application layer does not depend on a concrete database driver.
-func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service, logService *logmgmt.Service) (*Application, error) {
+func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Dependencies) (*Application, error) {
+	if err := deps.validate(); err != nil {
+		return nil, err
+	}
+
 	logger, err := newLogger(cfg)
 	if err != nil {
 		return nil, err
@@ -52,66 +69,52 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 	platformhttp.RegisterSystemRoutes(router, platformhttp.SystemRoutes{
 		Readiness: readiness,
 	})
-	if authService != nil {
-		handler, err := auth.NewHandler(authService, authService)
-		if err != nil {
-			return nil, fmt.Errorf("create authentication handler: %w", err)
-		}
-		auth.RegisterRoutes(router, handler)
+	authHandler, err := auth.NewHandler(deps.Auth, deps.Auth)
+	if err != nil {
+		return nil, fmt.Errorf("create authentication handler: %w", err)
 	}
-	if rbacService != nil || deptService != nil || userService != nil || dictionaryService != nil || configService != nil || fileService != nil || logService != nil {
-		if authService == nil {
-			return nil, fmt.Errorf("system management services require authentication service")
-		}
-		system := router.Group("/api/system")
-		system.Use(auth.BearerMiddleware(authService))
-		if rbacService != nil {
-			handler, err := rbac.NewHandler(rbacService)
-			if err != nil {
-				return nil, fmt.Errorf("create RBAC handler: %w", err)
-			}
-			rbac.RegisterRoutes(system, handler)
-		}
-		if deptService != nil {
-			handler, err := dept.NewHandler(deptService)
-			if err != nil {
-				return nil, fmt.Errorf("create department handler: %w", err)
-			}
-			dept.RegisterRoutes(system, handler)
-		}
-		if userService != nil {
-			handler, err := usermgmt.NewHandler(userService)
-			if err != nil {
-				return nil, fmt.Errorf("create user handler: %w", err)
-			}
-			usermgmt.RegisterRoutes(system, handler)
-		}
-		if dictionaryService != nil {
-			handler, err := dictionary.NewHandler(dictionaryService)
-			if err != nil {
-				return nil, fmt.Errorf("create dictionary handler: %w", err)
-			}
-			dictionary.RegisterRoutes(system, handler)
-		}
-		if configService != nil {
-			handler := sysconfig.NewHandler(configService)
-			handler.Register(system)
-		}
-		if fileService != nil {
-			handler, err := filemgmt.NewHandler(fileService)
-			if err != nil {
-				return nil, fmt.Errorf("create file handler: %w", err)
-			}
-			filemgmt.RegisterRoutes(system, handler)
-		}
-		if logService != nil {
-			handler, err := logmgmt.NewHandler(logService)
-			if err != nil {
-				return nil, fmt.Errorf("create log handler: %w", err)
-			}
-			logmgmt.RegisterRoutes(system, handler)
-		}
+	auth.RegisterRoutes(router, authHandler)
+
+	system := router.Group("/api/system")
+	system.Use(auth.BearerMiddleware(deps.Auth))
+
+	rbacHandler, err := rbac.NewHandler(deps.RBAC)
+	if err != nil {
+		return nil, fmt.Errorf("create RBAC handler: %w", err)
 	}
+	rbac.RegisterRoutes(system, rbacHandler)
+
+	deptHandler, err := dept.NewHandler(deps.Department)
+	if err != nil {
+		return nil, fmt.Errorf("create department handler: %w", err)
+	}
+	dept.RegisterRoutes(system, deptHandler)
+
+	userHandler, err := usermgmt.NewHandler(deps.User)
+	if err != nil {
+		return nil, fmt.Errorf("create user handler: %w", err)
+	}
+	usermgmt.RegisterRoutes(system, userHandler)
+
+	dictionaryHandler, err := dictionary.NewHandler(deps.Dictionary)
+	if err != nil {
+		return nil, fmt.Errorf("create dictionary handler: %w", err)
+	}
+	dictionary.RegisterRoutes(system, dictionaryHandler)
+
+	sysconfig.NewHandler(deps.SysConfig).Register(system)
+
+	fileHandler, err := filemgmt.NewHandler(deps.File)
+	if err != nil {
+		return nil, fmt.Errorf("create file handler: %w", err)
+	}
+	filemgmt.RegisterRoutes(system, fileHandler)
+
+	logHandler, err := logmgmt.NewHandler(deps.Log)
+	if err != nil {
+		return nil, fmt.Errorf("create log handler: %w", err)
+	}
+	logmgmt.RegisterRoutes(system, logHandler)
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)
@@ -120,9 +123,31 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 	return &Application{Router: router, Logger: logger}, nil
 }
 
+func (d Dependencies) validate() error {
+	switch {
+	case d.Auth == nil:
+		return fmt.Errorf("auth service is required")
+	case d.RBAC == nil:
+		return fmt.Errorf("rbac service is required")
+	case d.Department == nil:
+		return fmt.Errorf("department service is required")
+	case d.User == nil:
+		return fmt.Errorf("user service is required")
+	case d.Dictionary == nil:
+		return fmt.Errorf("dictionary service is required")
+	case d.SysConfig == nil:
+		return fmt.Errorf("sysconfig service is required")
+	case d.File == nil:
+		return fmt.Errorf("file service is required")
+	case d.Log == nil:
+		return fmt.Errorf("log service is required")
+	}
+	return nil
+}
+
 // Build constructs a router for callers that do not need the process logger.
-func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service, logService *logmgmt.Service) (*gin.Engine, error) {
-	application, err := New(cfg, readiness, authService, rbacService, deptService, userService, dictionaryService, configService, fileService, logService)
+func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Dependencies) (*gin.Engine, error) {
+	application, err := New(cfg, readiness, deps)
 	if err != nil {
 		return nil, err
 	}
