@@ -4,6 +4,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -11,6 +12,8 @@ import { useForm } from "react-hook-form";
 import {
   createDictData,
   createDictType,
+  batchDeleteDictData,
+  batchDeleteDictTypes,
   deleteDictData,
   deleteDictType,
   getDictDataPage,
@@ -70,8 +73,10 @@ import { getErrorMessage } from "@/lib/api-error";
 
 type ConfirmAction =
   | { type: "deleteType"; dictType: SystemDictTypeRecord }
+  | { type: "batchDeleteTypes"; dictTypes: SystemDictTypeRecord[] }
   | { type: "status"; dictType: SystemDictTypeRecord; status: ApiStatus }
-  | { type: "deleteData"; dictData: SystemDictDataRecord };
+  | { type: "deleteData"; dictData: SystemDictDataRecord }
+  | { type: "batchDeleteData"; dictData: SystemDictDataRecord[] };
 
 export function SystemDictsPage() {
   // 类型列表 - useListPage
@@ -114,6 +119,8 @@ export function SystemDictsPage() {
     null,
   );
   const [itemLoading, setItemLoading] = useState(false);
+  const [selectedTypeIds, setSelectedTypeIds] = useState<Set<number>>(new Set());
+  const [selectedDataIds, setSelectedDataIds] = useState<Set<number>>(new Set());
   const [itemError, setItemError] = useState("");
   const [typeFormOpen, setTypeFormOpen] = useState(false);
   const [typeFormMode, setTypeFormMode] = useState<FormMode>("create");
@@ -157,6 +164,74 @@ export function SystemDictsPage() {
       return next ?? current;
     });
   }, [dictTypes]);
+
+  useEffect(() => {
+    setSelectedTypeIds((current) => {
+      const recordIds = new Set(dictTypes.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [dictTypes]);
+
+  useEffect(() => {
+    setSelectedDataIds((current) => {
+      const recordIds = new Set(dictItems.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [dictItems]);
+
+  const selectableTypeIds = useMemo(
+    () => dictTypes.filter((item) => item.isBuiltin !== 1).map((item) => item.id),
+    [dictTypes],
+  );
+  const allSelectableTypesChecked =
+    selectableTypeIds.length > 0 &&
+    selectableTypeIds.every((id) => selectedTypeIds.has(id));
+  const selectedTypes = useMemo(
+    () =>
+      dictTypes.filter(
+        (item) => selectedTypeIds.has(item.id) && item.isBuiltin !== 1,
+      ),
+    [dictTypes, selectedTypeIds],
+  );
+  const allDataChecked =
+    dictItems.length > 0 && dictItems.every((item) => selectedDataIds.has(item.id));
+  const selectedData = useMemo(
+    () => dictItems.filter((item) => selectedDataIds.has(item.id)),
+    [dictItems, selectedDataIds],
+  );
+
+  const toggleTypeSelect = (id: number, checked: boolean) => {
+    setSelectedTypeIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleTypeSelectAll = (checked: boolean) => {
+    setSelectedTypeIds((current) => {
+      const next = new Set(current);
+      selectableTypeIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const toggleDataSelect = (id: number, checked: boolean) => {
+    setSelectedDataIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleDataSelectAll = (checked: boolean) => {
+    setSelectedDataIds(checked ? new Set(dictItems.map((item) => item.id)) : new Set());
+  };
 
   const loadDictItems = useCallback(async () => {
     if (!selectedTypeId) {
@@ -202,6 +277,7 @@ export function SystemDictsPage() {
 
   const selectType = (dictType: SystemDictTypeRecord) => {
     setActiveType(dictType);
+    setSelectedDataIds(new Set());
     setItemPage(1);
     setItemFilters(DEFAULT_ITEM_FILTERS);
     setAppliedItemFilters(DEFAULT_ITEM_FILTERS);
@@ -209,6 +285,7 @@ export function SystemDictsPage() {
 
   const closeTypePanel = () => {
     setActiveType(null);
+    setSelectedDataIds(new Set());
     setDictItems([]);
     setItemTotal(0);
     setItemError("");
@@ -344,6 +421,16 @@ export function SystemDictsPage() {
         await loadDictTypes();
       }
 
+      if (confirmAction.type === "batchDeleteTypes") {
+        await batchDeleteDictTypes({ ids: confirmAction.dictTypes.map((item) => item.id) });
+        toast.success("字典类型已批量删除");
+        if (selectedTypeId && confirmAction.dictTypes.some((item) => item.id === selectedTypeId)) {
+          closeTypePanel();
+        }
+        setSelectedTypeIds(new Set());
+        await loadDictTypes();
+      }
+
       if (confirmAction.type === "status") {
         await updateDictTypeStatus(confirmAction.dictType.id, {
           status: confirmAction.status,
@@ -357,6 +444,13 @@ export function SystemDictsPage() {
       if (confirmAction.type === "deleteData") {
         await deleteDictData(confirmAction.dictData.id);
         toast.success("字典项已删除");
+        await loadDictItems();
+      }
+
+      if (confirmAction.type === "batchDeleteData") {
+        await batchDeleteDictData({ ids: confirmAction.dictData.map((item) => item.id) });
+        toast.success("字典项已批量删除");
+        setSelectedDataIds(new Set());
         await loadDictItems();
       }
 
@@ -392,6 +486,24 @@ export function SystemDictsPage() {
       };
     }
 
+    if (confirmAction.type === "batchDeleteTypes") {
+      return {
+        title: "批量删除字典类型",
+        description: `确认删除已选择的 ${confirmAction.dictTypes.length} 个普通字典类型吗？内置字典不会被选中。`,
+        confirmText: "批量删除",
+        danger: true,
+      };
+    }
+
+    if (confirmAction.type === "batchDeleteData") {
+      return {
+        title: "批量删除字典项",
+        description: `确认删除已选择的 ${confirmAction.dictData.length} 个字典项吗？此操作不可恢复。`,
+        confirmText: "批量删除",
+        danger: true,
+      };
+    }
+
     const enabled = confirmAction.status === 1;
     return {
       title: enabled ? "启用字典类型" : "禁用字典类型",
@@ -407,11 +519,21 @@ export function SystemDictsPage() {
     onChangeStatus: (dictType, status) =>
       setConfirmAction({ type: "status", dictType, status }),
     onDelete: (dictType) => setConfirmAction({ type: "deleteType", dictType }),
+    selectedIds: selectedTypeIds,
+    onToggleSelect: toggleTypeSelect,
+    onToggleSelectAll: toggleTypeSelectAll,
+    allSelectableChecked: allSelectableTypesChecked,
+    selectableCount: selectableTypeIds.length,
   });
 
   const itemColumns = createDictDataColumns({
     onEdit: openEditDataForm,
     onDelete: (dictData) => setConfirmAction({ type: "deleteData", dictData }),
+    selectedIds: selectedDataIds,
+    onToggleSelect: toggleDataSelect,
+    onToggleSelectAll: toggleDataSelectAll,
+    allChecked: allDataChecked,
+    selectableCount: dictItems.length,
   });
 
   return (
@@ -497,6 +619,15 @@ export function SystemDictsPage() {
                   <RefreshCw className="h-4 w-4" aria-hidden />
                   刷新
                 </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={selectedTypes.length === 0}
+                  onClick={() => setConfirmAction({ type: "batchDeleteTypes", dictTypes: selectedTypes })}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  批量删除
+                </Button>
               </>
             }
           />
@@ -554,6 +685,15 @@ export function SystemDictsPage() {
                   >
                     <Plus className="h-4 w-4" aria-hidden />
                     新增项
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    disabled={selectedData.length === 0}
+                    onClick={() => setConfirmAction({ type: "batchDeleteData", dictData: selectedData })}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    批量删除
                   </Button>
                 </div>
               }

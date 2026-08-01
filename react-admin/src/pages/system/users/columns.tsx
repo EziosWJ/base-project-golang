@@ -1,6 +1,7 @@
 import { KeyRound, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatDateOnly, formatDateTime } from "@/lib/datetime";
 import type { ApiStatus, DataTableColumn, UserRecord } from "@/types";
 import { getRoleNames } from "./utils";
@@ -19,6 +20,11 @@ type UserColumnActions = {
   onChangeStatus: (user: UserRecord, status: ApiStatus) => void;
   onResetPassword: (user: UserRecord) => void;
   onDelete: (user: UserRecord) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allSelectableChecked: boolean;
+  selectableCount: number;
 };
 
 export function createUserColumns({
@@ -27,8 +33,38 @@ export function createUserColumns({
   onChangeStatus,
   onResetPassword,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allSelectableChecked,
+  selectableCount,
 }: UserColumnActions): DataTableColumn<UserRecord>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页普通用户"
+          checked={allSelectableChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, user) => {
+        const disabled = user.isBuiltin === 1;
+        return (
+          <Checkbox
+            aria-label={`选择用户 ${user.nickname || user.username || user.id}`}
+            checked={selectedIds.has(user.id)}
+            disabled={disabled}
+            title={disabled ? "内置用户不参与批量删除" : undefined}
+            onChange={(event) => onToggleSelect(user.id, event.target.checked)}
+          />
+        );
+      },
+    },
     {
       title: "用户",
       key: "user",

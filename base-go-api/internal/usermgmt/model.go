@@ -37,8 +37,8 @@ type User struct {
 	LastLoginTime *time.Time `gorm:"column:last_login_time" json:"lastLoginTime"`
 	LastLoginIP   *string    `gorm:"column:last_login_ip" json:"lastLoginIp"`
 	Remark        *string    `gorm:"column:remark" json:"remark"`
-	CreateTime    time.Time  `gorm:"column:create_time" json:"createTime"`
-	UpdateTime    time.Time  `gorm:"column:update_time" json:"updateTime"`
+	CreateTime    time.Time  `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime    time.Time  `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted       int        `gorm:"column:deleted" json:"-"`
 	DeptName      *string    `gorm:"-" json:"deptName"`
 	Roles         []Role     `gorm:"-" json:"roles"`

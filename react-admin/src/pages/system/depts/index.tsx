@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   createDept,
+  batchDeleteDepts,
   deleteDept,
   getDeptDetail,
   getDeptOptions,
@@ -48,6 +49,7 @@ import { getErrorMessage } from "@/lib/api-error";
 
 type ConfirmAction =
   | { type: "delete"; dept: DeptRecord }
+  | { type: "batchDelete"; depts: DeptRecord[] }
   | { type: "status"; dept: DeptRecord; status: ApiStatus };
 
 export function SystemDeptsPage() {
@@ -77,6 +79,7 @@ export function SystemDeptsPage() {
   });
 
   const [deptOptions, setDeptOptions] = useState<DeptOption[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<DeptFormMode>("create");
@@ -117,6 +120,44 @@ export function SystemDeptsPage() {
   useEffect(() => {
     void loadDeptOptions();
   }, [loadDeptOptions]);
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const recordIds = new Set(depts.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [depts]);
+
+  const selectableIds = useMemo(
+    () => depts.filter((item) => item.isBuiltin !== 1).map((item) => item.id),
+    [depts],
+  );
+  const allSelectableChecked =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const selectedDepts = useMemo(
+    () => depts.filter((item) => selectedIds.has(item.id) && item.isBuiltin !== 1),
+    [depts, selectedIds],
+  );
+
+  const toggleSelect = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      selectableIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
 
   const openCreateForm = () => {
     setFormMode("create");
@@ -190,6 +231,11 @@ export function SystemDeptsPage() {
         toast.success("部门已删除");
       }
 
+      if (confirmAction.type === "batchDelete") {
+        await batchDeleteDepts({ ids: confirmAction.depts.map((item) => item.id) });
+        toast.success("部门已批量删除");
+      }
+
       if (confirmAction.type === "status") {
         await updateDeptStatus(confirmAction.dept.id, {
           status: confirmAction.status,
@@ -200,6 +246,7 @@ export function SystemDeptsPage() {
       }
 
       setConfirmAction(null);
+      setSelectedIds(new Set());
       await Promise.all([loadDepts(), loadDeptOptions()]);
     } catch (actionError) {
       toast.error({
@@ -223,6 +270,15 @@ export function SystemDeptsPage() {
       };
     }
 
+    if (confirmAction.type === "batchDelete") {
+      return {
+        title: "批量删除部门",
+        description: `确认删除已选择的 ${confirmAction.depts.length} 个普通部门吗？内置部门不会被选中。`,
+        confirmText: "批量删除",
+        danger: true,
+      };
+    }
+
     const enabled = confirmAction.status === 1;
     return {
       title: enabled ? "启用部门" : "禁用部门",
@@ -237,6 +293,11 @@ export function SystemDeptsPage() {
     onChangeStatus: (dept, status) =>
       setConfirmAction({ type: "status", dept, status }),
     onDelete: (dept) => setConfirmAction({ type: "delete", dept }),
+    selectedIds,
+    onToggleSelect: toggleSelect,
+    onToggleSelectAll: toggleSelectAll,
+    allSelectableChecked,
+    selectableCount: selectableIds.length,
   });
 
   return (
@@ -311,6 +372,15 @@ export function SystemDeptsPage() {
               <Button size="sm" variant="secondary" onClick={loadDepts}>
                 <RefreshCw className="h-4 w-4" aria-hidden />
                 刷新
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selectedDepts.length === 0}
+                onClick={() => setConfirmAction({ type: "batchDelete", depts: selectedDepts })}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                批量删除
               </Button>
             </>
           }

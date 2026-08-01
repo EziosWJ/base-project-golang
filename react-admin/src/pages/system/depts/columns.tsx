@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ApiStatus, DataTableColumn, DeptRecord } from "@/types";
 
 const statusMeta: Record<
@@ -15,14 +16,49 @@ type DeptColumnActions = {
   onEdit: (dept: DeptRecord) => void | Promise<void>;
   onChangeStatus: (dept: DeptRecord, status: ApiStatus) => void;
   onDelete: (dept: DeptRecord) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allSelectableChecked: boolean;
+  selectableCount: number;
 };
 
 export function createDeptColumns({
   onEdit,
   onChangeStatus,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allSelectableChecked,
+  selectableCount,
 }: DeptColumnActions): DataTableColumn<DeptRecord>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页普通部门"
+          checked={allSelectableChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, dept) => {
+        const disabled = dept.isBuiltin === 1;
+        return (
+          <Checkbox
+            aria-label={`选择部门 ${dept.deptName}`}
+            checked={selectedIds.has(dept.id)}
+            disabled={disabled}
+            title={disabled ? "内置部门不参与批量删除" : undefined}
+            onChange={(event) => onToggleSelect(dept.id, event.target.checked)}
+          />
+        );
+      },
+    },
     {
       title: "部门",
       key: "dept",

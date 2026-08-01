@@ -33,8 +33,8 @@ type DictType struct {
 	SortOrder  int       `gorm:"column:sort_order" json:"sortOrder"`
 	IsBuiltin  int       `gorm:"column:is_builtin" json:"isBuiltin"`
 	Remark     *string   `gorm:"column:remark" json:"remark"`
-	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
+	CreateTime time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted    int       `gorm:"column:deleted" json:"-"`
 }
 
@@ -48,8 +48,8 @@ type DictData struct {
 	DictValue  string    `gorm:"column:dict_value" json:"dictValue"`
 	SortOrder  int       `gorm:"column:sort_order" json:"sortOrder"`
 	Remark     *string   `gorm:"column:remark" json:"remark"`
-	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
+	CreateTime time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted    int       `gorm:"column:deleted" json:"-"`
 }
 

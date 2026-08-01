@@ -135,6 +135,13 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if rolePage.Code != http.StatusOK || !strings.Contains(rolePage.Body.String(), `"roleCode":"OPS"`) {
 		t.Fatalf("role page = status %d body=%s", rolePage.Code, rolePage.Body.String())
 	}
+	var createdRoleTime time.Time
+	if err := database.GORM.Table("sys_role").Select("create_time").Where("role_code = ?", "OPS").Scan(&createdRoleTime).Error; err != nil {
+		t.Fatalf("load created role time: %v", err)
+	}
+	if createdRoleTime.IsZero() {
+		t.Fatal("created role create_time must not be zero")
+	}
 
 	assigned := serveJSON(router, http.MethodPut, "/api/system/role/2/menus", `{"menuIds":[1,2]}`, token)
 	assertEnvelopeCode(t, assigned, http.StatusOK, 200, "success")

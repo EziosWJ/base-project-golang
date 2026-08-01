@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useForm } from "react-hook-form";
 import {
   createMenu,
+  batchDeleteMenus,
   deleteMenu,
   getMenuDetail,
   getMenuPage,
@@ -58,10 +59,12 @@ import {
 
 type ConfirmAction =
   | { type: "delete"; menu: SystemMenuRecord }
+  | { type: "batchDelete"; menus: MenuRow[] }
   | { type: "status"; menu: SystemMenuRecord; status: ApiStatus };
 
 export function SystemMenusPage() {
   const [filters, setFilters] = useState<MenuFilterState>(DEFAULT_MENU_FILTERS);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [appliedFilters, setAppliedFilters] =
     useState<MenuFilterState>(DEFAULT_MENU_FILTERS);
   const [page, setPage] = useState(1);
@@ -234,6 +237,11 @@ export function SystemMenusPage() {
         toast.success("菜单已删除");
       }
 
+      if (confirmAction.type === "batchDelete") {
+        await batchDeleteMenus({ ids: confirmAction.menus.map((item) => item.id) });
+        toast.success("菜单已批量删除");
+      }
+
       if (confirmAction.type === "status") {
         await updateMenuStatus(confirmAction.menu.id, {
           status: confirmAction.status,
@@ -244,6 +252,7 @@ export function SystemMenusPage() {
       }
 
       setConfirmAction(null);
+      setSelectedIds(new Set());
       await loadMenus();
     } catch (actionError) {
       toast.error({
@@ -267,6 +276,15 @@ export function SystemMenusPage() {
       };
     }
 
+    if (confirmAction.type === "batchDelete") {
+      return {
+        title: "批量删除菜单",
+        description: `确认删除已选择的 ${confirmAction.menus.length} 个普通菜单吗？内置菜单不会被选中。`,
+        confirmText: "批量删除",
+        danger: true,
+      };
+    }
+
     const enabled = confirmAction.status === 1;
     return {
       title: enabled ? "启用菜单" : "禁用菜单",
@@ -277,6 +295,42 @@ export function SystemMenusPage() {
   }, [confirmAction]);
 
   const rows = useMemo(() => flattenMenuTree(menus), [menus]);
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const recordIds = new Set(rows.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [rows]);
+  const selectableIds = useMemo(
+    () => rows.filter((item) => item.isBuiltin !== 1).map((item) => item.id),
+    [rows],
+  );
+  const allSelectableChecked =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const selectedMenus = useMemo(
+    () => rows.filter((item) => selectedIds.has(item.id) && item.isBuiltin !== 1),
+    [rows, selectedIds],
+  );
+
+  const toggleSelect = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      selectableIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
 
   const parentNodes = useMemo(() => {
     const disabledIds = collectDescendantIds(editingMenu);
@@ -297,6 +351,11 @@ export function SystemMenusPage() {
     onToggleStatus: (menu, status) =>
       setConfirmAction({ type: "status", menu, status }),
     onDelete: (menu) => setConfirmAction({ type: "delete", menu }),
+    selectedIds,
+    onToggleSelect: toggleSelect,
+    onToggleSelectAll: toggleSelectAll,
+    allSelectableChecked,
+    selectableCount: selectableIds.length,
   });
 
   return (
@@ -416,6 +475,15 @@ export function SystemMenusPage() {
               <Button size="sm" variant="secondary" onClick={loadMenus}>
                 <RefreshCw className="h-4 w-4" aria-hidden />
                 刷新
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selectedMenus.length === 0}
+                onClick={() => setConfirmAction({ type: "batchDelete", menus: selectedMenus })}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                批量删除
               </Button>
             </>
           }

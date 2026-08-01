@@ -48,11 +48,11 @@ export function getDictTypeDetail(id: number) {
 }
 
 export function createDictType(data: DictTypeCreateRequest) {
-  return http.post<SystemDictTypeRecord>(DICT_TYPE_BASE_PATH, data);
+  return http.post<void>(DICT_TYPE_BASE_PATH, data);
 }
 
 export function updateDictType(id: number, data: DictTypeUpdateRequest) {
-  return http.put<SystemDictTypeRecord>(`${DICT_TYPE_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${DICT_TYPE_BASE_PATH}/${id}`, data);
 }
 
 export function deleteDictType(id: number) {
@@ -82,12 +82,12 @@ export function getDictDataDetail(id: number) {
 
 export function createDictData(data: DictDataCreateRequest) {
   clearDictItemCache();
-  return http.post<SystemDictDataRecord>(DICT_DATA_BASE_PATH, data);
+  return http.post<void>(DICT_DATA_BASE_PATH, data);
 }
 
 export function updateDictData(id: number, data: DictDataUpdateRequest) {
   clearDictItemCache();
-  return http.put<SystemDictDataRecord>(`${DICT_DATA_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${DICT_DATA_BASE_PATH}/${id}`, data);
 }
 
 export function deleteDictData(id: number) {
@@ -171,7 +171,7 @@ export function clearSystemConfigCache(configKey?: string) {
 
 export function createSystemConfig(data: SystemConfigCreateRequest) {
   clearSystemConfigCache(data.configKey);
-  return http.post<SystemConfigRecord>(SYSTEM_CONFIG_BASE_PATH, data);
+  return http.post<void>(SYSTEM_CONFIG_BASE_PATH, data);
 }
 
 export function updateSystemConfig(
@@ -179,7 +179,7 @@ export function updateSystemConfig(
   data: SystemConfigUpdateRequest,
 ) {
   clearSystemConfigCache(data.configKey);
-  return http.put<SystemConfigRecord>(`${SYSTEM_CONFIG_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${SYSTEM_CONFIG_BASE_PATH}/${id}`, data);
 }
 
 export function deleteSystemConfig(id: number) {

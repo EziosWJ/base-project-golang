@@ -61,7 +61,7 @@ export function getFileDetail(id: number) {
 }
 
 export function updateFile(id: number, data: FileUpdateRequest) {
-  return http.put<FileRecord>(`${FILE_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${FILE_BASE_PATH}/${id}`, data);
 }
 
 export function deleteFile(id: number) {

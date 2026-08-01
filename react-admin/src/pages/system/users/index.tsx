@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Plus, RefreshCw, RotateCcw, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   assignUserRoles,
+  batchDeleteUsers,
   createUser,
   deleteUser,
   getAssignableRoles,
@@ -13,6 +14,7 @@ import {
   updateUser,
   updateUserStatus,
 } from "@/api/user";
+import { deptOptionsToTreeSelectNodes, getDeptOptions } from "@/api/dept";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
@@ -21,6 +23,7 @@ import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { StatusTag } from "@/components/common/status-tag";
 import { TableToolbar } from "@/components/common/table-toolbar";
+import { TreeSelect } from "@/components/common/tree-select";
 import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,12 +38,19 @@ import {
 import { useDictOptions } from "@/hooks/use-dict-options";
 import { useListPage } from "@/hooks/use-list-page";
 import { getErrorMessage, isApiError } from "@/lib/api-error";
-import type { ApiStatus, AssignableRole, UserGender, UserRecord } from "@/types";
+import type {
+  ApiStatus,
+  AssignableRole,
+  DeptOption,
+  UserGender,
+  UserRecord,
+} from "@/types";
 import { createUserColumns } from "./columns";
 import { PasswordResultDialog } from "./password-result-dialog";
 import { RoleAssignDialog } from "./role-assign-dialog";
 import {
   buildQuery,
+  buildUserUpdatePayload,
   buildUserPayload,
   DEFAULT_FILTERS,
   toFormValues,
@@ -53,6 +63,7 @@ import { UserFormDialog } from "./user-form-dialog";
 
 type ConfirmAction =
   | { type: "delete"; user: UserRecord }
+  | { type: "batchDelete"; users: UserRecord[] }
   | { type: "status"; user: UserRecord; status: ApiStatus }
   | { type: "resetPassword"; user: UserRecord };
 
@@ -83,6 +94,9 @@ export function UsersPage() {
   });
 
   const [formOpen, setFormOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deptOptions, setDeptOptions] = useState<DeptOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [formMode, setFormMode] = useState<UserFormMode>("create");
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -118,11 +132,75 @@ export function UsersPage() {
     errorTitle: "用户性别字典加载失败",
   });
 
+  const loadDeptOptions = useCallback(async () => {
+    setOptionsLoading(true);
+
+    try {
+      setDeptOptions(await getDeptOptions());
+    } catch (loadError) {
+      setDeptOptions([]);
+      toast.error({
+        title: "部门树加载失败",
+        description: getErrorMessage(loadError, "无法获取部门选择树"),
+      });
+    } finally {
+      setOptionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDeptOptions();
+  }, [loadDeptOptions]);
+
+  const deptTreeNodes = useMemo(
+    () => deptOptionsToTreeSelectNodes(deptOptions),
+    [deptOptions],
+  );
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const recordIds = new Set(users.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [users]);
+
+  const selectableIds = useMemo(
+    () => users.filter((item) => item.isBuiltin !== 1).map((item) => item.id),
+    [users],
+  );
+  const allSelectableChecked =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const selectedUsers = useMemo(
+    () => users.filter((item) => selectedIds.has(item.id) && item.isBuiltin !== 1),
+    [users, selectedIds],
+  );
+
+  const toggleSelect = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      selectableIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
   const openCreateForm = () => {
     setFormMode("create");
     setEditingUser(null);
     form.reset(toFormValues());
     setFormOpen(true);
+    void loadDeptOptions();
   };
 
   const openEditForm = async (user: UserRecord) => {
@@ -131,6 +209,7 @@ export function UsersPage() {
     setEditingUser(user);
     form.reset(toFormValues(user));
     setFormOpen(true);
+    void loadDeptOptions();
 
     try {
       const detail = await getUserDetail(user.id);
@@ -151,7 +230,7 @@ export function UsersPage() {
 
     try {
       if (formMode === "edit" && editingUser) {
-        await updateUser(editingUser.id, buildUserPayload(values));
+        await updateUser(editingUser.id, buildUserUpdatePayload(values));
         toast.success("用户已更新");
       } else {
         await createUser(buildUserPayload(values));
@@ -228,6 +307,11 @@ export function UsersPage() {
         toast.success("用户已删除");
       }
 
+      if (confirmAction.type === "batchDelete") {
+        await batchDeleteUsers({ ids: confirmAction.users.map((item) => item.id) });
+        toast.success("用户已批量删除");
+      }
+
       if (confirmAction.type === "status") {
         await updateUserStatus(confirmAction.user.id, {
           status: confirmAction.status,
@@ -244,6 +328,7 @@ export function UsersPage() {
       }
 
       setConfirmAction(null);
+      setSelectedIds(new Set());
       await loadUsers();
     } catch (actionError) {
       toast.error({
@@ -263,6 +348,15 @@ export function UsersPage() {
         title: "删除用户",
         description: `确认删除用户「${confirmAction.user.nickname || confirmAction.user.username}」吗？此操作不可恢复。`,
         confirmText: "删除",
+        danger: true,
+      };
+    }
+
+    if (confirmAction.type === "batchDelete") {
+      return {
+        title: "批量删除用户",
+        description: `确认删除已选择的 ${confirmAction.users.length} 个普通用户吗？内置用户不会被选中。`,
+        confirmText: "批量删除",
         danger: true,
       };
     }
@@ -293,6 +387,11 @@ export function UsersPage() {
     onResetPassword: (user) =>
       setConfirmAction({ type: "resetPassword", user }),
     onDelete: (user) => setConfirmAction({ type: "delete", user }),
+    selectedIds,
+    onToggleSelect: toggleSelect,
+    onToggleSelectAll: toggleSelectAll,
+    allSelectableChecked,
+    selectableCount: selectableIds.length,
   });
 
   return (
@@ -343,11 +442,14 @@ export function UsersPage() {
             onChange={(event) => setFilter("email", event.target.value)}
             placeholder="邮箱"
           />
-          <Input
-            value={filters.deptId}
-            onChange={(event) => setFilter("deptId", event.target.value)}
-            placeholder="部门 ID"
-            inputMode="numeric"
+          <TreeSelect
+            value={filters.deptId ? Number(filters.deptId) : null}
+            nodes={deptTreeNodes}
+            placeholder={optionsLoading ? "部门树加载中" : "所属部门"}
+            disabled={optionsLoading}
+            onChange={(value) =>
+              setFilter("deptId", value == null ? "" : String(value))
+            }
           />
           <Select
             value={String(filters.status)}
@@ -384,6 +486,15 @@ export function UsersPage() {
                 <RefreshCw className="h-4 w-4" aria-hidden />
                 刷新
               </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selectedUsers.length === 0}
+                onClick={() => setConfirmAction({ type: "batchDelete", users: selectedUsers })}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                批量删除
+              </Button>
             </>
           }
         />
@@ -418,6 +529,8 @@ export function UsersPage() {
         mode={formMode}
         form={form}
         loading={formSubmitting}
+        optionsLoading={optionsLoading}
+        deptOptions={deptOptions}
         genderOptions={genderDict.options}
         statusOptions={statusDict.options}
         onCancel={() => setFormOpen(false)}

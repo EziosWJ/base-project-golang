@@ -24,11 +24,11 @@ export function getUserDetail(id: number) {
 }
 
 export function createUser(data: UserCreateRequest) {
-  return http.post<UserRecord>(USER_BASE_PATH, data);
+  return http.post<void>(USER_BASE_PATH, data);
 }
 
 export function updateUser(id: number, data: UserUpdateRequest) {
-  return http.put<UserRecord>(`${USER_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${USER_BASE_PATH}/${id}`, data);
 }
 
 export function deleteUser(id: number) {

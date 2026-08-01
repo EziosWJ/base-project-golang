@@ -91,6 +91,19 @@ export function buildUserPayload(values: UserFormValues) {
   };
 }
 
+export function buildUserUpdatePayload(values: UserFormValues) {
+  const payload = buildUserPayload(values);
+  return {
+    nickname: payload.nickname,
+    phone: payload.phone,
+    email: payload.email,
+    gender: payload.gender,
+    deptId: payload.deptId,
+    status: payload.status,
+    remark: payload.remark,
+  };
+}
+
 export function toFormValues(user?: UserRecord): UserFormValues {
   return {
     username: user?.username ?? "",

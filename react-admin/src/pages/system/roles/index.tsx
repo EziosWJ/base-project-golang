@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Plus, RefreshCw, RotateCcw, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   assignRoleMenus,
+  batchDeleteRoles,
   createRole,
   deleteRole,
   getRoleDetail,
@@ -56,6 +57,7 @@ import {
 
 type ConfirmAction =
   | { type: "delete"; role: RoleListRecord }
+  | { type: "batchDelete"; roles: RoleListRecord[] }
   | { type: "status"; role: RoleListRecord; status: ApiStatus };
 
 export function SystemRolesPage() {
@@ -85,6 +87,7 @@ export function SystemRolesPage() {
   });
 
   const [formOpen, setFormOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [formMode, setFormMode] = useState<RoleFormMode>("create");
   const [editingRole, setEditingRole] = useState<RoleListRecord | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -111,6 +114,44 @@ export function SystemRolesPage() {
     showErrorToast: true,
     errorTitle: "角色状态字典加载失败",
   });
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const recordIds = new Set(roles.map((item) => item.id));
+      return new Set([...current].filter((id) => recordIds.has(id)));
+    });
+  }, [roles]);
+
+  const selectableIds = useMemo(
+    () => roles.filter((item) => item.isBuiltin !== 1).map((item) => item.id),
+    [roles],
+  );
+  const allSelectableChecked =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const selectedRoles = useMemo(
+    () => roles.filter((item) => selectedIds.has(item.id) && item.isBuiltin !== 1),
+    [roles, selectedIds],
+  );
+
+  const toggleSelect = (id: number, checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      selectableIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
 
   const openCreateForm = () => {
     setFormMode("create");
@@ -235,6 +276,11 @@ export function SystemRolesPage() {
         toast.success("角色已删除");
       }
 
+      if (confirmAction.type === "batchDelete") {
+        await batchDeleteRoles({ ids: confirmAction.roles.map((item) => item.id) });
+        toast.success("角色已批量删除");
+      }
+
       if (confirmAction.type === "status") {
         await updateRoleStatus(confirmAction.role.id, {
           status: confirmAction.status,
@@ -245,6 +291,7 @@ export function SystemRolesPage() {
       }
 
       setConfirmAction(null);
+      setSelectedIds(new Set());
       await loadRoles();
     } catch (actionError) {
       toast.error({
@@ -268,6 +315,15 @@ export function SystemRolesPage() {
       };
     }
 
+    if (confirmAction.type === "batchDelete") {
+      return {
+        title: "批量删除角色",
+        description: `确认删除已选择的 ${confirmAction.roles.length} 个普通角色吗？内置角色不会被选中。`,
+        confirmText: "批量删除",
+        danger: true,
+      };
+    }
+
     const enabled = confirmAction.status === 1;
     return {
       title: enabled ? "启用角色" : "禁用角色",
@@ -285,6 +341,11 @@ export function SystemRolesPage() {
     onToggleStatus: (role, status) =>
       setConfirmAction({ type: "status", role, status }),
     onDelete: (role) => setConfirmAction({ type: "delete", role }),
+    selectedIds,
+    onToggleSelect: toggleSelect,
+    onToggleSelectAll: toggleSelectAll,
+    allSelectableChecked,
+    selectableCount: selectableIds.length,
   });
 
   return (
@@ -359,6 +420,15 @@ export function SystemRolesPage() {
               <Button size="sm" variant="secondary" onClick={loadRoles}>
                 <RefreshCw className="h-4 w-4" aria-hidden />
                 刷新
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selectedRoles.length === 0}
+                onClick={() => setConfirmAction({ type: "batchDelete", roles: selectedRoles })}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                批量删除
               </Button>
             </>
           }

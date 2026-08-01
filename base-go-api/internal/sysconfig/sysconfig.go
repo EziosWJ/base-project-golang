@@ -37,8 +37,8 @@ type Config struct {
 	Status      int       `json:"status"`
 	IsBuiltin   int       `json:"isBuiltin"`
 	Remark      *string   `json:"remark"`
-	CreateTime  time.Time `json:"createTime"`
-	UpdateTime  time.Time `json:"updateTime"`
+	CreateTime  time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime  time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted     int       `json:"-"`
 }
 
