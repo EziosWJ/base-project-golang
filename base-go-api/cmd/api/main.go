@@ -70,7 +70,7 @@ func main() {
 		slog.Error("build department service", "error", err)
 		os.Exit(1)
 	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), usermgmt.NewRBACAuditRecorder(auditRecorder), defaultUserPassword)
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), defaultUserPassword)
 	if err != nil {
 		slog.Error("build user service", "error", err)
 		os.Exit(1)

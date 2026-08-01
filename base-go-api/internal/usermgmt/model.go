@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
 
 const (
@@ -71,22 +73,9 @@ type Input struct {
 	Remark               *string
 }
 type PasswordChange struct{ OldPassword, NewPassword string }
-type AuditMetadata struct {
-	ActorID                        int64
-	RequestID, ClientIP, UserAgent string
-	Method, URL                    string
-}
-type AuditEvent struct {
-	Action   string
-	UserID   int64
-	Metadata AuditMetadata
-}
-type AuditRecorder interface {
-	Record(context.Context, AuditEvent) error
-}
-type noop struct{}
-
-func (noop) Record(context.Context, AuditEvent) error { return nil }
+type AuditMetadata = audit.Metadata
+type AuditEvent = audit.Event
+type AuditRecorder = audit.Recorder
 
 type UserPageQuery = PageQuery
 type UserCreateInput = Input
@@ -102,11 +91,12 @@ type Store interface {
 	UsernameExists(context.Context, string, int64) (bool, error)
 	DeptExists(context.Context, int64) (bool, error)
 	RolesExist(context.Context, []int64) (bool, error)
-	Create(context.Context, User) (User, error)
-	Update(context.Context, User, bool) error
-	Delete(context.Context, int64) error
-	AssignRoles(context.Context, int64, []int64) error
-	ResetPassword(context.Context, int64, string) error
-	ChangePassword(context.Context, int64, string) error
-	UpdateAvatar(context.Context, int64, *string) error
+	Create(context.Context, User, AuditEvent) (User, error)
+	Update(context.Context, User, bool, AuditEvent) error
+	Delete(context.Context, int64, AuditEvent) error
+	DeleteUsers(context.Context, []int64, AuditEvent) error
+	AssignRoles(context.Context, int64, []int64, AuditEvent) error
+	ResetPassword(context.Context, int64, string, AuditEvent) error
+	ChangePassword(context.Context, int64, string, AuditEvent) error
+	UpdateAvatar(context.Context, int64, *string, AuditEvent) error
 }

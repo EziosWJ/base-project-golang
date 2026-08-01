@@ -540,7 +540,7 @@ func auditMetadata(c *gin.Context) AuditMetadata {
 	return AuditMetadata{
 		ActorID: principal.UserID, RequestID: requestMeta.RequestID,
 		ClientIP: requestMeta.ClientIP, UserAgent: requestMeta.UserAgent,
-		Method: c.Request.Method, URL: c.Request.URL.RequestURI(),
+		RequestMethod: c.Request.Method, RequestURL: c.Request.URL.RequestURI(),
 	}
 }
 
