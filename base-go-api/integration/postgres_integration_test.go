@@ -241,6 +241,61 @@ func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
 	}
 }
 
+func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, configService, nil, nil)
+	if err != nil {
+		t.Fatalf("build sysconfig API: %v", err)
+	}
+	token := loginAdmin(t, router)
+
+	created := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"原子化","configKey":"atomic.config","configValue":"true"}`, token)
+	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
+	var configCount, auditCount int64
+	if err := database.GORM.Table("sys_config").Where("config_key='atomic.config' AND deleted=0").Count(&configCount).Error; err != nil {
+		t.Fatalf("count configs: %v", err)
+	}
+	if configCount != 1 {
+		t.Fatalf("config count = %d, want 1", configCount)
+	}
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='config' AND operator_id=1 AND request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count operation logs: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("operation audit count = %d, want 1", auditCount)
+	}
+
+	// 让后续审计写入必然失败（NOT VALID 约束只校验新插入行）。
+	if err := database.GORM.Exec("ALTER TABLE sys_oper_log ADD CONSTRAINT chk_oper_status CHECK (operation_status <> 'SUCCESS') NOT VALID").Error; err != nil {
+		t.Fatalf("add audit constraint: %v", err)
+	}
+
+	// 审计写入失败时业务写入必须整体回滚。
+	attempt := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"回滚","configKey":"atomic.rollback","configValue":"true"}`, token)
+	if attempt.Code == http.StatusOK {
+		t.Fatalf("config create must fail when audit write fails, body=%s", attempt.Body.String())
+	}
+	if err := database.GORM.Table("sys_config").Where("config_key='atomic.rollback'").Count(&configCount).Error; err != nil {
+		t.Fatalf("count configs after failed create: %v", err)
+	}
+	if configCount != 0 {
+		t.Fatalf("config count = %d, want 0 after rollback", configCount)
+	}
+}
+
 func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
@@ -342,8 +397,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	audit := audit.NewRecorder(database.GORM)
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
 	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -384,7 +438,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 		t.Fatalf("create authentication service: %v", err)
 	}
 	audit := audit.NewRecorder(database.GORM)
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
 	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
 	if err != nil {
 		t.Fatalf("create log service: %v", err)

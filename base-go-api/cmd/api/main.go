@@ -80,7 +80,7 @@ func main() {
 		slog.Error("build dictionary service", "error", err)
 		os.Exit(1)
 	}
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), auditRecorder)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
 	fileStorage, err := filemgmt.NewLocalStorage(cfg.File.StorageRoot)
 	if err != nil {
 		slog.Error("build file storage", "error", err)
