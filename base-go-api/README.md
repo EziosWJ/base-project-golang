@@ -21,6 +21,20 @@
 
 `APP_ENV` 只能通过进程环境变量指定，支持 `dev`、`test`、`prod`，未设置时默认为 `dev`。因此本地开发读取 `configs/config.yaml` 和 `configs/config.dev.yaml`。
 
+实际环境 YAML 一律不提交 Git：
+
+- `configs/config.yaml`：基础配置，不含环境特定凭据；
+- `configs/config.dev.example.yaml`、`configs/config.prod.example.yaml`：环境模板，值为占位符，随仓库提交；
+- `configs/config.dev.yaml`、`configs/config.prod.yaml`：实际环境配置，可含真实凭据，已被 `.gitignore` 忽略。
+
+首次本地开发前，从开发模板复制并填写本机值：
+
+```zsh
+cd base-go-api
+cp configs/config.dev.example.yaml configs/config.dev.yaml
+# 编辑 configs/config.dev.yaml，至少替换 database.username/password 与 jwt.secret
+```
+
 数据库与 JWT 可以配置在 YAML 中。本机直接运行或 IDE 调试前，确认 `configs/config.dev.yaml` 中的值正确：
 
 ```yaml
@@ -48,7 +62,7 @@ cp .env.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-Compose 按以下顺序启动：`postgres`（健康检查通过）→ `migrate`（成功后退出）→ `api`。其中 Compose 会把 `.env` 中的 PostgreSQL 与 JWT 值覆盖到容器内应用配置，因此无需为该方式修改 `config.dev.yaml`。
+Compose 按以下顺序启动：`postgres`（健康检查通过）→ `migrate`（成功后退出）→ `api`。Compose 会把 `.env` 中的 PostgreSQL 与 JWT 值以 `APP_*` 环境变量注入容器内应用，因此该方式无需 `configs/config.dev.yaml` 也能完整运行。
 
 启动后可访问：
 
@@ -77,14 +91,16 @@ docker volume rm base_go_api_postgres_data
 
 ### 1. 准备配置和数据库
 
-创建 `.env` 并设置本地数据库密码：
+首次调试前，先创建本机实际开发配置并设置本地数据库密码：
 
 ```zsh
 cd base-go-api
+cp configs/config.dev.example.yaml configs/config.dev.yaml   # 若尚未创建
+# 编辑 configs/config.dev.yaml：替换 database.username/password 与 jwt.secret
 cp .env.example .env
 ```
 
-将 `configs/config.dev.yaml` 的 `database.password` 改为与 `.env` 中 `POSTGRES_PASSWORD` 相同的值，并设置本机 JWT 密钥。然后只启动 PostgreSQL：
+将 `configs/config.dev.yaml` 的 `database.password` 改为与 `.env` 中 `POSTGRES_PASSWORD` 相同的值。然后只启动 PostgreSQL：
 
 ```zsh
 docker compose -f docker-compose.dev.yml up -d --wait postgres
