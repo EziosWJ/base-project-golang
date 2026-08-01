@@ -66,6 +66,7 @@ export function SystemMenusPage() {
     useState<MenuFilterState>(DEFAULT_MENU_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [queryVersion, setQueryVersion] = useState(0);
   const [menus, setMenus] = useState<SystemMenuRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -141,12 +142,13 @@ export function SystemMenusPage() {
 
   useEffect(() => {
     void loadMenus();
-  }, [loadMenus]);
+  }, [loadMenus, queryVersion]);
 
   const submitFilters = (event?: FormEvent) => {
     event?.preventDefault();
     setPage(1);
     setAppliedFilters(filters);
+    setQueryVersion((version) => version + 1);
   };
 
   const resetFilters = () => {

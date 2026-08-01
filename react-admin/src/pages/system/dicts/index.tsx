@@ -107,6 +107,7 @@ export function SystemDictsPage() {
     useState<ItemFilterState>(DEFAULT_ITEM_FILTERS);
   const [itemPage, setItemPage] = useState(1);
   const [itemPageSize, setItemPageSize] = useState(10);
+  const [itemQueryVersion, setItemQueryVersion] = useState(0);
   const [dictItems, setDictItems] = useState<SystemDictDataRecord[]>([]);
   const [itemTotal, setItemTotal] = useState(0);
   const [activeType, setActiveType] = useState<SystemDictTypeRecord | null>(
@@ -184,12 +185,13 @@ export function SystemDictsPage() {
 
   useEffect(() => {
     void loadDictItems();
-  }, [loadDictItems]);
+  }, [itemQueryVersion, loadDictItems]);
 
   const submitItemFilters = (event?: FormEvent) => {
     event?.preventDefault();
     setItemPage(1);
     setAppliedItemFilters(itemFilters);
+    setItemQueryVersion((version) => version + 1);
   };
 
   const resetItemFilters = () => {

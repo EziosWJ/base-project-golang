@@ -66,18 +66,22 @@ const statusMeta: Record<
 export function ListDemoPage() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<DemoListStatus | "all">("all");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
+  const [appliedStatus, setAppliedStatus] =
+    useState<DemoListStatus | "all">("all");
   const filteredRecords = useMemo(
     () =>
       records.filter((record) => {
         const matchedKeyword =
-          !keyword.trim() ||
-          record.name.includes(keyword.trim()) ||
-          record.code.includes(keyword.trim());
-        const matchedStatus = status === "all" || record.status === status;
+          !appliedKeyword.trim() ||
+          record.name.includes(appliedKeyword.trim()) ||
+          record.code.includes(appliedKeyword.trim());
+        const matchedStatus =
+          appliedStatus === "all" || record.status === appliedStatus;
 
         return matchedKeyword && matchedStatus;
       }),
-    [keyword, status],
+    [appliedKeyword, appliedStatus],
   );
 
   const columns: DataTableColumn<DemoListRecord>[] = [
@@ -156,12 +160,20 @@ export function ListDemoPage() {
               onClick={() => {
                 setKeyword("");
                 setStatus("all");
+                setAppliedKeyword("");
+                setAppliedStatus("all");
               }}
             >
               <RotateCcw className="h-4 w-4" aria-hidden />
               重置
             </Button>
-            <Button variant="primary">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setAppliedKeyword(keyword);
+                setAppliedStatus(status);
+              }}
+            >
               <Search className="h-4 w-4" aria-hidden />
               查询
             </Button>

@@ -38,6 +38,7 @@ export function useListPage<TFilters, TRecord, TQuery extends Record<string, unk
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
+  const [queryVersion, setQueryVersion] = useState(0);
 
   const [filters, setFiltersState] = useState<TFilters>(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState<TFilters>(defaultFilters);
@@ -74,7 +75,7 @@ export function useListPage<TFilters, TRecord, TQuery extends Record<string, unk
 
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+  }, [loadData, queryVersion]);
 
   const setPageSizeAndReset = useCallback((size: number) => {
     setPageSize(size);
@@ -98,6 +99,7 @@ export function useListPage<TFilters, TRecord, TQuery extends Record<string, unk
   const submitFilters = useCallback(() => {
     setPage(1);
     setAppliedFilters(filters);
+    setQueryVersion((version) => version + 1);
   }, [filters]);
 
   const resetFilters = useCallback(() => {
