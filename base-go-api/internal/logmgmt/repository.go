@@ -50,7 +50,7 @@ func (r *Repository) ClearLoginLogs(ctx context.Context) error {
 }
 
 func (r *Repository) OperLogPage(ctx context.Context, q OperLogPageQuery) (Page[OperLogRecord], error) {
-	var p Page[OperLogRecord]
+	p := Page[OperLogRecord]{Records: []OperLogRecord{}}
 	db := r.db.WithContext(ctx).Table("sys_oper_log l").
 		Select("l.id,l.module_name,l.operation_type,l.request_method,l.request_url," +
 			operatorName + " AS operator_name,l.operator_ip,l.operation_status,l.cost_time,l.operation_time").

@@ -394,7 +394,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	cleared := serveJSON(router, http.MethodDelete, "/api/system/login-log/clear", "", token)
 	assertEnvelopeCode(t, cleared, http.StatusOK, 200, "success")
 	emptyPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10", "", token)
-	if emptyPage.Code != http.StatusOK || !strings.Contains(emptyPage.Body.String(), `"total":0`) {
+	if emptyPage.Code != http.StatusOK || !strings.Contains(emptyPage.Body.String(), `"total":0`) || !strings.Contains(emptyPage.Body.String(), `"records":[]`) {
 		t.Fatalf("login logs must be cleared: status %d body=%s", emptyPage.Code, emptyPage.Body.String())
 	}
 	var clearAuditCount int64
@@ -403,6 +403,12 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	}
 	if clearAuditCount != 1 {
 		t.Fatalf("clear audit count = %d, want 1", clearAuditCount)
+	}
+	clearedOper := serveJSON(router, http.MethodDelete, "/api/system/oper-log/clear", "", token)
+	assertEnvelopeCode(t, clearedOper, http.StatusOK, 200, "success")
+	emptyOperPage := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10&moduleName=zzz_nonexistent", "", token)
+	if emptyOperPage.Code != http.StatusOK || !strings.Contains(emptyOperPage.Body.String(), `"total":0`) || !strings.Contains(emptyOperPage.Body.String(), `"records":[]`) {
+		t.Fatalf("oper logs empty page must serialize records as array: status %d body=%s", emptyOperPage.Code, emptyOperPage.Body.String())
 	}
 }
 
