@@ -65,7 +65,7 @@ func (s *Service) UploadBatch(ctx context.Context, m AuditMetadata, headers []*m
 	if len(headers) == 0 {
 		return BatchUploadResult{}, ErrFileEmpty
 	}
-	result := BatchUploadResult{}
+	result := BatchUploadResult{Succeeded: []File{}, Failed: []BatchUploadFailure{}}
 	for _, header := range headers {
 		f, err := s.Upload(ctx, m, header, businessModule, remark)
 		if err != nil {

@@ -10,7 +10,7 @@
 - **仓库类型**: monorepo
 - **交流 / 输出语言**: 中文
 - **项目定位**: 已有 React 管理后台及 Java 参考后端；目标是新增 Go REST API 逐步替代 Java 后端，前端保持独立部署。
-- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移认证、角色、菜单、部门、用户、字典、系统配置、本地文件管理和日志管理接口。文件内容存于配置的本地根目录（开发 Compose 使用持久化 Volume），数据库仅保存元数据和相对路径；删除保持 Java 兼容的元数据软删，不删除物理内容。所有已迁移管理模块的成功写操作写入操作审计日志；登录日志与操作日志的查询、详情与清空接口已迁移，清空受 `system.log-clear-enabled` 配置门控，操作日志查询通过 LEFT JOIN sys_user 回填 operator_name。
+- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移认证、角色、菜单、部门、用户、字典、系统配置、本地文件管理和日志管理接口。文件内容存于配置的本地根目录（开发 Compose 使用持久化 Volume），数据库仅保存元数据和相对路径；删除保持 Java 兼容的元数据软删，不删除物理内容。所有已迁移管理模块的成功写操作写入操作审计日志；登录日志与操作日志的查询、详情与清空接口已迁移，清空受 `system.log-clear-enabled` 配置门控，操作日志查询通过 LEFT JOIN sys_user 回填 operator_name。全部已迁移接口均有 HTTP 契约测试与 PostgreSQL 集成测试覆盖，Swagger 随实现同步生成。
 - **脚手架占位内容**: 脚手架里已出现大量"占位"示例（如 HelloWorld、UserTable、示例组件等），这些**不是真正的业务概念**，只是脚手架产物。真正的业务领域术语应来自后续的业务对话，而不是反向推导脚手架示例。
 
 ## 目录结构

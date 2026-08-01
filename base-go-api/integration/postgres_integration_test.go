@@ -3,13 +3,16 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +25,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
@@ -400,6 +404,202 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	if clearAuditCount != 1 {
 		t.Fatalf("clear audit count = %d, want 1", clearAuditCount)
 	}
+}
+
+func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	storageRoot := t.TempDir()
+	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
+	if err != nil {
+		t.Fatalf("create file storage: %v", err)
+	}
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, audit)
+	if err != nil {
+		t.Fatalf("create file service: %v", err)
+	}
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, nil, fileService, nil)
+	if err != nil {
+		t.Fatalf("build file management API: %v", err)
+	}
+	token := loginAdmin(t, router)
+
+	const content = "hello file content"
+	upload := serveMultipart(t, router, http.MethodPost, "/api/system/file/upload", token, []filePart{
+		{field: "file", filename: "contract.txt", contentType: "text/plain", content: content},
+	}, "system", "")
+	if upload.Code != http.StatusOK {
+		t.Fatalf("upload status = %d, body=%s", upload.Code, upload.Body.String())
+	}
+	var uploaded struct {
+		Code int `json:"code"`
+		Data struct {
+			ID             int64  `json:"id"`
+			OriginalName   string `json:"originalName"`
+			FileSize       int64  `json:"fileSize"`
+			MimeType       string `json:"mimeType"`
+			AccessURL      string `json:"accessUrl"`
+			BusinessModule string `json:"businessModule"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(upload.Body.Bytes(), &uploaded); err != nil {
+		t.Fatalf("decode upload response: %v body=%s", err, upload.Body.String())
+	}
+	if uploaded.Code != 200 || uploaded.Data.OriginalName != "contract.txt" || uploaded.Data.FileSize != int64(len(content)) || uploaded.Data.MimeType != "text/plain" || uploaded.Data.BusinessModule != "system" {
+		t.Fatalf("upload response = %+v", uploaded)
+	}
+	if want := fmt.Sprintf("/api/system/file/%d/view", uploaded.Data.ID); uploaded.Data.AccessURL != want {
+		t.Fatalf("accessUrl = %q, want %q", uploaded.Data.AccessURL, want)
+	}
+
+	page := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10&businessModule=system", "", token)
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"originalName":"contract.txt"`) || !strings.Contains(page.Body.String(), `"total":1`) {
+		t.Fatalf("file page = status %d body=%s", page.Code, page.Body.String())
+	}
+
+	for _, test := range []struct {
+		name       string
+		path       string
+		disposit   string
+	}{
+		{name: "download", path: fmt.Sprintf("/api/system/file/%d/download", uploaded.Data.ID), disposit: "attachment"},
+		{name: "view", path: fmt.Sprintf("/api/system/file/%d/view", uploaded.Data.ID), disposit: "inline"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := servePlain(t, router, http.MethodGet, test.path, token)
+			if response.Code != http.StatusOK || response.Body.String() != content {
+				t.Fatalf("%s = status %d body=%q", test.name, response.Code, response.Body.String())
+			}
+			if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, test.disposit+"; filename*=UTF-8''contract.txt") {
+				t.Fatalf("%s Content-Disposition = %q", test.name, disposition)
+			}
+		})
+	}
+
+	update := serveJSON(router, http.MethodPut, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), `{"businessModule":"avatar","remark":"头像文件"}`, token)
+	assertEnvelopeCode(t, update, http.StatusOK, 200, "success")
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), `"businessModule":"avatar"`) || !strings.Contains(detail.Body.String(), `"remark":"头像文件"`) {
+		t.Fatalf("file detail = status %d body=%s", detail.Code, detail.Body.String())
+	}
+
+	status := serveJSON(router, http.MethodPatch, fmt.Sprintf("/api/system/file/%d/status", uploaded.Data.ID), `{"status":0}`, token)
+	assertEnvelopeCode(t, status, http.StatusOK, 200, "success")
+	disabledPage := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10&status=0", "", token)
+	if disabledPage.Code != http.StatusOK || !strings.Contains(disabledPage.Body.String(), `"status":0`) {
+		t.Fatalf("disabled page = status %d body=%s", disabledPage.Code, disabledPage.Body.String())
+	}
+
+	var storagePath string
+	if err := database.GORM.Table("sys_file").Where("id=?", uploaded.Data.ID).Pluck("storage_path", &storagePath).Error; err != nil {
+		t.Fatalf("load storage path: %v", err)
+	}
+	physicalPath := filepath.Join(storageRoot, filepath.FromSlash(storagePath))
+	if _, err := os.Stat(physicalPath); err != nil {
+		t.Fatalf("physical file missing before delete: %v", err)
+	}
+
+	deleted := serveJSON(router, http.MethodDelete, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	assertEnvelopeCode(t, deleted, http.StatusOK, 200, "success")
+	afterDelete := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10", "", token)
+	if afterDelete.Code != http.StatusOK || !strings.Contains(afterDelete.Body.String(), `"total":0`) {
+		t.Fatalf("page after soft delete = status %d body=%s", afterDelete.Code, afterDelete.Body.String())
+	}
+	if _, err := os.Stat(physicalPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("physical file must disappear after delete, stat err = %v", err)
+	}
+	missingDetail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	assertEnvelopeCode(t, missingDetail, http.StatusOK, 404, "数据不存在")
+
+	emptyUpload := serveMultipart(t, router, http.MethodPost, "/api/system/file/upload", token, []filePart{
+		{field: "file", filename: "empty.txt", contentType: "text/plain", content: ""},
+	}, "", "")
+	if emptyUpload.Code != http.StatusOK || !strings.Contains(emptyUpload.Body.String(), `"code":400`) {
+		t.Fatalf("empty upload = status %d body=%s", emptyUpload.Code, emptyUpload.Body.String())
+	}
+	missingStream := servePlain(t, router, http.MethodGet, "/api/system/file/99999/download", token)
+	assertEnvelopeCode(t, missingStream, http.StatusOK, 404, "数据不存在")
+
+	var auditCount int64
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='file' AND operator_id=1 AND request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count file operation logs: %v", err)
+	}
+	if auditCount != 4 {
+		t.Fatalf("file operation audit count = %d, want 4 (upload, update, status, delete)", auditCount)
+	}
+}
+
+// filePart is one multipart file part for serveMultipart.
+type filePart struct {
+	field       string
+	filename    string
+	contentType string
+	content     string
+}
+
+func serveMultipart(t *testing.T, router http.Handler, method, path, token string, parts []filePart, businessModule, remark string) *httptest.ResponseRecorder {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for _, part := range parts {
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Disposition", `form-data; name="`+part.field+`"; filename="`+part.filename+`"`)
+		if part.contentType != "" {
+			header.Set("Content-Type", part.contentType)
+		}
+		contentPart, err := writer.CreatePart(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = contentPart.Write([]byte(part.content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if businessModule != "" {
+		if err := writer.WriteField("businessModule", businessModule); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if remark != "" {
+		if err := writer.WriteField("remark", remark); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(method, path, &body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	if token != "" {
+		request.Header.Set("Authorization", token)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	return response
+}
+
+// servePlain sends a request without a body and returns the raw response.
+func servePlain(t *testing.T, router http.Handler, method, path, token string) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(method, path, nil)
+	if token != "" {
+		request.Header.Set("Authorization", token)
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	return response
 }
 
 type temporaryPostgres struct {
