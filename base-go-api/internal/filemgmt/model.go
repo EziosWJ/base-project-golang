@@ -36,8 +36,8 @@ type File struct {
 	BusinessModule string    `gorm:"column:business_module" json:"businessModule"`
 	Status         int       `gorm:"column:status" json:"status"`
 	Remark         *string   `gorm:"column:remark" json:"remark"`
-	CreateTime     time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime     time.Time `gorm:"column:update_time" json:"updateTime"`
+	CreateTime     time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime     time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted        int       `gorm:"column:deleted" json:"-"`
 }
 

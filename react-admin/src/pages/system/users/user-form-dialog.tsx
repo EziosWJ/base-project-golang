@@ -2,12 +2,14 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { UseFormReturn } from "react-hook-form";
+import { deptOptionsToTreeSelectNodes } from "@/api/dept";
+import { TreeSelect } from "@/components/common/tree-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { DictSelectOption } from "@/constants/dicts";
-import type { ApiStatus, UserGender } from "@/types";
+import type { ApiStatus, DeptOption, UserGender } from "@/types";
 import type { UserFormMode, UserFormValues } from "./schema";
 
 type UserFormDialogProps = {
@@ -15,6 +17,8 @@ type UserFormDialogProps = {
   mode: UserFormMode;
   form: UseFormReturn<UserFormValues>;
   loading: boolean;
+  optionsLoading: boolean;
+  deptOptions: DeptOption[];
   genderOptions: DictSelectOption<UserGender>[];
   statusOptions: DictSelectOption<ApiStatus>[];
   onCancel: () => void;
@@ -26,6 +30,8 @@ export function UserFormDialog({
   mode,
   form,
   loading,
+  optionsLoading,
+  deptOptions,
   genderOptions,
   statusOptions,
   onCancel,
@@ -37,7 +43,11 @@ export function UserFormDialog({
     formState: { errors },
     handleSubmit,
     register,
+    setValue,
+    watch,
   } = form;
+  const deptId = watch("deptId");
+  const deptTreeNodes = deptOptionsToTreeSelectNodes(deptOptions);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
@@ -52,7 +62,7 @@ export function UserFormDialog({
               {mode === "create" ? "新建用户" : "编辑用户"}
             </h2>
             <p className="mt-1 text-sm text-text-tertiary">
-              新增用户默认密码由后端生成，当前部门暂以部门 ID 输入占位。
+              新增用户默认密码由后端生成，请选择用户所属部门。
             </p>
           </div>
           <Button
@@ -72,7 +82,7 @@ export function UserFormDialog({
               <Input
                 {...register("username")}
                 placeholder="请输入用户名"
-                disabled={loading}
+                disabled={loading || mode === "edit"}
                 autoComplete="username"
               />
             </FormField>
@@ -120,15 +130,18 @@ export function UserFormDialog({
                 ))}
               </Select>
             </FormField>
-            <FormField label="部门 ID" error={errors.deptId?.message}>
-              <Input
-                {...register("deptId", {
-                  setValueAs: (value) =>
-                    value === "" ? undefined : Number(value),
-                })}
-                placeholder="部门模块完成后替换为树选择"
-                disabled={loading}
-                inputMode="numeric"
+            <FormField label="所属部门" error={errors.deptId?.message}>
+              <TreeSelect
+                value={deptId ?? null}
+                nodes={deptTreeNodes}
+                placeholder={optionsLoading ? "部门树加载中" : "请选择所属部门"}
+                disabled={loading || optionsLoading}
+                onChange={(value) => {
+                  setValue("deptId", value == null ? undefined : Number(value), {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
               />
             </FormField>
             <FormField

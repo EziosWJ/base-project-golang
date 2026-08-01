@@ -42,11 +42,11 @@ export function getRoleDetail(id: number) {
 }
 
 export function createRole(data: RoleCreateRequest) {
-  return http.post<RoleListRecord>(ROLE_BASE_PATH, data);
+  return http.post<void>(ROLE_BASE_PATH, data);
 }
 
 export function updateRole(id: number, data: RoleUpdateRequest) {
-  return http.put<RoleListRecord>(`${ROLE_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${ROLE_BASE_PATH}/${id}`, data);
 }
 
 export function deleteRole(id: number) {
@@ -80,11 +80,11 @@ export function getMenuDetail(id: number) {
 }
 
 export function createMenu(data: SystemMenuCreateRequest) {
-  return http.post<SystemMenuRecord>(MENU_BASE_PATH, data);
+  return http.post<void>(MENU_BASE_PATH, data);
 }
 
 export function updateMenu(id: number, data: SystemMenuUpdateRequest) {
-  return http.put<SystemMenuRecord>(`${MENU_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${MENU_BASE_PATH}/${id}`, data);
 }
 
 export function deleteMenu(id: number) {

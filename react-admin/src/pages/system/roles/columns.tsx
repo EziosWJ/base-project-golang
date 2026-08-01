@@ -1,6 +1,7 @@
 import { Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatDateOnly } from "@/lib/datetime";
 import type { ApiStatus, DataTableColumn, RoleListRecord } from "@/types";
 
@@ -9,6 +10,11 @@ type RoleColumnsHandlers = {
   onAssignMenus: (role: RoleListRecord) => void;
   onToggleStatus: (role: RoleListRecord, status: ApiStatus) => void;
   onDelete: (role: RoleListRecord) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allSelectableChecked: boolean;
+  selectableCount: number;
 };
 
 const statusMeta: Record<ApiStatus, { label: string; tone: "success" | "neutral" }> = {
@@ -21,8 +27,38 @@ export function createRoleColumns({
   onAssignMenus,
   onToggleStatus,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allSelectableChecked,
+  selectableCount,
 }: RoleColumnsHandlers): DataTableColumn<RoleListRecord>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页普通角色"
+          checked={allSelectableChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, role) => {
+        const disabled = role.isBuiltin === 1;
+        return (
+          <Checkbox
+            aria-label={`选择角色 ${role.roleName}`}
+            checked={selectedIds.has(role.id)}
+            disabled={disabled}
+            title={disabled ? "内置角色不参与批量删除" : undefined}
+            onChange={(event) => onToggleSelect(role.id, event.target.checked)}
+          />
+        );
+      },
+    },
     {
       title: "角色名称",
       key: "role",

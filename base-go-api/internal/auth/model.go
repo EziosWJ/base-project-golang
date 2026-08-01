@@ -46,7 +46,7 @@ type AuthSession struct {
 	JTI        string     `gorm:"column:jti"`
 	ExpiresAt  time.Time  `gorm:"column:expires_at"`
 	RevokedAt  *time.Time `gorm:"column:revoked_at"`
-	CreateTime time.Time  `gorm:"column:create_time"`
+	CreateTime time.Time  `gorm:"column:create_time;autoCreateTime"`
 }
 
 func (AuthSession) TableName() string { return "auth_session" }
@@ -60,7 +60,7 @@ type LoginLog struct {
 	UserAgent   string    `gorm:"column:user_agent"`
 	Message     string    `gorm:"column:message"`
 	LoginTime   time.Time `gorm:"column:login_time"`
-	CreateTime  time.Time `gorm:"column:create_time"`
+	CreateTime  time.Time `gorm:"column:create_time;autoCreateTime"`
 }
 
 func (LoginLog) TableName() string { return "sys_login_log" }

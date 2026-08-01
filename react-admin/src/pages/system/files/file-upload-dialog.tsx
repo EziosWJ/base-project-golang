@@ -1,21 +1,21 @@
 import { Upload, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { uploadFile } from "@/api/file";
+import { uploadFiles } from "@/api/file";
 import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { DictSelectOption } from "@/constants/dicts";
-import type { FileRecord } from "@/types";
+import type { FileRecord, FileUploadBatchResult } from "@/types";
 import { getErrorMessage } from "@/lib/api-error";
 
 type FileUploadDialogProps = {
   open: boolean;
   businessModuleOptions: DictSelectOption[];
   onCancel: () => void;
-  onUploaded: (record: FileRecord) => void;
+  onUploaded: (records: FileRecord[]) => void;
 };
 
 export function FileUploadDialog({
@@ -26,11 +26,12 @@ export function FileUploadDialog({
 }: FileUploadDialogProps) {
   const titleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [businessModule, setBusinessModule] = useState("");
   const [remark, setRemark] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [result, setResult] = useState<FileUploadBatchResult | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -47,23 +48,24 @@ export function FileUploadDialog({
 
   useEffect(() => {
     if (!open) {
-      setFile(null);
+      setFiles([]);
       setBusinessModule("");
       setRemark("");
       setError("");
+      setResult(null);
     }
   }, [open]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = event.target.files?.[0] ?? null;
-    setFile(selected);
+    setFiles(Array.from(event.target.files ?? []));
     setError("");
+    setResult(null);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!file) {
-      setError("请选择文件");
+    if (files.length === 0) {
+      setError("请选择至少一个文件");
       return;
     }
 
@@ -71,13 +73,27 @@ export function FileUploadDialog({
     setError("");
 
     try {
-      const record = await uploadFile(file, {
+      const uploadResult = await uploadFiles(files, {
         businessModule: businessModule.trim() || undefined,
         remark: remark.trim() || undefined,
       });
-      toast.success("文件上传成功");
-      onUploaded(record);
-      onCancel();
+      setResult(uploadResult);
+      if (uploadResult.succeeded.length > 0) {
+        onUploaded(uploadResult.succeeded);
+      }
+
+      if (uploadResult.failed.length === 0) {
+        toast.success(`已成功上传 ${uploadResult.succeeded.length} 个文件`);
+        onCancel();
+        return;
+      }
+
+      const failedNames = new Set(uploadResult.failed.map((item) => item.fileName));
+      setFiles((current) => current.filter((item) => failedNames.has(item.name)));
+      toast.warning({
+        title: "部分文件上传失败",
+        description: `${uploadResult.succeeded.length} 个成功，${uploadResult.failed.length} 个失败。`,
+      });
     } catch (uploadError) {
       setError(getErrorMessage(uploadError, "文件上传失败"));
     } finally {
@@ -129,6 +145,7 @@ export function FileUploadDialog({
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   className="hidden"
                   onChange={handleFileChange}
                 />
@@ -142,9 +159,11 @@ export function FileUploadDialog({
                   选择文件
                 </Button>
                 <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
-                  {file ? file.name : "未选择文件"}
+                  {files.length === 0
+                    ? "未选择文件"
+                    : `已选择 ${files.length} 个文件：${files.map((file) => file.name).join("、")}`}
                 </span>
-                {file && (
+                {files.length > 0 && (
                   <Button
                     type="button"
                     size="icon"
@@ -152,7 +171,8 @@ export function FileUploadDialog({
                     className="h-7 w-7 shrink-0"
                     disabled={uploading}
                     onClick={() => {
-                      setFile(null);
+                      setFiles([]);
+                      setResult(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
                     aria-label="清除文件"
@@ -218,6 +238,22 @@ export function FileUploadDialog({
             {error && (
               <p className="text-sm text-error">{error}</p>
             )}
+            {result && (
+              <div className="space-y-2 rounded-lg border border-border bg-slate-50 p-3 text-sm">
+                <p className="font-medium text-text-primary">
+                  本次上传：成功 {result.succeeded.length} 个，失败 {result.failed.length} 个
+                </p>
+                {result.failed.length > 0 && (
+                  <ul className="space-y-1 text-error">
+                    {result.failed.map((item, index) => (
+                      <li key={`${item.fileName}-${index}`}>
+                        {item.fileName}：{item.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
@@ -232,7 +268,7 @@ export function FileUploadDialog({
             <Button
               type="submit"
               variant="primary"
-              disabled={uploading || !file}
+              disabled={uploading || files.length === 0}
             >
               {uploading ? "上传中..." : "上传"}
             </Button>

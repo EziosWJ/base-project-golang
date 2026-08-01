@@ -427,7 +427,6 @@ export function SystemFilesPage() {
         businessModuleOptions={businessModuleDict.options}
         onCancel={() => setUploadOpen(false)}
         onUploaded={() => {
-          setUploadOpen(false);
           void loadFiles();
         }}
       />

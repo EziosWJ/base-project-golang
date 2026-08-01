@@ -35,8 +35,8 @@ type Role struct {
 	SortOrder  int       `gorm:"column:sort_order" json:"sortOrder"`
 	IsBuiltin  int       `gorm:"column:is_builtin" json:"isBuiltin"`
 	Remark     *string   `gorm:"column:remark" json:"remark"`
-	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
+	CreateTime time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted    int       `gorm:"column:deleted" json:"-"`
 }
 
@@ -62,8 +62,8 @@ type Menu struct {
 	Status         int       `gorm:"column:status" json:"status"`
 	IsBuiltin      int       `gorm:"column:is_builtin" json:"isBuiltin"`
 	Remark         *string   `gorm:"column:remark" json:"remark"`
-	CreateTime     time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime     time.Time `gorm:"column:update_time" json:"updateTime"`
+	CreateTime     time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`
+	UpdateTime     time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	Deleted        int       `gorm:"column:deleted" json:"-"`
 	Children       []Menu    `gorm:"-" json:"children"`
 }

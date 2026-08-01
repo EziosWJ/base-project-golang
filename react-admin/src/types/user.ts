@@ -1,4 +1,4 @@
-import type { ApiPageRequest, ApiStatus } from "./api";
+import type { ApiBuiltinFlag, ApiPageRequest, ApiStatus } from "./api";
 
 export type UserGender = "MALE" | "FEMALE" | "UNKNOWN";
 export type UserStatus = "active" | "pending" | "disabled";
@@ -18,6 +18,7 @@ export type UserRecord = {
   avatar?: string | null;
   gender?: UserGender | null;
   status: ApiStatus | UserStatus;
+  isBuiltin?: ApiBuiltinFlag;
   deptId?: number | null;
   deptName?: string | null;
   roles?: UserRoleBrief[];
@@ -52,7 +53,7 @@ export type UserCreateRequest = {
   remark?: string;
 };
 
-export type UserUpdateRequest = UserCreateRequest;
+export type UserUpdateRequest = Omit<UserCreateRequest, "username">;
 
 export type UserStatusRequest = {
   status: ApiStatus;

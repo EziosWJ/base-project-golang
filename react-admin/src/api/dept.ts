@@ -32,11 +32,11 @@ export function getDeptDetail(id: number) {
 }
 
 export function createDept(data: DeptCreateRequest) {
-  return http.post<DeptRecord>(DEPT_BASE_PATH, data);
+  return http.post<void>(DEPT_BASE_PATH, data);
 }
 
 export function updateDept(id: number, data: DeptUpdateRequest) {
-  return http.put<DeptRecord>(`${DEPT_BASE_PATH}/${id}`, data);
+  return http.put<void>(`${DEPT_BASE_PATH}/${id}`, data);
 }
 
 export function deleteDept(id: number) {

@@ -1,6 +1,7 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getMenuIcon } from "@/lib/menu-icons";
 import type { ApiStatus, DataTableColumn, SystemMenuType } from "@/types";
 import { typeLabelMap, type MenuRow } from "./schema";
@@ -10,6 +11,11 @@ type MenuColumnsHandlers = {
   onCreateChild: (parentId: number) => void;
   onToggleStatus: (menu: MenuRow, status: ApiStatus) => void;
   onDelete: (menu: MenuRow) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allSelectableChecked: boolean;
+  selectableCount: number;
 };
 
 const statusMeta: Record<ApiStatus, { label: string; tone: "success" | "neutral" }> = {
@@ -27,8 +33,38 @@ export function createMenuColumns({
   onCreateChild,
   onToggleStatus,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allSelectableChecked,
+  selectableCount,
 }: MenuColumnsHandlers): DataTableColumn<MenuRow>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页普通菜单"
+          checked={allSelectableChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, menu) => {
+        const disabled = menu.isBuiltin === 1;
+        return (
+          <Checkbox
+            aria-label={`选择菜单 ${menu.menuName}`}
+            checked={selectedIds.has(menu.id)}
+            disabled={disabled}
+            title={disabled ? "内置菜单不参与批量删除" : undefined}
+            onChange={(event) => onToggleSelect(menu.id, event.target.checked)}
+          />
+        );
+      },
+    },
     {
       title: "菜单名称",
       key: "menu",

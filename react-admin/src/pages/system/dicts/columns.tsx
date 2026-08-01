@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/common/status-tag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatDateOnly } from "@/lib/datetime";
 import type {
   ApiStatus,
@@ -22,11 +23,21 @@ type DictTypeColumnActions = {
   onEdit: (record: SystemDictTypeRecord) => void | Promise<void>;
   onChangeStatus: (record: SystemDictTypeRecord, status: ApiStatus) => void;
   onDelete: (record: SystemDictTypeRecord) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allSelectableChecked: boolean;
+  selectableCount: number;
 };
 
 type DictDataColumnActions = {
   onEdit: (record: SystemDictDataRecord) => void;
   onDelete: (record: SystemDictDataRecord) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
+  onToggleSelectAll: (checked: boolean) => void;
+  allChecked: boolean;
+  selectableCount: number;
 };
 
 export function createDictTypeColumns({
@@ -34,8 +45,38 @@ export function createDictTypeColumns({
   onEdit,
   onChangeStatus,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allSelectableChecked,
+  selectableCount,
 }: DictTypeColumnActions): DataTableColumn<SystemDictTypeRecord>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页普通字典类型"
+          checked={allSelectableChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, record) => {
+        const disabled = record.isBuiltin === 1;
+        return (
+          <Checkbox
+            aria-label={`选择字典类型 ${record.dictName}`}
+            checked={selectedIds.has(record.id)}
+            disabled={disabled}
+            title={disabled ? "内置字典不参与批量删除" : undefined}
+            onChange={(event) => onToggleSelect(record.id, event.target.checked)}
+          />
+        );
+      },
+    },
     {
       title: "字典类型",
       key: "dictType",
@@ -138,8 +179,33 @@ export function createDictTypeColumns({
 export function createDictDataColumns({
   onEdit,
   onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  allChecked,
+  selectableCount,
 }: DictDataColumnActions): DataTableColumn<SystemDictDataRecord>[] {
   return [
+    {
+      title: (
+        <Checkbox
+          aria-label="选择当前页字典项"
+          checked={allChecked}
+          disabled={selectableCount === 0}
+          onChange={(event) => onToggleSelectAll(event.target.checked)}
+        />
+      ),
+      key: "selection",
+      align: "center",
+      width: 54,
+      render: (_, record) => (
+        <Checkbox
+          aria-label={`选择字典项 ${record.dictLabel}`}
+          checked={selectedIds.has(record.id)}
+          onChange={(event) => onToggleSelect(record.id, event.target.checked)}
+        />
+      ),
+    },
     {
       title: "字典项",
       key: "dictData",
