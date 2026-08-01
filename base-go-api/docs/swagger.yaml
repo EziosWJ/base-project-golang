@@ -218,6 +218,41 @@ definitions:
       status:
         type: integer
     type: object
+  filemgmt.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  filemgmt.batchRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  filemgmt.statusRequest:
+    properties:
+      status:
+        type: integer
+    type: object
+  filemgmt.updateRequest:
+    properties:
+      businessModule:
+        type: string
+      remark:
+        type: string
+    type: object
+  logmgmt.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
   rbac.ApiEnvelope:
     properties:
       code:
@@ -1244,6 +1279,411 @@ paths:
       summary: 按编码查询启用字典项
       tags:
       - 字典项
+  /api/system/file/{id}:
+    delete:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除文件
+      tags:
+      - 文件管理
+    get:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 文件详情
+      tags:
+      - 文件管理
+    put:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 文件元信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/filemgmt.updateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改文件元信息
+      tags:
+      - 文件管理
+  /api/system/file/{id}/download:
+    get:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 下载文件
+      tags:
+      - 文件管理
+  /api/system/file/{id}/status:
+    patch:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/filemgmt.statusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 修改文件状态
+      tags:
+      - 文件管理
+  /api/system/file/{id}/view:
+    get:
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 预览文件
+      tags:
+      - 文件管理
+  /api/system/file/batch-delete:
+    post:
+      parameters:
+      - description: 文件 ID 列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/filemgmt.batchRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量删除文件
+      tags:
+      - 文件管理
+  /api/system/file/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 原始文件名
+        in: query
+        name: originalName
+        type: string
+      - description: 业务模块
+        in: query
+        name: businessModule
+        type: string
+      - description: MIME 类型
+        in: query
+        name: mimeType
+        type: string
+      - description: 状态：0 或 1
+        in: query
+        name: status
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 文件分页
+      tags:
+      - 文件管理
+  /api/system/file/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 业务模块
+        in: formData
+        name: businessModule
+        type: string
+      - description: 备注
+        in: formData
+        name: remark
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上传文件
+      tags:
+      - 文件管理
+  /api/system/file/upload-batch:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 文件列表
+        in: formData
+        name: files
+        required: true
+        type: file
+      - description: 业务模块
+        in: formData
+        name: businessModule
+        type: string
+      - description: 备注
+        in: formData
+        name: remark
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 批量上传文件
+      tags:
+      - 文件管理
+  /api/system/login-log/{id}:
+    get:
+      parameters:
+      - description: 日志 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 登录日志详情
+      tags:
+      - 登录日志
+  /api/system/login-log/clear:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 清空登录日志
+      tags:
+      - 登录日志
+  /api/system/login-log/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 用户名
+        in: query
+        name: username
+        type: string
+      - description: 登录状态：SUCCESS 或 FAIL
+        in: query
+        name: loginStatus
+        type: string
+      - description: 登录 IP
+        in: query
+        name: loginIp
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 登录日志分页
+      tags:
+      - 登录日志
   /api/system/menu:
     post:
       parameters:
@@ -1465,6 +1905,97 @@ paths:
       summary: 菜单树
       tags:
       - 菜单管理
+  /api/system/oper-log/{id}:
+    get:
+      parameters:
+      - description: 日志 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 操作日志详情
+      tags:
+      - 操作日志
+  /api/system/oper-log/clear:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 清空操作日志
+      tags:
+      - 操作日志
+  /api/system/oper-log/page:
+    get:
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，1-500
+        in: query
+        name: pageSize
+        type: integer
+      - description: 模块名称
+        in: query
+        name: moduleName
+        type: string
+      - description: 操作类型
+        in: query
+        name: operationType
+        type: string
+      - description: 操作人
+        in: query
+        name: operatorName
+        type: string
+      - description: 操作状态：SUCCESS 或 FAIL
+        in: query
+        name: operationStatus
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/logmgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 操作日志分页
+      tags:
+      - 操作日志
   /api/system/role:
     post:
       parameters:
