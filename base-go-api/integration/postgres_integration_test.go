@@ -470,9 +470,9 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		name       string
-		path       string
-		disposit   string
+		name     string
+		path     string
+		disposit string
 	}{
 		{name: "download", path: fmt.Sprintf("/api/system/file/%d/download", uploaded.Data.ID), disposit: "attachment"},
 		{name: "view", path: fmt.Sprintf("/api/system/file/%d/view", uploaded.Data.ID), disposit: "inline"},

@@ -183,9 +183,9 @@ func TestUploadContractValidatesMetadata(t *testing.T) {
 	t.Parallel()
 	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
 	for _, test := range []struct {
-		name         string
-		option       uploadOption
-		wantField    string
+		name      string
+		option    uploadOption
+		wantField string
 	}{
 		{name: "businessModule too long", option: uploadOption{field: "file", filename: "a.txt", content: "x", businessModule: strings.Repeat("业", 51)}, wantField: "businessModule"},
 		{name: "remark too long", option: uploadOption{field: "file", filename: "a.txt", content: "x", remark: strings.Repeat("注", 501)}, wantField: "remark"},
@@ -485,9 +485,9 @@ func TestStreamContractServesDownloadAndView(t *testing.T) {
 	router, _, _ := newServiceRouter(t, store, storage)
 
 	for _, test := range []struct {
-		name          string
-		path          string
-		wantDispos    string
+		name       string
+		path       string
+		wantDispos string
 	}{
 		{name: "download", path: "/api/system/file/1/download", wantDispos: "attachment"},
 		{name: "view", path: "/api/system/file/1/view", wantDispos: "inline"},
@@ -552,16 +552,16 @@ func TestRoutesRegistered(t *testing.T) {
 	t.Parallel()
 	router, _, _ := newServiceRouter(t, new(memoryStore), nil)
 	want := map[string]string{
-		"POST /api/system/file/upload":        "",
-		"POST /api/system/file/upload-batch":  "",
-		"GET /api/system/file/page":           "",
-		"POST /api/system/file/batch-delete":  "",
-		"GET /api/system/file/:id":            "",
-		"PUT /api/system/file/:id":            "",
-		"DELETE /api/system/file/:id":         "",
-		"PATCH /api/system/file/:id/status":   "",
-		"GET /api/system/file/:id/download":   "",
-		"GET /api/system/file/:id/view":       "",
+		"POST /api/system/file/upload":       "",
+		"POST /api/system/file/upload-batch": "",
+		"GET /api/system/file/page":          "",
+		"POST /api/system/file/batch-delete": "",
+		"GET /api/system/file/:id":           "",
+		"PUT /api/system/file/:id":           "",
+		"DELETE /api/system/file/:id":        "",
+		"PATCH /api/system/file/:id/status":  "",
+		"GET /api/system/file/:id/download":  "",
+		"GET /api/system/file/:id/view":      "",
 	}
 	for _, route := range router.Routes() {
 		delete(want, route.Method+" "+route.Path)
