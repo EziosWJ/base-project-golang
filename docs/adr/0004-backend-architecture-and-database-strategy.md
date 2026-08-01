@@ -44,7 +44,7 @@ Schema 使用版本化 Goose migration 管理。API 进程与生产启动不自�
 
 ### 7. DI
 
-采用手工依赖组装：Config → Database → Repository → Service → Handler → Router。基础设施可在启动阶段创建一次并共享指针，但不引入 DI Framework、Service Locator、业务 Singleton 或全局 Service。
+采用手工依赖组装：Config → Database → Repository → Service → Handler → Router。HTTP 应用以命名依赖对象接收完整的生产依赖，缺少任一已启用业务模块时启动失败；测试通过模块路由或应用内部基础 Router helper 构造最小场景，不以 `nil` 静默裁剪生产路由。基础设施可在启动阶段创建一次并共享指针，但不引入 DI Framework、Service Locator、业务 Singleton 或全局 Service。
 
 ### 8. 认证、日志与运行组件
 

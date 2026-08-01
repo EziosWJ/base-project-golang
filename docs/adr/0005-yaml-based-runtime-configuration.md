@@ -18,9 +18,9 @@ Go API 原先要求数据库 DSN 和 JWT 密钥只能通过环境变量提供。
 
 `APP_ENV` 是运行环境选择器，只能由进程环境变量提供；它必须在读取环境 YAML 前确定。允许值为 `dev`、`test`、`prod`，未设置时默认 `dev`。`config.yaml` 是必需文件，环境 YAML 是可选文件。
 
-数据库和 JWT 配置允许写入 YAML，不再限定只能通过环境变量提供。生产环境的实际 `config.prod.yaml` 由部署系统以只读文件或挂载方式提供，不提交到 Git；本机 `config.dev.yaml` 可以使用仅限本机的开发凭据。
+数据库和 JWT 配置允许写入 YAML，不再限定只能通过环境变量提供。`config.yaml` 作为不含环境凭据的基础配置提交；`config.dev.example.yaml` 与 `config.prod.example.yaml` 作为版本化模板提交。实际 `config.dev.yaml` 与 `config.prod.yaml` 一律不提交：前者由开发者从模板复制并填写，后者由部署系统以只读文件或挂载方式提供。
 
-`.env` 仅是 Docker Compose 的变量文件，不由 Go 程序自动读取。直接运行二进制或通过 IDE 调试时，使用 YAML 或由 IDE 注入环境变量。
+`.env` 仅是 Docker Compose 的变量文件，不由 Go 程序自动读取。直接运行二进制或通过 IDE 调试时，使用实际环境 YAML 或由 IDE 注入环境变量。Docker Compose 必须完整注入自身需要的开发覆盖值，不依赖开发者的 `config.dev.yaml`。
 
 ### 数据库连接
 

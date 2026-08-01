@@ -42,10 +42,10 @@
 - 形态: 模块化单体（Modular Monolith），只提供 REST API；不提前拆微服务。
 - Web: Gin；数据访问: GORM + Go 标准 `database/sql`；Schema: Goose migration。
 - 长期兼容目标: PostgreSQL、MySQL、SQLite；首发运行与集成测试只承诺 PostgreSQL。MySQL、SQLite 必须在真实集成测试通过后才能宣称支持；在此之前仍应避免无必要的 PostgreSQL 特性。
-- 配置: 使用 Koanf v2，覆盖顺序为默认值 → `config.yaml` → `config.{APP_ENV}.yaml` → `APP_` 环境变量；嵌套键使用双下划线（如 `APP_DATABASE__DSN`）。数据库 `driver` 预留 `postgres`、`mysql`、`sqlite`；密码、密钥和实际 DSN 只经环境变量或部署密钥注入，不能提交 Git。
+- 配置: 使用 Koanf v2，覆盖顺序为默认值 → `config.yaml` → `config.{APP_ENV}.yaml` → `APP_` 环境变量；嵌套键使用双下划线（如 `APP_DATABASE__URL`）。数据库连接拆分为 URL、用户名和密码；基础配置与环境模板提交，实际环境 YAML 可保存凭据但不得提交 Git，详见 ADR-0005。
 - API: 新建接口优先使用 `/api/v1/...`、统一响应/错误码/分页。Gin Handler 与 DTO 注释是文档来源，使用 `swaggo/swag` 生成并提交 Swagger 2.0 文档；Swagger UI 仅在开发环境开放。迁移既有前端接口时，以 ADR-0002 的兼容契约为准，暂保留既有 `/api/**` 路径，直到另有版本化决策。
 - CORS: 默认允许跨域 Bearer Token 请求且不启用 Cookie 凭据；可通过精确 `allowed_origins` 配置收紧来源范围，不使用允许凭据的通配来源。
-- 认证: 目标为 JWT 加数据库管理的动态角色和菜单关系；`ADMIN` 是内置角色，`admin`、`user` 只是角色示例。JWT 使用 HS256，密钥由环境变量注入，包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`，不包含角色或菜单。Gin middleware 首版只校验登录态，不按 `permissionCode` 拦截接口；会话持久化在 PostgreSQL `auth_session` 表中，JWT `jti` 用于校验和登出即时撤销；不引入 Redis、Casbin、ABAC、多租户权限或组织树数据权限。
+- 认证: 目标为 JWT 加数据库管理的动态角色和菜单关系；`ADMIN` 是内置角色，`admin`、`user` 只是角色示例。JWT 使用 HS256，密钥由运行配置提供，包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`，不包含角色或菜单。Gin middleware 首版只校验登录态，不按 `permissionCode` 拦截接口；会话持久化在 PostgreSQL `auth_session` 表中，JWT `jti` 用于校验和登出即时撤销；不引入 Redis、Casbin、ABAC、多租户权限或组织树数据权限。
 - 可观测性: 使用 `log/slog` 记录 request_id、请求方法与路径、状态、耗时、user_id 和错误；`/health` 只检查进程存活，`/ready` 检查 PostgreSQL 并在不可用时返回 503，`/metrics` 不要求 JWT、仅通过内部网络或反向代理白名单供 Prometheus 抓取且不应用默认 CORS。业务审计日志须落库，不能由应用日志替代：middleware 将 request_id、IP、User-Agent 写入标准 `context.Context`，Service 显式记录审计，Repository 持久化；认证记录成功与失败登录，其他操作仅在业务成功后记录。
 - 其他目标组件: 本地文件系统加 Docker Volume（文件服务与存储实现解耦）、Excelize、Docker 与 Docker Compose；不提前引入 Kubernetes、OpenTelemetry tracing、Redis 分布式锁或微服务治理基础设施。
 
@@ -59,7 +59,7 @@
 base-go-api/
 ├── cmd/api/                 # HTTP 服务入口
 ├── cmd/migrate/             # 显式 Goose migrate 命令
-├── configs/                 # 不含秘密的 YAML 配置
+├── configs/                 # 基础配置与环境模板；实际环境 YAML 不提交
 ├── migrations/              # Schema 与 seed migration
 ├── docs/                    # 提交的 Swagger 生成文件
 ├── internal/app/            # 依赖组装与路由注册
@@ -94,7 +94,7 @@ base-go-api/
 ### 部署数据库拓扑
 
 - 开发 Docker Compose 启动独立的 PostgreSQL 命名 volume，再依次运行 migrate 与 API；该数据库只绑定本机端口。
-- 实际部署通过环境变量的外部 PostgreSQL DSN 运行 migrate 与 API，不依赖 Compose 数据库容器。
+- 实际部署通过外部 PostgreSQL 运行配置执行 migrate 与 API，不依赖 Compose 数据库容器。
 
 ### 运行时约定
 
@@ -114,13 +114,11 @@ base-go-api/
 - Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose、Swagger 与 JWT 会话认证能力，并可执行格式化、测试与静态检查；Excelize 及其余业务模块仍按 Issue 顺序实施。
 - ADR-0002 规定的既有 `/api/**`、响应结构和 Bearer Token 外部契约已实现；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
 
-## 已知领域术语（初始为空占位——等业务浮现后填充）
+## 已知领域术语
 
-<!-- 示例格式（仅在业务概念真实出现并确认后补入）：
 | 术语 | 同义词 / 禁用词 | 定义 |
 | --- | --- | --- |
-| 训问 | 提问、询问 | 士兵用户发起的一次求助行为，由后端生成任务分发给 ...
--->
+| 操作审计日志 | 操作日志（查询功能名称）、技术日志 | 对管理模块一次成功写操作的业务记录，标识执行者、请求及被操作资源。 |
 
 ## 边界与职责约定（已确认）
 
