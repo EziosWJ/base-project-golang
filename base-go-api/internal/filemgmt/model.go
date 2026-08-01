@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
 
 const (
@@ -82,18 +82,17 @@ type BatchUploadFailure struct {
 	Message  string `json:"message"`
 }
 
-type AuditMetadata = rbac.AuditMetadata
-type AuditRecorder = rbac.AuditRecorder
+type AuditMetadata = audit.Metadata
+type AuditEvent = audit.Event
 
 type Store interface {
 	Page(context.Context, FilePageQuery) (Page[File], error)
 	Find(context.Context, int64) (*File, error)
-	Create(context.Context, File) (File, error)
-	SetAccessURL(context.Context, int64, string) error
-	Update(context.Context, int64, UpdateInput) error
-	Delete(context.Context, int64) error
-	DeleteBatch(context.Context, []int64) error
-	SetStatus(context.Context, int64, int) error
+	Create(context.Context, File, AuditEvent) (File, error)
+	Update(context.Context, int64, UpdateInput, AuditEvent) error
+	Delete(context.Context, int64, AuditEvent) error
+	DeleteBatch(context.Context, []int64, AuditEvent) error
+	SetStatus(context.Context, int64, int, AuditEvent) error
 }
 
 type Storage interface {
