@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"gorm.io/gorm"
 )
 
@@ -45,8 +46,13 @@ func (r *Repository) FindLoginLog(ctx context.Context, id int64) (*LoginLog, err
 	return &log, nil
 }
 
-func (r *Repository) ClearLoginLogs(ctx context.Context) error {
-	return r.db.WithContext(ctx).Where("1=1").Delete(&LoginLog{}).Error
+func (r *Repository) ClearLoginLogs(ctx context.Context, e audit.Event) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("1=1").Delete(&LoginLog{}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }
 
 func (r *Repository) OperLogPage(ctx context.Context, q OperLogPageQuery) (Page[OperLogRecord], error) {
@@ -92,6 +98,11 @@ func (r *Repository) FindOperLog(ctx context.Context, id int64) (*OperLogDetail,
 	return &log, nil
 }
 
-func (r *Repository) ClearOperLogs(ctx context.Context) error {
-	return r.db.WithContext(ctx).Where("1=1").Delete(&OperLogDetail{}).Error
+func (r *Repository) ClearOperLogs(ctx context.Context, e audit.Event) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("1=1").Delete(&OperLogDetail{}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }

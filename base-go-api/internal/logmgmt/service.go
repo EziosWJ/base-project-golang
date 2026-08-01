@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 )
 
@@ -20,17 +20,13 @@ type ByKeyReader interface {
 type Service struct {
 	store  Store
 	config ByKeyReader
-	audit  Audit
 }
 
-func NewService(store Store, config ByKeyReader, audit Audit) (*Service, error) {
+func NewService(store Store, config ByKeyReader) (*Service, error) {
 	if store == nil {
 		return nil, ErrInvalid
 	}
-	if audit == nil {
-		audit = noopAudit{}
-	}
-	return &Service{store: store, config: config, audit: audit}, nil
+	return &Service{store: store, config: config}, nil
 }
 
 func (s *Service) LoginLogPage(ctx context.Context, q LoginLogPageQuery) (Page[LoginLog], error) {
@@ -44,14 +40,11 @@ func (s *Service) LoginLogDetail(ctx context.Context, id int64) (*LoginLog, erro
 	return s.store.FindLoginLog(ctx, id)
 }
 
-func (s *Service) ClearLoginLogs(ctx context.Context, m rbac.AuditMetadata) error {
+func (s *Service) ClearLoginLogs(ctx context.Context, m audit.Metadata) error {
 	if err := s.assertClearEnabled(ctx); err != nil {
 		return err
 	}
-	if err := s.store.ClearLoginLogs(ctx); err != nil {
-		return err
-	}
-	return s.audit.Record(ctx, rbac.AuditEvent{Action: "login-log.clear", Resource: "login-log", Summary: "清空登录日志", Metadata: m})
+	return s.store.ClearLoginLogs(ctx, audit.Event{Action: "login-log.clear", Resource: "login-log", Summary: "清空登录日志", Metadata: m})
 }
 
 func (s *Service) OperLogPage(ctx context.Context, q OperLogPageQuery) (Page[OperLogRecord], error) {
@@ -65,14 +58,11 @@ func (s *Service) OperLogDetail(ctx context.Context, id int64) (*OperLogDetail, 
 	return s.store.FindOperLog(ctx, id)
 }
 
-func (s *Service) ClearOperLogs(ctx context.Context, m rbac.AuditMetadata) error {
+func (s *Service) ClearOperLogs(ctx context.Context, m audit.Metadata) error {
 	if err := s.assertClearEnabled(ctx); err != nil {
 		return err
 	}
-	if err := s.store.ClearOperLogs(ctx); err != nil {
-		return err
-	}
-	return s.audit.Record(ctx, rbac.AuditEvent{Action: "oper-log.clear", Resource: "oper-log", Summary: "清空操作日志", Metadata: m})
+	return s.store.ClearOperLogs(ctx, audit.Event{Action: "oper-log.clear", Resource: "oper-log", Summary: "清空操作日志", Metadata: m})
 }
 
 func validatePage(page, pageSize int) error {

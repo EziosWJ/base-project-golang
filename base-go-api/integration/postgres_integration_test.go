@@ -385,7 +385,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	}
 	audit := audit.NewRecorder(database.GORM)
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
-	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, audit)
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
 	if err != nil {
 		t.Fatalf("create log service: %v", err)
 	}
