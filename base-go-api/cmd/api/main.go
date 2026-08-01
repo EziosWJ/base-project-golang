@@ -16,6 +16,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -79,8 +80,18 @@ func main() {
 		os.Exit(1)
 	}
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), auditRecorder)
+	fileStorage, err := filemgmt.NewLocalStorage(cfg.File.StorageRoot)
+	if err != nil {
+		slog.Error("build file storage", "error", err)
+		os.Exit(1)
+	}
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, auditRecorder)
+	if err != nil {
+		slog.Error("build file service", "error", err)
+		os.Exit(1)
+	}
 
-	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService)
+	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService, fileService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

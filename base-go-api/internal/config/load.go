@@ -155,6 +155,7 @@ func defaultValues() map[string]interface{} {
 		"database.max_idle_conns":     5,
 		"database.conn_max_lifetime":  "30m",
 		"database.conn_max_idle_time": "5m",
+		"file.storage_root":           "/var/lib/base-go-api/uploads",
 		"jwt.issuer":                  "base-go-api",
 		"jwt.audience":                "react-admin",
 		"jwt.ttl":                     "2h",

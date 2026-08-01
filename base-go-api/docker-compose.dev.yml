@@ -43,8 +43,12 @@ services:
         condition: service_completed_successfully
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
+    volumes:
+      - base_go_api_uploads:/var/lib/base-go-api/uploads
     restart: unless-stopped
 
 volumes:
   base_go_api_postgres_data:
     name: base_go_api_postgres_data
+  base_go_api_uploads:
+    name: base_go_api_uploads

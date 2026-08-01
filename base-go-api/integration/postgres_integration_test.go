@@ -66,7 +66,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil, nil, nil, nil, nil)
+	}, database, service, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build department and user API: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	}
 	audit := rbac.NewGORMAuditRecorder(database.GORM)
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService)
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

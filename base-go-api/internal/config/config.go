@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ type Config struct {
 	Swagger     SwaggerConfig  `koanf:"swagger"`
 	CORS        CORSConfig     `koanf:"cors"`
 	Database    DatabaseConfig `koanf:"database"`
+	File        FileConfig     `koanf:"file"`
 	JWT         JWTConfig      `koanf:"jwt"`
 	Log         LogConfig      `koanf:"log"`
 }
@@ -64,6 +66,9 @@ type DatabaseConfig struct {
 	MaxIdleConns    int           `koanf:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `koanf:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `koanf:"conn_max_idle_time"`
+}
+type FileConfig struct {
+	StorageRoot string `koanf:"storage_root"`
 }
 
 type JWTConfig struct {
@@ -149,6 +154,9 @@ func (c Config) Validate() error {
 	}
 	if c.Database.ConnMaxIdleTime < 0 {
 		errs = append(errs, errors.New("database.conn_max_idle_time must not be negative"))
+	}
+	if !filepath.IsAbs(c.File.StorageRoot) {
+		errs = append(errs, errors.New("file.storage_root must be an absolute path"))
 	}
 
 	if strings.TrimSpace(c.JWT.Secret) == "" {

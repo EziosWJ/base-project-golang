@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第一课：为什么 Go 后端需要 Migration</title>
+  <style>
+    :root { color: #17231b; background: #f7f5ef; font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", sans-serif; }
+    body { max-width: 760px; margin: 56px auto; padding: 0 24px 64px; line-height: 1.75; }
+    h1 { font-size: clamp(2rem, 5vw, 3.4rem); letter-spacing: -.05em; line-height: 1.1; margin-bottom: .3em; }
+    .lede { font-size: 1.15rem; color: #536058; } .card { background: white; border: 1px solid #dedbd0; border-radius: 12px; padding: 20px 24px; margin: 22px 0; }
+    .flow { display: grid; gap: 8px; text-align: center; font-weight: 650; color: #0a593e; } .arrow { color: #75917c; }
+    code { color: #07583c; background: #e6f0e7; padding: .12em .35em; border-radius: 4px; } a { color: #07583c; }
+    .question { border-left: 4px solid #bc7a22; padding-left: 16px; }
+  </style>
+</head>
+<body>
+  <p><a href="../MISSION.md">本次学习目标</a> · <a href="../reference/database-migration.html">速查表</a></p>
+  <h1>第一课：为什么 Go 后端需要 Migration</h1>
+  <p class="lede">目标不是学一个工具名，而是确保 Java→Go 迁移后，每个环境的 PostgreSQL 都拥有同一份、可追溯的表结构。</p>
+
+  <h2>先分清两件事</h2>
+  <div class="card">
+    <strong>数据库 Schema</strong> 是当前状态：例如是否存在 <code>sys_user</code> 表、它有哪些字段和索引。<br>
+    <strong>Migration</strong> 是改变状态的一步：例如“创建 <code>sys_user</code> 表”或“给它添加 <code>email</code> 列”。
+  </div>
+  <div class="card flow">
+    <span>Git 中的 migration 001：创建用户表</span><span class="arrow">↓</span>
+    <span>migration 002：创建角色表</span><span class="arrow">↓</span>
+    <span>migration 003：创建 auth_session 表</span>
+  </div>
+
+  <h2>为什么不能只靠手工建表？</h2>
+  <p>因为开发、测试、生产会逐渐不同步：你在本机加过字段，不代表部署服务器也加过。Migration 将每次变更写进 Git；部署时工具检查哪些步骤尚未执行，再按顺序补齐。Goose 会在数据库中保存已执行版本记录。</p>
+
+  <h2>它与 GORM AutoMigrate 有何区别？</h2>
+  <p><code>AutoMigrate</code> 根据当前 Go struct 推测表结构并尝试修改。它适合本地试验，但难以表达、审查和追踪每一次生产 Schema 变更。项目选择 Goose，是让 SQL 变更成为可审查、可复现的代码版本。</p>
+
+  <h2>放进本项目，就是这样</h2>
+  <p>第一批 migration 创建 PostgreSQL 中迁移认证所需的表和内置数据。日后新增字段时，新增一份 migration；不要回头改已经在环境中执行过的旧文件。Java 的 MySQL SQL 只是行为参考，Go 的 PostgreSQL migration 是新的权威结构来源。</p>
+
+  <p class="question"><strong>一分钟自测：</strong>如果明天要给 <code>sys_user</code> 加一个 <code>email</code> 字段，应当修改旧的“创建用户表”文件，还是新增一份 migration？为什么？把你的答案发给我，我会据此继续讲“up / down”和实际命令。</p>
+
+  <p>权威资料：<a href="https://pressly.github.io/goose/">Goose 官方文档</a>、<a href="https://www.postgresql.org/docs/current/ddl.html">PostgreSQL 数据定义文档</a>。</p>
+</body>
+</html>
