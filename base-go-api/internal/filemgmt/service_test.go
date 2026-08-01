@@ -79,8 +79,6 @@ type memoryStore struct {
 	file File
 	// records holds listable files in ID order for Page.
 	records []File
-	// deleted records physical file metadata for Delete assertions.
-	deletedPath string
 }
 
 func (s *memoryStore) recordFor(id int64) *File {
@@ -116,12 +114,8 @@ func (s *memoryStore) Page(_ context.Context, q FilePageQuery) (Page[File], erro
 }
 
 func (s *memoryStore) Find(_ context.Context, id int64) (*File, error) {
-	if s.file.ID == id {
-		copy := s.file
-		return &copy, nil
-	}
 	record := s.recordFor(id)
-	if record == nil {
+	if record == nil || record.Deleted != 0 {
 		return nil, ErrNotFound
 	}
 	copy := *record
@@ -168,9 +162,25 @@ func (s *memoryStore) Delete(_ context.Context, id int64) error {
 		return ErrNotFound
 	}
 	record.Deleted = 1
-	s.deletedPath = record.StoragePath
 	if s.file.ID == id {
 		s.file = *record
+	}
+	return nil
+}
+
+func (s *memoryStore) DeleteBatch(_ context.Context, ids []int64) error {
+	for _, id := range ids {
+		record := s.recordFor(id)
+		if record == nil || record.Deleted != 0 {
+			return ErrNotFound
+		}
+	}
+	for _, id := range ids {
+		record := s.recordFor(id)
+		record.Deleted = 1
+		if s.file.ID == id {
+			s.file = *record
+		}
 	}
 	return nil
 }

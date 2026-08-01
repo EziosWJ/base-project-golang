@@ -92,6 +92,7 @@ type Store interface {
 	SetAccessURL(context.Context, int64, string) error
 	Update(context.Context, int64, UpdateInput) error
 	Delete(context.Context, int64) error
+	DeleteBatch(context.Context, []int64) error
 	SetStatus(context.Context, int64, int) error
 }
 

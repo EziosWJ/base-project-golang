@@ -65,6 +65,19 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Update("deleted", 1).Error
 }
 
+func (r *Repository) DeleteBatch(ctx context.Context, ids []int64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&File{}).Where("id IN ? AND deleted=0", ids).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != int64(len(ids)) {
+			return ErrNotFound
+		}
+		return tx.Model(&File{}).Where("id IN ? AND deleted=0", ids).Update("deleted", 1).Error
+	})
+}
+
 func (r *Repository) SetStatus(ctx context.Context, id int64, status int) error {
 	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Update("status", status).Error
 }

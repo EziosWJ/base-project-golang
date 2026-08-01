@@ -360,18 +360,31 @@ func TestUpdateContractMapsNotFound(t *testing.T) {
 	wantNotFoundEnvelope(t, response)
 }
 
-func TestDeleteContractRemovesPhysicalFileAndAudits(t *testing.T) {
+func TestDeleteContractKeepsPhysicalFileAndAudits(t *testing.T) {
 	t.Parallel()
+	storage, err := NewLocalStorage(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := storage.Save(context.Background(), "a.txt", strings.NewReader("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	store := new(memoryStore)
-	store.Create(nil, File{OriginalName: "a.txt", StoragePath: "2026/07/31/abc.txt", FileSize: 1})
-	router, _, audit := newServiceRouter(t, store, nil)
+	store.Create(nil, File{OriginalName: "a.txt", StoragePath: stored.Path, FileSize: 1})
+	router, _, audit := newServiceRouter(t, store, storage)
 
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodDelete, "/api/system/file/1", nil)))
 	wantEnvelopeOK(t, response)
-	if store.file.Deleted != 1 || store.deletedPath != "2026/07/31/abc.txt" {
-		t.Fatalf("store=%+v deletedPath=%q", store.file, store.deletedPath)
+	if store.file.Deleted != 1 {
+		t.Fatalf("store=%+v", store.file)
 	}
+	resource, err := storage.Open(context.Background(), stored.Path)
+	if err != nil {
+		t.Fatalf("physical file must remain after metadata delete: %v", err)
+	}
+	_ = resource.Close()
 	if len(audit.events) != 1 || audit.events[0].Action != "file.delete" || audit.events[0].ResourceID != 1 {
 		t.Fatalf("audit=%+v", audit.events)
 	}
@@ -426,6 +439,22 @@ func TestBatchDeleteContractDeletesAllAndAudits(t *testing.T) {
 	}
 	if len(audit.events) != 2 || audit.events[0].Action != "file.delete" || audit.events[0].ResourceID != 1 || audit.events[1].ResourceID != 2 {
 		t.Fatalf("audit=%+v", audit.events)
+	}
+}
+
+func TestBatchDeleteContractIsAtomicWhenAnyFileIsMissing(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	store.Create(nil, File{OriginalName: "a.txt", StoragePath: "2026/07/31/a.txt"})
+	router, _, audit := newServiceRouter(t, store, nil)
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/system/file/batch-delete", strings.NewReader(`{"ids":[1,99]}`))
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(response, authenticated(request))
+	wantNotFoundEnvelope(t, response)
+	if store.file.Deleted != 0 || len(audit.events) != 0 {
+		t.Fatalf("store=%+v audit=%+v", store.file, audit.events)
 	}
 }
 

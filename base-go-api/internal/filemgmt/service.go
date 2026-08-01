@@ -110,22 +110,24 @@ func (s *Service) Update(ctx context.Context, m AuditMetadata, id int64, in Upda
 }
 
 func (s *Service) Delete(ctx context.Context, m AuditMetadata, id int64) error {
-	f, err := s.store.Find(ctx, id)
-	if err != nil {
+	if _, err := s.store.Find(ctx, id); err != nil {
 		return err
 	}
-	if err = s.store.Delete(ctx, id); err != nil {
-		return err
-	}
-	if err = s.storage.Remove(ctx, f.StoragePath); err != nil {
+	if err := s.store.Delete(ctx, id); err != nil {
 		return err
 	}
 	return s.audit.Record(ctx, rbac.AuditEvent{Action: "file.delete", Resource: "file", ResourceID: id, Summary: "删除文件", Metadata: m})
 }
 
 func (s *Service) DeleteBatch(ctx context.Context, m AuditMetadata, ids []int64) error {
+	if len(ids) == 0 {
+		return ErrInvalid
+	}
+	if err := s.store.DeleteBatch(ctx, ids); err != nil {
+		return err
+	}
 	for _, id := range ids {
-		if err := s.Delete(ctx, m, id); err != nil {
+		if err := s.audit.Record(ctx, rbac.AuditEvent{Action: "file.delete", Resource: "file", ResourceID: id, Summary: "删除文件", Metadata: m}); err != nil {
 			return err
 		}
 	}

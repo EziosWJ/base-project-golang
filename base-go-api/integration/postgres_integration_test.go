@@ -510,6 +510,13 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if _, err := os.Stat(physicalPath); err != nil {
 		t.Fatalf("physical file missing before delete: %v", err)
 	}
+	failedBatch := serveJSON(router, http.MethodPost, "/api/system/file/batch-delete", fmt.Sprintf(`{"ids":[%d,99999]}`, uploaded.Data.ID), token)
+	assertEnvelopeCode(t, failedBatch, http.StatusOK, 404, "数据不存在")
+	if _, err := os.Stat(physicalPath); err != nil {
+		t.Fatalf("physical file missing after rejected batch delete: %v", err)
+	}
+	stillPresent := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	assertEnvelopeCode(t, stillPresent, http.StatusOK, 200, "success")
 
 	deleted := serveJSON(router, http.MethodDelete, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
 	assertEnvelopeCode(t, deleted, http.StatusOK, 200, "success")
@@ -517,8 +524,8 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if afterDelete.Code != http.StatusOK || !strings.Contains(afterDelete.Body.String(), `"total":0`) {
 		t.Fatalf("page after soft delete = status %d body=%s", afterDelete.Code, afterDelete.Body.String())
 	}
-	if _, err := os.Stat(physicalPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("physical file must disappear after delete, stat err = %v", err)
+	if _, err := os.Stat(physicalPath); err != nil {
+		t.Fatalf("physical file must remain after metadata delete: %v", err)
 	}
 	missingDetail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
 	assertEnvelopeCode(t, missingDetail, http.StatusOK, 404, "数据不存在")
