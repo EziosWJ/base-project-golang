@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
 
 const (
@@ -66,12 +66,14 @@ type Store interface {
 	Page(context.Context, Query) (Page, error)
 	Find(context.Context, int64) (*Dept, error)
 	CodeExists(context.Context, string, int64) (bool, error)
-	Create(context.Context, Dept) (Dept, error)
-	Update(context.Context, Dept) (Dept, error)
-	Delete(context.Context, int64) error
-	SetStatus(context.Context, int64, int) error
+	Create(context.Context, Dept, AuditEvent) (Dept, error)
+	Update(context.Context, Dept, AuditEvent) (Dept, error)
+	Delete(context.Context, int64, AuditEvent) error
+	DeleteBatch(context.Context, []int64, AuditEvent) error
+	SetStatus(context.Context, int64, int, AuditEvent) error
 	CountChildren(context.Context, int64) (int64, error)
 	CountUsers(context.Context, int64) (int64, error)
 }
-type AuditRecorder = rbac.AuditRecorder
-type AuditMetadata = rbac.AuditMetadata
+type AuditEvent = audit.Event
+type AuditMetadata = audit.Metadata
+type AuditRecorder = audit.Recorder

@@ -260,7 +260,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
-	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
 	if err != nil {
 		t.Fatalf("create department service: %v", err)
 	}

@@ -3,21 +3,19 @@ package dept
 import (
 	"context"
 	"fmt"
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"sort"
 	"strings"
 )
 
 type Service struct {
 	store Store
-	audit AuditRecorder
 }
 
-func NewService(s Store, a AuditRecorder) (*Service, error) {
+func NewService(s Store) (*Service, error) {
 	if s == nil {
 		return nil, fmt.Errorf("dept store is required")
 	}
-	return &Service{s, a}, nil
+	return &Service{s}, nil
 }
 func (s *Service) Tree(c context.Context) ([]Dept, error) { v, e := s.store.List(c); return tree(v), e }
 func (s *Service) Options(c context.Context) ([]Dept, error) {
@@ -60,11 +58,11 @@ func (s *Service) Create(c context.Context, m AuditMetadata, in Input) (Dept, er
 	if x {
 		return Dept{}, ErrConflict
 	}
-	v, e := s.store.Create(c, from(in, 0))
+	v, e := s.store.Create(c, from(in, 0), event(m, "dept.create", "dept", 0, "创建部门"))
 	if e != nil {
 		return v, e
 	}
-	return v, s.record(c, "dept.create", v.ID, "创建部门", m)
+	return v, nil
 }
 func (s *Service) Update(c context.Context, m AuditMetadata, id int64, in Input) (Dept, error) {
 	old, e := s.store.Find(c, id)
@@ -87,18 +85,36 @@ func (s *Service) Update(c context.Context, m AuditMetadata, id int64, in Input)
 	if x {
 		return Dept{}, ErrConflict
 	}
-	v, e := s.store.Update(c, from(in, id))
+	v, e := s.store.Update(c, from(in, id), event(m, "dept.update", "dept", id, "更新部门"))
 	if e != nil {
 		return v, e
 	}
-	return v, s.record(c, "dept.update", id, "更新部门", m)
+	return v, nil
 }
 func (s *Service) Delete(c context.Context, m AuditMetadata, id int64) error {
+	if e := s.deleteCheck(c, id); e != nil {
+		return e
+	}
+	if e := s.store.Delete(c, id, event(m, "dept.delete", "dept", id, "删除部门")); e != nil {
+		return e
+	}
+	return nil
+}
+func (s *Service) DeleteBatch(c context.Context, m AuditMetadata, ids []int64) error {
+	clean := unique(ids)
+	for _, id := range clean {
+		if e := s.deleteCheck(c, id); e != nil {
+			return e
+		}
+	}
+	return s.store.DeleteBatch(c, clean, event(m, "dept.delete", "dept", 0, "删除部门"))
+}
+func (s *Service) deleteCheck(c context.Context, id int64) error {
 	v, e := s.store.Find(c, id)
 	if e != nil {
 		return e
 	}
-	if v.IsBuiltin == 1 {
+	if v.IsBuiltin == BuiltinYes {
 		return ErrDeleteBuiltin
 	}
 	n, e := s.store.CountChildren(c, id)
@@ -115,17 +131,6 @@ func (s *Service) Delete(c context.Context, m AuditMetadata, id int64) error {
 	if n > 0 {
 		return ErrHasUsers
 	}
-	if e = s.store.Delete(c, id); e != nil {
-		return e
-	}
-	return s.record(c, "dept.delete", id, "删除部门", m)
-}
-func (s *Service) DeleteBatch(c context.Context, m AuditMetadata, ids []int64) error {
-	for _, id := range ids {
-		if e := s.Delete(c, m, id); e != nil {
-			return e
-		}
-	}
 	return nil
 }
 func (s *Service) SetStatus(c context.Context, m AuditMetadata, id int64, status int) error {
@@ -135,16 +140,24 @@ func (s *Service) SetStatus(c context.Context, m AuditMetadata, id int64, status
 	if _, e := s.store.Find(c, id); e != nil {
 		return e
 	}
-	if e := s.store.SetStatus(c, id, status); e != nil {
+	if e := s.store.SetStatus(c, id, status, event(m, "dept.status", "dept", id, "更新部门状态")); e != nil {
 		return e
 	}
-	return s.record(c, "dept.status", id, "更新部门状态", m)
+	return nil
 }
-func (s *Service) record(c context.Context, a string, id int64, sum string, m AuditMetadata) error {
-	if s.audit == nil {
-		return nil
+func event(m AuditMetadata, a, r string, id int64, sum string) AuditEvent {
+	return AuditEvent{Action: a, Resource: r, ResourceID: id, Summary: sum, Metadata: m}
+}
+func unique(ids []int64) []int64 {
+	seen := map[int64]bool{}
+	out := []int64{}
+	for _, id := range ids {
+		if id > 0 && !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
 	}
-	return s.audit.Record(c, rbac.AuditEvent{Action: a, Resource: "dept", ResourceID: id, Summary: sum, Metadata: m})
+	return out
 }
 func valid(v Input) error {
 	if v.ParentID < 0 || strings.TrimSpace(v.DeptName) == "" || strings.TrimSpace(v.DeptCode) == "" || v.Status < 0 || v.Status > 1 {

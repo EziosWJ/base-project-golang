@@ -65,7 +65,7 @@ func main() {
 		slog.Error("build RBAC service", "error", err)
 		os.Exit(1)
 	}
-	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build department service", "error", err)
 		os.Exit(1)
