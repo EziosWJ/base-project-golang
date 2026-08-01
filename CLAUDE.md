@@ -7,14 +7,14 @@
 ```
 project/
 ├── react-admin/   # 前端项目（React），直接在此开发
-├── base-api/      # 后端项目（Java），直接在此开发
+├── base-go-api/   # 后端项目（Go），直接在此开发
 ```
 
 ## 上下文管理规则
 
 **避免全量读取脚手架项目，按需读取：**
 
-1. **不要递归列出** `react-admin/` 或 `base-api/` 全部文件
+1. **不要递归列出** `react-admin/` 或 `base-go-api/` 全部文件
 2. **先读 task 文件**（`task/`）了解当前任务范围，再针对性读源码
 3. **用 Explore agent 搜索**，而不是直接 Read 整个目录
 4. **一次只读一个子模块**（如 `src/components/UserTable.tsx`），不要批量读整个目录
@@ -23,7 +23,7 @@ project/
 ## 工作模式
 
 - **直接在脚手架项目内开发**，不新建 `src/` 目录
-- push 已禁用，可以放心在 `react-admin/` 和 `base-api/` 中改动代码
+- push 已禁用，可以放心在 `react-admin/` 和 `base-go-api/` 中改动代码
 - 参考脚手架结构时，按需读取具体文件，不要批量扫描
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

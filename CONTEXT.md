@@ -9,8 +9,8 @@
 - **项目代号**: base-project-java 仓库
 - **仓库类型**: monorepo
 - **交流 / 输出语言**: 中文
-- **项目定位**: 已有 React 管理后台及 Java 参考后端；目标是新增 Go REST API 逐步替代 Java 后端，前端保持独立部署。
-- **当前后端事实**: `base-api/` 是 Java 行为参考；`base-go-api/` 已有可运行的 Go 平台（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），并已迁移认证、角色、菜单、部门、用户、字典、系统配置、本地文件管理和日志管理接口。文件内容存于配置的本地根目录（开发 Compose 使用持久化 Volume），数据库仅保存元数据和相对路径；删除保持 Java 兼容的元数据软删，不删除物理内容。所有已迁移管理模块的成功写操作写入操作审计日志；登录日志与操作日志的查询、详情与清空接口已迁移，清空受 `system.log-clear-enabled` 配置门控，操作日志查询通过 LEFT JOIN sys_user 回填 operator_name。全部已迁移接口均有 HTTP 契约测试与 PostgreSQL 集成测试覆盖，Swagger 随实现同步生成。
+- **项目定位**: React 管理后台 + Go REST API 后端（monorepo 单仓库），Java 参考后端已删除，接口统一在 `base-go-api/` 开发。
+- **当前后端事实**: `base-go-api/` 是可运行的 Go 后端（Gin、配置、PostgreSQL 连接池、Goose、统一响应、CORS、可观测性与 Swagger），已迁移认证、角色、菜单、部门、用户、字典、系统配置、本地文件管理和日志管理接口。文件内容存于配置的本地根目录（开发 Compose 使用持久化 Volume），数据库仅保存元数据和相对路径；删除保持元数据软删，不删除物理内容。所有管理模块的成功写操作写入操作审计日志；登录日志与操作日志的查询、详情与清空接口已迁移，清空受 `system.log-clear-enabled` 配置门控，操作日志查询通过 LEFT JOIN sys_user 回填 operator_name。全部已迁移接口均有 HTTP 契约测试与 PostgreSQL 集成测试覆盖，Swagger 随实现同步生成。Java 参考后端 `base-api/` 已删除（可从 git 历史恢复）。
 - **脚手架占位内容**: 脚手架里已出现大量"占位"示例（如 HelloWorld、UserTable、示例组件等），这些**不是真正的业务概念**，只是脚手架产物。真正的业务领域术语应来自后续的业务对话，而不是反向推导脚手架示例。
 
 ## 目录结构
@@ -18,8 +18,7 @@
 ```
 /
 ├── react-admin/      # 前端（管理后台 SPA）
-├── base-api/         # 现有 Java API（行为与接口参考）
-├── base-go-api/      # Go REST API（平台骨架已创建，业务模块逐步迁移）
+├── base-go-api/      # Go REST API（后端接口在此开发）
 ├── record/           # 项目过程记录
 ├── docs/
 │   ├── adr/          # 架构决策记录（ADR）
@@ -38,15 +37,7 @@
 - 图标: lucide-react
 - Lint: ESLint + typescript-eslint
 
-### 当前后端 base-api（已确认，来自 Maven manifest 与配置）
-- 框架: Spring Boot 3（Java）
-- ORM: MyBatis-Plus（含 jsqlparser）
-- 认证/鉴权: Sa-Token
-- 验证: spring-boot-starter-validation
-- 横切关注点: spring-boot-starter-aop
-- 运行时数据库配置: MySQL JDBC；`application.yml` 的默认连接仍指向 MySQL。
-
-### 目标 Go 后端（架构已决策，平台骨架已落地）
+### 当前后端 base-go-api（Go，唯一后端）
 
 - 形态: 模块化单体（Modular Monolith），只提供 REST API；不提前拆微服务。
 - Web: Gin；数据访问: GORM + Go 标准 `database/sql`；Schema: Goose migration。
@@ -121,8 +112,7 @@ base-go-api/
 ## 现状与目标差异
 
 - Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose、Swagger 与 JWT 会话认证能力，并可执行格式化、测试与静态检查；Excelize 及其余业务模块仍按 Issue 顺序实施。
-- Java 服务仍使用 Spring Boot、MyBatis-Plus、Sa-Token 和 MySQL JDBC，且其默认配置仍为 MySQL；这与 Go 目标架构不同，迁移前不得擅自把 Java 行为改写为目标实现。
-- ADR-0002 规定迁移期间保持既有 `/api/**`、响应结构和 Bearer Token 外部契约；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
+- ADR-0002 规定的既有 `/api/**`、响应结构和 Bearer Token 外部契约已实现；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
 
 ## 已知领域术语（初始为空占位——等业务浮现后填充）
 
@@ -135,7 +125,7 @@ base-go-api/
 ## 边界与职责约定（已确认）
 
 - **前端改动范围**: `react-admin/src/**`，不要新建顶层 `src/`。
-- **现有后端改动范围**: `base-api/**`；规划 Go 后端创建后在 `base-go-api/**` 内开发，不能在仓库根目录新建散落的 Go `src/`。
+- **后端改动范围**: `base-go-api/**`，不要在仓库根目录新建散落的 Go `src/`。
 - **脚手架结构参考**: 只看单个子模块，不要批量扫目录。
 - **架构参考**: 只在 `docs/` 或 `experience/` 下找摘要。
 
