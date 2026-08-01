@@ -311,7 +311,7 @@ func (emptyUserStore) Create(context.Context, usermgmt.User, usermgmt.AuditEvent
 func (emptyUserStore) Update(context.Context, usermgmt.User, bool, usermgmt.AuditEvent) error {
 	return nil
 }
-func (emptyUserStore) Delete(context.Context, int64, usermgmt.AuditEvent) error  { return nil }
+func (emptyUserStore) Delete(context.Context, int64, usermgmt.AuditEvent) error { return nil }
 func (emptyUserStore) DeleteUsers(context.Context, []int64, usermgmt.AuditEvent) error {
 	return nil
 }
@@ -367,7 +367,9 @@ func (emptyDictionaryStore) CreateData(context.Context, dictionary.DictData, dic
 func (emptyDictionaryStore) UpdateData(context.Context, dictionary.DictData, dictionary.AuditEvent) (dictionary.DictData, error) {
 	return dictionary.DictData{}, nil
 }
-func (emptyDictionaryStore) DeleteData(context.Context, []int64, dictionary.AuditEvent) error { return nil }
+func (emptyDictionaryStore) DeleteData(context.Context, []int64, dictionary.AuditEvent) error {
+	return nil
+}
 func (emptyDictionaryStore) Items(context.Context, string) ([]dictionary.DictItem, error) {
 	return nil, nil
 }

@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
@@ -65,15 +64,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	service, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	router, err := app.Build(config.Config{
-		Environment: config.EnvironmentTest,
-		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
-		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil, nil, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -132,15 +123,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
-	if err != nil {
-		t.Fatalf("create RBAC service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -191,15 +174,7 @@ func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
-	if err != nil {
-		t.Fatalf("create RBAC service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -251,12 +226,7 @@ func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, configService, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build sysconfig API: %v", err)
 	}
@@ -306,24 +276,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	auditRecorder := audit.NewRecorder(database.GORM)
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
-	if err != nil {
-		t.Fatalf("create RBAC service: %v", err)
-	}
-	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
-	if err != nil {
-		t.Fatalf("create department service: %v", err)
-	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), "admin123")
-	if err != nil {
-		t.Fatalf("create user service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build department and user API: %v", err)
 	}
@@ -388,17 +341,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	runMigrations(t, projectRoot(t), temporary.dsn)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	dictRepository := dictionary.NewRepository(database.GORM)
-	dictService, err := dictionary.NewService(dictRepository, dictRepository)
-	if err != nil {
-		t.Fatal(err)
-	}
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,17 +376,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	audit := audit.NewRecorder(database.GORM)
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
-	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
-	if err != nil {
-		t.Fatalf("create log service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, configService, nil, logService)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build log management API: %v", err)
 	}
@@ -538,20 +471,8 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
 	storageRoot := t.TempDir()
-	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
-	if err != nil {
-		t.Fatalf("create file storage: %v", err)
-	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
-	if err != nil {
-		t.Fatalf("create file service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, nil, fileService, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, storageRoot))
 	if err != nil {
 		t.Fatalf("build file management API: %v", err)
 	}
@@ -896,6 +817,57 @@ func testAPIConfig() config.Config {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
+	}
+}
+
+// testDependencies constructs every business service from real repositories so
+// that app.Build receives a complete named dependency set, as required by the
+// HTTP application contract. Each test overrides only the modules it exercises.
+func testDependencies(t *testing.T, database *platformdatabase.Database, storageRoot string) app.Dependencies {
+	t.Helper()
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create RBAC service: %v", err)
+	}
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create department service: %v", err)
+	}
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), "admin123")
+	if err != nil {
+		t.Fatalf("create user service: %v", err)
+	}
+	dictRepository := dictionary.NewRepository(database.GORM)
+	dictionaryService, err := dictionary.NewService(dictRepository)
+	if err != nil {
+		t.Fatalf("create dictionary service: %v", err)
+	}
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
+	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
+	if err != nil {
+		t.Fatalf("create file storage: %v", err)
+	}
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
+	if err != nil {
+		t.Fatalf("create file service: %v", err)
+	}
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
+	if err != nil {
+		t.Fatalf("create log service: %v", err)
+	}
+	return app.Dependencies{
+		Auth:       authService,
+		RBAC:       rbacService,
+		Department: deptService,
+		User:       userService,
+		Dictionary: dictionaryService,
+		SysConfig:  configService,
+		File:       fileService,
+		Log:        logService,
 	}
 }
 
