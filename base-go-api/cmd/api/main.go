@@ -92,7 +92,7 @@ func main() {
 		slog.Error("build file service", "error", err)
 		os.Exit(1)
 	}
-	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, auditRecorder)
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
 	if err != nil {
 		slog.Error("build log service", "error", err)
 		os.Exit(1)

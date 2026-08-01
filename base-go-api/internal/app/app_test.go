@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
@@ -85,7 +86,7 @@ func (f *fakeStores) deps() Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	logService, err := logmgmt.NewService(emptyLogStore{}, configService, nil)
+	logService, err := logmgmt.NewService(emptyLogStore{}, configService)
 	if err != nil {
 		panic(err)
 	}
@@ -383,14 +384,14 @@ func (emptyLogStore) LoginLogPage(context.Context, logmgmt.LoginLogPageQuery) (l
 func (emptyLogStore) FindLoginLog(context.Context, int64) (*logmgmt.LoginLog, error) {
 	return nil, nil
 }
-func (emptyLogStore) ClearLoginLogs(context.Context) error { return nil }
+func (emptyLogStore) ClearLoginLogs(context.Context, audit.Event) error { return nil }
 func (emptyLogStore) OperLogPage(context.Context, logmgmt.OperLogPageQuery) (logmgmt.Page[logmgmt.OperLogRecord], error) {
 	return logmgmt.Page[logmgmt.OperLogRecord]{}, nil
 }
 func (emptyLogStore) FindOperLog(context.Context, int64) (*logmgmt.OperLogDetail, error) {
 	return nil, nil
 }
-func (emptyLogStore) ClearOperLogs(context.Context) error { return nil }
+func (emptyLogStore) ClearOperLogs(context.Context, audit.Event) error { return nil }
 
 type memoryStorage struct{}
 

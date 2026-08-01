@@ -3,6 +3,7 @@ package logmgmt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,9 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 )
 
@@ -31,7 +32,7 @@ func newHandlerRouter(t *testing.T, service HandlerService) *gin.Engine {
 
 func newServiceRouter(t *testing.T, store Store, config *configStub) *gin.Engine {
 	t.Helper()
-	service, err := NewService(store, config, new(memoryAudit))
+	service, err := NewService(store, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,8 +190,7 @@ func TestClearOperLogsGatedByConfigSwitch(t *testing.T) {
 func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
-	audit := new(memoryAudit)
-	service, err := NewService(store, &configStub{value: "true"}, audit)
+	service, err := NewService(store, &configStub{value: "true"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,10 +204,10 @@ func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
-	if !store.cleared || len(audit.events) != 1 {
-		t.Fatalf("cleared=%v audit=%d", store.cleared, len(audit.events))
+	if !store.cleared || len(store.events) != 1 {
+		t.Fatalf("cleared=%v audit=%d", store.cleared, len(store.events))
 	}
-	event := audit.events[0]
+	event := store.events[0]
 	if event.Action != "login-log.clear" || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodDelete || event.Metadata.RequestURL != "/api/system/login-log/clear" {
 		t.Fatalf("audit event = %+v", event)
 	}
@@ -216,8 +216,7 @@ func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 func TestClearOperLogsSucceedsAndAudits(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
-	audit := new(memoryAudit)
-	service, err := NewService(store, nil, audit)
+	service, err := NewService(store, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,8 +227,8 @@ func TestClearOperLogsSucceedsAndAudits(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
-	if !store.cleared || len(audit.events) != 1 || audit.events[0].Action != "oper-log.clear" {
-		t.Fatalf("cleared=%v audit=%d events=%+v", store.cleared, len(audit.events), audit.events)
+	if !store.cleared || len(store.events) != 1 || store.events[0].Action != "oper-log.clear" {
+		t.Fatalf("cleared=%v audit=%d events=%+v", store.cleared, len(store.events), store.events)
 	}
 }
 
@@ -240,6 +239,22 @@ func TestClearWithoutConfigDefaultsToEnabled(t *testing.T) {
 	status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
 	if status != http.StatusOK || payload["code"].(float64) != 200 || !store.cleared {
 		t.Fatalf("status=%d payload=%v cleared=%v", status, payload, store.cleared)
+	}
+}
+
+func TestClearRollsBackWhenAuditFails(t *testing.T) {
+	t.Parallel()
+	for _, path := range []string{"/api/system/login-log/clear", "/api/system/oper-log/clear"} {
+		store := newMemoryStore()
+		store.auditError = errors.New("audit write failed")
+		router := newServiceRouter(t, store, &configStub{value: "true"})
+		status, payload := getBody(t, router, http.MethodDelete, path)
+		if status != http.StatusInternalServerError {
+			t.Fatalf("%s status=%d payload=%v", path, status, payload)
+		}
+		if store.cleared {
+			t.Fatalf("%s logs must roll back when audit fails", path)
+		}
 	}
 }
 
@@ -268,6 +283,8 @@ type memoryStore struct {
 	operLogDetail *OperLogDetail
 	cleared       bool
 	queries       []string
+	events        []audit.Event
+	auditError    error
 }
 
 func newMemoryStore() *memoryStore { return &memoryStore{} }
@@ -300,9 +317,13 @@ func (s *memoryStore) FindLoginLog(_ context.Context, id int64) (*LoginLog, erro
 	return nil, ErrNotFound
 }
 
-func (s *memoryStore) ClearLoginLogs(context.Context) error {
+func (s *memoryStore) ClearLoginLogs(_ context.Context, e audit.Event) error {
+	if s.auditError != nil {
+		return s.auditError
+	}
 	s.cleared = true
 	s.loginLogs = nil
+	s.events = append(s.events, e)
 	return nil
 }
 
@@ -335,9 +356,13 @@ func (s *memoryStore) FindOperLog(_ context.Context, id int64) (*OperLogDetail, 
 	return nil, ErrNotFound
 }
 
-func (s *memoryStore) ClearOperLogs(context.Context) error {
+func (s *memoryStore) ClearOperLogs(_ context.Context, e audit.Event) error {
+	if s.auditError != nil {
+		return s.auditError
+	}
 	s.cleared = true
 	s.operLogs = nil
+	s.events = append(s.events, e)
 	return nil
 }
 
@@ -348,11 +373,4 @@ func (c *configStub) GetByKey(context.Context, string) (*sysconfig.ByKey, error)
 		return nil, sysconfig.ErrNotFound
 	}
 	return &sysconfig.ByKey{ConfigValue: c.value, ValueType: "BOOLEAN"}, nil
-}
-
-type memoryAudit struct{ events []rbac.AuditEvent }
-
-func (a *memoryAudit) Record(_ context.Context, event rbac.AuditEvent) error {
-	a.events = append(a.events, event)
-	return nil
 }
