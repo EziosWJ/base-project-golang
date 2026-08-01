@@ -72,7 +72,7 @@ func (f *fakeStores) deps() Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	userService, err := usermgmt.NewService(emptyUserStore{}, nil, "admin123")
+	userService, err := usermgmt.NewService(emptyUserStore{}, "admin123")
 	if err != nil {
 		panic(err)
 	}
@@ -289,17 +289,28 @@ func (emptyUserStore) UsernameExists(context.Context, string, int64) (bool, erro
 }
 func (emptyUserStore) DeptExists(context.Context, int64) (bool, error)      { return false, nil }
 func (emptyUserStore) RolesExist(context.Context, []int64) (bool, error)    { return false, nil }
-func (emptyUserStore) Create(context.Context, usermgmt.User) (usermgmt.User, error) {
+func (emptyUserStore) Create(context.Context, usermgmt.User, usermgmt.AuditEvent) (usermgmt.User, error) {
 	return usermgmt.User{}, nil
 }
-func (emptyUserStore) Update(context.Context, usermgmt.User, bool) error { return nil }
-func (emptyUserStore) Delete(context.Context, int64) error               { return nil }
-func (emptyUserStore) AssignRoles(context.Context, int64, []int64) error { return nil }
-func (emptyUserStore) ResetPassword(context.Context, int64, string) error {
+func (emptyUserStore) Update(context.Context, usermgmt.User, bool, usermgmt.AuditEvent) error {
 	return nil
 }
-func (emptyUserStore) ChangePassword(context.Context, int64, string) error { return nil }
-func (emptyUserStore) UpdateAvatar(context.Context, int64, *string) error  { return nil }
+func (emptyUserStore) Delete(context.Context, int64, usermgmt.AuditEvent) error  { return nil }
+func (emptyUserStore) DeleteUsers(context.Context, []int64, usermgmt.AuditEvent) error {
+	return nil
+}
+func (emptyUserStore) AssignRoles(context.Context, int64, []int64, usermgmt.AuditEvent) error {
+	return nil
+}
+func (emptyUserStore) ResetPassword(context.Context, int64, string, usermgmt.AuditEvent) error {
+	return nil
+}
+func (emptyUserStore) ChangePassword(context.Context, int64, string, usermgmt.AuditEvent) error {
+	return nil
+}
+func (emptyUserStore) UpdateAvatar(context.Context, int64, *string, usermgmt.AuditEvent) error {
+	return nil
+}
 
 type emptyDictionaryStore struct{}
 
