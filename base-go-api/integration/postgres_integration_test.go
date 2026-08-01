@@ -22,6 +22,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -66,7 +67,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil, nil, nil, nil, nil, nil)
+	}, database, service, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -133,7 +134,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create RBAC service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -201,7 +202,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user service: %v", err)
 	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("build department and user API: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	}
 	audit := rbac.NewGORMAuditRecorder(database.GORM)
 	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil)
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,6 +301,105 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	assertEnvelopeCode(t, disabled, http.StatusOK, 200, "success")
 	missingKey := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", token)
 	assertEnvelopeCode(t, missingKey, http.StatusOK, 404, "数据不存在")
+}
+
+func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	audit := rbac.NewGORMAuditRecorder(database.GORM)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, audit)
+	if err != nil {
+		t.Fatalf("create log service: %v", err)
+	}
+	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, configService, nil, logService)
+	if err != nil {
+		t.Fatalf("build log management API: %v", err)
+	}
+
+	failedLogin := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"wrong"}`, "")
+	assertEnvelopeCode(t, failedLogin, http.StatusOK, 400, "用户名或密码错误")
+	token := loginAdmin(t, router)
+
+	createdConfig := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"日志测试","configKey":"log.demo","configValue":"on"}`, token)
+	assertEnvelopeCode(t, createdConfig, http.StatusOK, 200, "success")
+
+	loginPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10&username=admin", "", token)
+	if loginPage.Code != http.StatusOK || !strings.Contains(loginPage.Body.String(), `"total":2`) || !strings.Contains(loginPage.Body.String(), `"loginStatus":"FAIL"`) {
+		t.Fatalf("login-log page = status %d body=%s", loginPage.Code, loginPage.Body.String())
+	}
+	operPage := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10&operatorName=admin", "", token)
+	if operPage.Code != http.StatusOK || !strings.Contains(operPage.Body.String(), `"moduleName":"config"`) || !strings.Contains(operPage.Body.String(), `"operatorName":"admin"`) || !strings.Contains(operPage.Body.String(), `"total":1`) {
+		t.Fatalf("oper-log page = status %d body=%s", operPage.Code, operPage.Body.String())
+	}
+
+	var detailID int64
+	var operLogCount int64
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='config' AND operator_id=1").Count(&operLogCount).Error; err != nil {
+		t.Fatalf("count operation logs: %v", err)
+	}
+	if operLogCount != 1 {
+		t.Fatalf("operation log count = %d, want 1", operLogCount)
+	}
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='config' AND operator_id=1").Pluck("id", &detailID).Error; err != nil {
+		t.Fatalf("load operation log id: %v", err)
+	}
+
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/oper-log/%d", detailID), "", token)
+	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), `"operatorName":"admin"`) || !strings.Contains(detail.Body.String(), `"moduleName":"config"`) {
+		t.Fatalf("oper-log detail = status %d body=%s", detail.Code, detail.Body.String())
+	}
+	missing := serveJSON(router, http.MethodGet, "/api/system/oper-log/99999", "", token)
+	assertEnvelopeCode(t, missing, http.StatusOK, 404, "数据不存在")
+	missingLogin := serveJSON(router, http.MethodGet, "/api/system/login-log/99999", "", token)
+	assertEnvelopeCode(t, missingLogin, http.StatusOK, 404, "数据不存在")
+
+	setSwitch := func(value string) {
+		t.Helper()
+		if err := database.GORM.Table("sys_config").Where("id=1").Update("config_value", value).Error; err != nil {
+			t.Fatalf("set log-clear switch: %v", err)
+		}
+	}
+	setSwitch("false")
+	forbidden := serveJSON(router, http.MethodDelete, "/api/system/login-log/clear", "", token)
+	assertEnvelopeCode(t, forbidden, http.StatusOK, 403, "无权限")
+	stillPresent := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10", "", token)
+	if stillPresent.Code != http.StatusOK || !strings.Contains(stillPresent.Body.String(), `"total":2`) {
+		t.Fatalf("login logs must survive a forbidden clear: status %d body=%s", stillPresent.Code, stillPresent.Body.String())
+	}
+
+	forbidden = serveJSON(router, http.MethodDelete, "/api/system/oper-log/clear", "", token)
+	assertEnvelopeCode(t, forbidden, http.StatusOK, 403, "无权限")
+	operLogsSurvive := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10", "", token)
+	if operLogsSurvive.Code != http.StatusOK || !strings.Contains(operLogsSurvive.Body.String(), `"total":1`) {
+		t.Fatalf("oper logs must survive a forbidden clear: status %d body=%s", operLogsSurvive.Code, operLogsSurvive.Body.String())
+	}
+
+	setSwitch("true")
+	cleared := serveJSON(router, http.MethodDelete, "/api/system/login-log/clear", "", token)
+	assertEnvelopeCode(t, cleared, http.StatusOK, 200, "success")
+	emptyPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10", "", token)
+	if emptyPage.Code != http.StatusOK || !strings.Contains(emptyPage.Body.String(), `"total":0`) {
+		t.Fatalf("login logs must be cleared: status %d body=%s", emptyPage.Code, emptyPage.Body.String())
+	}
+	var clearAuditCount int64
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='login-log'").Count(&clearAuditCount).Error; err != nil {
+		t.Fatalf("count clear audit logs: %v", err)
+	}
+	if clearAuditCount != 1 {
+		t.Fatalf("clear audit count = %d, want 1", clearAuditCount)
+	}
 }
 
 type temporaryPostgres struct {

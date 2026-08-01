@@ -17,6 +17,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -90,8 +91,13 @@ func main() {
 		slog.Error("build file service", "error", err)
 		os.Exit(1)
 	}
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, auditRecorder)
+	if err != nil {
+		slog.Error("build log service", "error", err)
+		os.Exit(1)
+	}
 
-	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService, fileService)
+	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService, fileService, logService)
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

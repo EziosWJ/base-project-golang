@@ -13,6 +13,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -27,7 +28,7 @@ type Application struct {
 
 // New assembles the HTTP router. Database readiness is supplied by the caller
 // so that the application layer does not depend on a concrete database driver.
-func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service) (*Application, error) {
+func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service, logService *logmgmt.Service) (*Application, error) {
 	logger, err := newLogger(cfg)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 		}
 		auth.RegisterRoutes(router, handler)
 	}
-	if rbacService != nil || deptService != nil || userService != nil || dictionaryService != nil || configService != nil || fileService != nil {
+	if rbacService != nil || deptService != nil || userService != nil || dictionaryService != nil || configService != nil || fileService != nil || logService != nil {
 		if authService == nil {
 			return nil, fmt.Errorf("system management services require authentication service")
 		}
@@ -103,6 +104,13 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 			}
 			filemgmt.RegisterRoutes(system, handler)
 		}
+		if logService != nil {
+			handler, err := logmgmt.NewHandler(logService)
+			if err != nil {
+				return nil, fmt.Errorf("create log handler: %w", err)
+			}
+			logmgmt.RegisterRoutes(system, handler)
+		}
 	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
@@ -113,8 +121,8 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, authService
 }
 
 // Build constructs a router for callers that do not need the process logger.
-func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service) (*gin.Engine, error) {
-	application, err := New(cfg, readiness, authService, rbacService, deptService, userService, dictionaryService, configService, fileService)
+func Build(cfg config.Config, readiness platformhttp.ReadinessChecker, authService *auth.Service, rbacService *rbac.Service, deptService *dept.Service, userService *usermgmt.Service, dictionaryService *dictionary.Service, configService *sysconfig.Service, fileService *filemgmt.Service, logService *logmgmt.Service) (*gin.Engine, error) {
+	application, err := New(cfg, readiness, authService, rbacService, deptService, userService, dictionaryService, configService, fileService, logService)
 	if err != nil {
 		return nil, err
 	}
