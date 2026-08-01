@@ -5,7 +5,13 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
+
+type AuditMetadata = audit.Metadata
+type AuditEvent = audit.Event
+type AuditRecorder = audit.Recorder
 
 const (
 	StatusDisabled = 0
@@ -100,43 +106,28 @@ type MenuInput struct {
 	SortOrder, Visible, Status                                 int
 }
 
-type AuditMetadata struct {
-	ActorID                                                   int64
-	RequestID, ClientIP, UserAgent, RequestMethod, RequestURL string
-}
-type AuditEvent struct {
-	Action, Resource string
-	ResourceID       int64
-	Summary          string
-	Metadata         AuditMetadata
-}
-type AuditRecorder interface {
-	Record(context.Context, AuditEvent) error
-}
-type noOpAudit struct{}
-
-func (noOpAudit) Record(context.Context, AuditEvent) error { return nil }
-
 type Store interface {
 	PageRoles(context.Context, RolePageQuery) (Page[Role], error)
 	FindRole(context.Context, int64) (*Role, error)
 	RoleCodeExists(context.Context, string, int64) (bool, error)
-	CreateRole(context.Context, Role) (Role, error)
-	UpdateRole(context.Context, Role) (Role, error)
+	CreateRole(context.Context, Role, AuditEvent) (Role, error)
+	UpdateRole(context.Context, Role, AuditEvent) (Role, error)
 	CountUsersByRole(context.Context, int64) (int64, error)
-	DeleteRole(context.Context, int64) error
-	SetRoleStatus(context.Context, int64, int) error
+	DeleteRole(context.Context, int64, AuditEvent) error
+	DeleteRoles(context.Context, []int64, AuditEvent) error
+	SetRoleStatus(context.Context, int64, int, AuditEvent) error
 	RoleMenuIDs(context.Context, int64) ([]int64, error)
-	ReplaceRoleMenus(context.Context, int64, []int64) error
+	ReplaceRoleMenus(context.Context, int64, []int64, AuditEvent) error
 	EnabledRoles(context.Context) ([]Role, error)
 	ListMenus(context.Context) ([]Menu, error)
 	PageMenus(context.Context, MenuPageQuery) (Page[Menu], error)
 	FindMenu(context.Context, int64) (*Menu, error)
 	PermissionCodeExists(context.Context, string, int64) (bool, error)
-	CreateMenu(context.Context, Menu) (Menu, error)
-	UpdateMenu(context.Context, Menu) (Menu, error)
+	CreateMenu(context.Context, Menu, AuditEvent) (Menu, error)
+	UpdateMenu(context.Context, Menu, AuditEvent) (Menu, error)
 	CountChildren(context.Context, int64) (int64, error)
 	CountRolesByMenu(context.Context, int64) (int64, error)
-	DeleteMenu(context.Context, int64) error
-	SetMenuStatus(context.Context, int64, int) error
+	DeleteMenu(context.Context, int64, AuditEvent) error
+	DeleteMenus(context.Context, []int64, AuditEvent) error
+	SetMenuStatus(context.Context, int64, int, AuditEvent) error
 }

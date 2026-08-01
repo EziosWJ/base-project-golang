@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/EziosWJ/base-project-golang/base-go-api/docs"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/app"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
@@ -58,8 +59,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
+	auditRecorder := audit.NewRecorder(database.GORM)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build RBAC service", "error", err)
 		os.Exit(1)
