@@ -3,15 +3,16 @@ package sysconfig
 import (
 	"context"
 	"errors"
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
-	platform "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
+	platform "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const (
@@ -65,20 +66,16 @@ type Page struct {
 	Page     int      `json:"page"`
 	PageSize int      `json:"pageSize"`
 }
-type Audit = rbac.AuditRecorder
-type noop struct{}
-
-func (noop) Record(context.Context, rbac.AuditEvent) error { return nil }
-
 type Store interface {
 	Page(context.Context, Query) (Page, error)
 	Find(context.Context, int64) (*Config, error)
 	ByKey(context.Context, string) (*ByKey, error)
 	KeyExists(context.Context, string, int64) (bool, error)
-	Create(context.Context, Config) (Config, error)
-	Update(context.Context, Config) error
-	Delete(context.Context, int64) error
-	SetStatus(context.Context, int64, int) error
+	Create(context.Context, Config, audit.Event) (Config, error)
+	Update(context.Context, Config, audit.Event) error
+	Delete(context.Context, int64, audit.Event) error
+	DeleteBatch(context.Context, []int64, audit.Event) error
+	SetStatus(context.Context, int64, int, audit.Event) error
 }
 type Repository struct{ db *gorm.DB }
 
@@ -126,30 +123,55 @@ func (r *Repository) KeyExists(c context.Context, k string, x int64) (bool, erro
 	e := r.db.WithContext(c).Model(&Config{}).Where("config_key=? AND deleted=0 AND id<>?", k, x).Count(&n).Error
 	return n > 0, e
 }
-func (r *Repository) Create(c context.Context, v Config) (Config, error) {
-	e := r.db.WithContext(c).Create(&v).Error
-	return v, e
+func (r *Repository) Create(c context.Context, v Config, e audit.Event) (Config, error) {
+	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&v).Error; err != nil {
+			return err
+		}
+		e.ResourceID = v.ID
+		return audit.RecordOn(c, tx, e)
+	})
+	return v, err
 }
-func (r *Repository) Update(c context.Context, v Config) error {
-	return r.db.WithContext(c).Model(&Config{}).Where("id=?", v.ID).Updates(v).Error
+func (r *Repository) Update(c context.Context, v Config, e audit.Event) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Config{}).Where("id=?", v.ID).Updates(v).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(c, tx, e)
+	})
 }
-func (r *Repository) Delete(c context.Context, id int64) error {
-	return r.db.WithContext(c).Model(&Config{}).Where("id=?", id).Update("deleted", 1).Error
+func (r *Repository) Delete(c context.Context, id int64, e audit.Event) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Config{}).Where("id=?", id).Update("deleted", 1).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(c, tx, e)
+	})
 }
-func (r *Repository) SetStatus(c context.Context, id int64, s int) error {
-	return r.db.WithContext(c).Model(&Config{}).Where("id=?", id).Update("status", s).Error
+func (r *Repository) DeleteBatch(c context.Context, ids []int64, e audit.Event) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Config{}).Where("id IN ?", ids).Update("deleted", 1).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(c, tx, e)
+	})
+}
+func (r *Repository) SetStatus(c context.Context, id int64, s int, e audit.Event) error {
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Config{}).Where("id=?", id).Update("status", s).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(c, tx, e)
+	})
 }
 
 type Service struct {
 	store Store
-	audit Audit
 }
 
-func NewService(s Store, a Audit) *Service {
-	if a == nil {
-		a = noop{}
-	}
-	return &Service{s, a}
+func NewService(s Store) *Service {
+	return &Service{s}
 }
 func (s *Service) Page(c context.Context, q Query) (Page, error) {
 	if q.Page < 1 {
@@ -165,7 +187,7 @@ func (s *Service) Page(c context.Context, q Query) (Page, error) {
 }
 func (s *Service) Detail(c context.Context, id int64) (*Config, error)  { return s.store.Find(c, id) }
 func (s *Service) GetByKey(c context.Context, k string) (*ByKey, error) { return s.store.ByKey(c, k) }
-func (s *Service) Create(c context.Context, m rbac.AuditMetadata, in Input) error {
+func (s *Service) Create(c context.Context, m audit.Metadata, in Input) error {
 	if e := valid(in); e != nil {
 		return e
 	}
@@ -176,13 +198,10 @@ func (s *Service) Create(c context.Context, m rbac.AuditMetadata, in Input) erro
 	if x {
 		return ErrKey
 	}
-	v, e := s.store.Create(c, makeConfig(in, 0))
-	if e != nil {
-		return e
-	}
-	return s.audit.Record(c, rbac.AuditEvent{Action: "config.create", Resource: "config", ResourceID: v.ID, Summary: "创建配置", Metadata: m})
+	_, e = s.store.Create(c, makeConfig(in, 0), event(m, "config.create", "config", 0, "创建配置"))
+	return e
 }
-func (s *Service) Update(c context.Context, m rbac.AuditMetadata, id int64, in Input) error {
+func (s *Service) Update(c context.Context, m audit.Metadata, id int64, in Input) error {
 	old, e := s.store.Find(c, id)
 	if e != nil {
 		return e
@@ -200,12 +219,9 @@ func (s *Service) Update(c context.Context, m rbac.AuditMetadata, id int64, in I
 	if x {
 		return ErrKey
 	}
-	if e = s.store.Update(c, makeConfig(in, id)); e != nil {
-		return e
-	}
-	return s.audit.Record(c, rbac.AuditEvent{Action: "config.update", Resource: "config", ResourceID: id, Summary: "更新配置", Metadata: m})
+	return s.store.Update(c, makeConfig(in, id), event(m, "config.update", "config", id, "更新配置"))
 }
-func (s *Service) Delete(c context.Context, m rbac.AuditMetadata, id int64) error {
+func (s *Service) Delete(c context.Context, m audit.Metadata, id int64) error {
 	v, e := s.store.Find(c, id)
 	if e != nil {
 		return e
@@ -213,40 +229,49 @@ func (s *Service) Delete(c context.Context, m rbac.AuditMetadata, id int64) erro
 	if v.IsBuiltin == builtin {
 		return ErrBuiltin
 	}
-	if e = s.store.Delete(c, id); e != nil {
-		return e
-	}
-	return s.audit.Record(c, rbac.AuditEvent{Action: "config.delete", Resource: "config", ResourceID: id, Summary: "删除配置", Metadata: m})
+	return s.store.Delete(c, id, event(m, "config.delete", "config", id, "删除配置"))
 }
-func (s *Service) DeleteBatch(c context.Context, m rbac.AuditMetadata, ids []int64) error {
-	for _, id := range ids {
+func (s *Service) DeleteBatch(c context.Context, m audit.Metadata, ids []int64) error {
+	clean := unique(ids)
+	for _, id := range clean {
 		v, e := s.store.Find(c, id)
-		if e == nil && v.IsBuiltin != builtin {
-			if e = s.Delete(c, m, id); e != nil {
-				return e
-			}
+		if e != nil {
+			return e
+		}
+		if v.IsBuiltin == builtin {
+			return ErrBuiltin
 		}
 	}
-	return nil
+	return s.store.DeleteBatch(c, clean, event(m, "config.batch-delete", "config", 0, "批量删除配置"))
 }
-func (s *Service) Status(c context.Context, m rbac.AuditMetadata, id, st int64) error {
-	_, e := s.store.Find(c, id)
-	if e != nil {
-		return e
-	}
+func (s *Service) Status(c context.Context, m audit.Metadata, id, st int64) error {
 	if st < 0 || st > 1 {
 		return ErrInvalid
 	}
-	if e = s.store.SetStatus(c, id, int(st)); e != nil {
+	if _, e := s.store.Find(c, id); e != nil {
 		return e
 	}
-	return s.audit.Record(c, rbac.AuditEvent{Action: "config.status", Resource: "config", ResourceID: id, Summary: "更新配置状态", Metadata: m})
+	return s.store.SetStatus(c, id, int(st), event(m, "config.status", "config", id, "更新配置状态"))
 }
 func valid(v Input) error {
 	if strings.TrimSpace(v.ConfigName) == "" || len(v.ConfigName) > 100 || strings.TrimSpace(v.ConfigKey) == "" || len(v.ConfigKey) > 100 || len(v.ConfigValue) > 500 || (v.Status != nil && (*v.Status < 0 || *v.Status > 1)) {
 		return ErrInvalid
 	}
 	return nil
+}
+func event(m audit.Metadata, a, r string, id int64, sum string) audit.Event {
+	return audit.Event{Action: a, Resource: r, ResourceID: id, Summary: sum, Metadata: m}
+}
+func unique(ids []int64) []int64 {
+	seen := map[int64]bool{}
+	out := []int64{}
+	for _, id := range ids {
+		if id > 0 && !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	return out
 }
 func makeConfig(v Input, id int64) Config {
 	if v.ConfigType == "" {
@@ -450,10 +475,10 @@ func configID(c *gin.Context) (int64, bool) {
 	}
 	return id, true
 }
-func configMeta(c *gin.Context) rbac.AuditMetadata {
+func configMeta(c *gin.Context) audit.Metadata {
 	p, _ := auth.PrincipalFromContext(c.Request.Context())
 	m, _ := platform.RequestMetaFromContext(c.Request.Context())
-	return rbac.AuditMetadata{ActorID: p.UserID, RequestID: m.RequestID, ClientIP: m.ClientIP, UserAgent: m.UserAgent, RequestMethod: c.Request.Method, RequestURL: c.Request.URL.RequestURI()}
+	return audit.Metadata{ActorID: p.UserID, RequestID: m.RequestID, ClientIP: m.ClientIP, UserAgent: m.UserAgent, RequestMethod: c.Request.Method, RequestURL: c.Request.URL.RequestURI()}
 }
 func badConfig(c *gin.Context) {
 	platform.WriteError(c, http.StatusBadRequest, 400, "参数错误", nil)

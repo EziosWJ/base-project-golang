@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dept"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
@@ -80,7 +81,7 @@ func (f *fakeStores) deps() Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	configService := sysconfig.NewService(emptyConfigStore{}, nil)
+	configService := sysconfig.NewService(emptyConfigStore{})
 	fileService, err := filemgmt.NewService(emptyFileStore{}, f.file, nil)
 	if err != nil {
 		panic(err)
@@ -351,12 +352,13 @@ func (emptyConfigStore) ByKey(context.Context, string) (*sysconfig.ByKey, error)
 	return nil, nil
 }
 func (emptyConfigStore) KeyExists(context.Context, string, int64) (bool, error) { return false, nil }
-func (emptyConfigStore) Create(context.Context, sysconfig.Config) (sysconfig.Config, error) {
+func (emptyConfigStore) Create(context.Context, sysconfig.Config, audit.Event) (sysconfig.Config, error) {
 	return sysconfig.Config{}, nil
 }
-func (emptyConfigStore) Update(context.Context, sysconfig.Config) error { return nil }
-func (emptyConfigStore) Delete(context.Context, int64) error            { return nil }
-func (emptyConfigStore) SetStatus(context.Context, int64, int) error    { return nil }
+func (emptyConfigStore) Update(context.Context, sysconfig.Config, audit.Event) error { return nil }
+func (emptyConfigStore) Delete(context.Context, int64, audit.Event) error            { return nil }
+func (emptyConfigStore) DeleteBatch(context.Context, []int64, audit.Event) error     { return nil }
+func (emptyConfigStore) SetStatus(context.Context, int64, int, audit.Event) error    { return nil }
 
 type emptyFileStore struct{}
 
