@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
 
 const (
@@ -93,41 +95,25 @@ type DataInput struct {
 	Remark               *string
 }
 
-type AuditMetadata struct {
-	ActorID                                                   int64
-	RequestID, ClientIP, UserAgent, RequestMethod, RequestURL string
-}
-
-type AuditEvent struct {
-	Action, Resource string
-	ResourceID       int64
-	Summary          string
-	Metadata         AuditMetadata
-}
-
-type AuditRecorder interface {
-	Record(context.Context, AuditEvent) error
-}
-
-type noOpAudit struct{}
-
-func (noOpAudit) Record(context.Context, AuditEvent) error { return nil }
+type AuditMetadata = audit.Metadata
+type AuditEvent = audit.Event
+type AuditRecorder = audit.Recorder
 
 type Store interface {
 	PageTypes(context.Context, TypePageQuery) (Page[DictType], error)
 	FindType(context.Context, int64) (*DictType, error)
 	DictCodeExists(context.Context, string, int64) (bool, error)
-	CreateType(context.Context, DictType) (DictType, error)
-	UpdateType(context.Context, DictType) (DictType, error)
+	CreateType(context.Context, DictType, AuditEvent) (DictType, error)
+	UpdateType(context.Context, DictType, AuditEvent) (DictType, error)
 	CountDataByType(context.Context, int64) (int64, error)
-	DeleteTypes(context.Context, []int64) error
-	SetTypeStatus(context.Context, int64, int) error
+	DeleteTypes(context.Context, []int64, AuditEvent) error
+	SetTypeStatus(context.Context, int64, int, AuditEvent) error
 
 	PageData(context.Context, DataPageQuery) (Page[DictData], error)
 	FindData(context.Context, int64) (*DictData, error)
 	DictValueExists(context.Context, int64, string, int64) (bool, error)
-	CreateData(context.Context, DictData) (DictData, error)
-	UpdateData(context.Context, DictData) (DictData, error)
-	DeleteData(context.Context, []int64) error
+	CreateData(context.Context, DictData, AuditEvent) (DictData, error)
+	UpdateData(context.Context, DictData, AuditEvent) (DictData, error)
+	DeleteData(context.Context, []int64, AuditEvent) error
 	Items(context.Context, string) ([]DictItem, error)
 }

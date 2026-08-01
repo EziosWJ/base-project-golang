@@ -76,7 +76,7 @@ func (f *fakeStores) deps() Dependencies {
 	if err != nil {
 		panic(err)
 	}
-	dictionaryService, err := dictionary.NewService(emptyDictionaryStore{}, nil)
+	dictionaryService, err := dictionary.NewService(emptyDictionaryStore{})
 	if err != nil {
 		panic(err)
 	}
@@ -312,15 +312,19 @@ func (emptyDictionaryStore) FindType(context.Context, int64) (*dictionary.DictTy
 func (emptyDictionaryStore) DictCodeExists(context.Context, string, int64) (bool, error) {
 	return false, nil
 }
-func (emptyDictionaryStore) CreateType(context.Context, dictionary.DictType) (dictionary.DictType, error) {
+func (emptyDictionaryStore) CreateType(context.Context, dictionary.DictType, dictionary.AuditEvent) (dictionary.DictType, error) {
 	return dictionary.DictType{}, nil
 }
-func (emptyDictionaryStore) UpdateType(context.Context, dictionary.DictType) (dictionary.DictType, error) {
+func (emptyDictionaryStore) UpdateType(context.Context, dictionary.DictType, dictionary.AuditEvent) (dictionary.DictType, error) {
 	return dictionary.DictType{}, nil
 }
 func (emptyDictionaryStore) CountDataByType(context.Context, int64) (int64, error) { return 0, nil }
-func (emptyDictionaryStore) DeleteTypes(context.Context, []int64) error            { return nil }
-func (emptyDictionaryStore) SetTypeStatus(context.Context, int64, int) error       { return nil }
+func (emptyDictionaryStore) DeleteTypes(context.Context, []int64, dictionary.AuditEvent) error {
+	return nil
+}
+func (emptyDictionaryStore) SetTypeStatus(context.Context, int64, int, dictionary.AuditEvent) error {
+	return nil
+}
 func (emptyDictionaryStore) PageData(context.Context, dictionary.DataPageQuery) (dictionary.Page[dictionary.DictData], error) {
 	return dictionary.Page[dictionary.DictData]{}, nil
 }
@@ -330,13 +334,13 @@ func (emptyDictionaryStore) FindData(context.Context, int64) (*dictionary.DictDa
 func (emptyDictionaryStore) DictValueExists(context.Context, int64, string, int64) (bool, error) {
 	return false, nil
 }
-func (emptyDictionaryStore) CreateData(context.Context, dictionary.DictData) (dictionary.DictData, error) {
+func (emptyDictionaryStore) CreateData(context.Context, dictionary.DictData, dictionary.AuditEvent) (dictionary.DictData, error) {
 	return dictionary.DictData{}, nil
 }
-func (emptyDictionaryStore) UpdateData(context.Context, dictionary.DictData) (dictionary.DictData, error) {
+func (emptyDictionaryStore) UpdateData(context.Context, dictionary.DictData, dictionary.AuditEvent) (dictionary.DictData, error) {
 	return dictionary.DictData{}, nil
 }
-func (emptyDictionaryStore) DeleteData(context.Context, []int64) error      { return nil }
+func (emptyDictionaryStore) DeleteData(context.Context, []int64, dictionary.AuditEvent) error { return nil }
 func (emptyDictionaryStore) Items(context.Context, string) ([]dictionary.DictItem, error) {
 	return nil, nil
 }

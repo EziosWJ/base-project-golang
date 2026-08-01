@@ -75,8 +75,7 @@ func main() {
 		slog.Error("build user service", "error", err)
 		os.Exit(1)
 	}
-	dictionaryRepository := dictionary.NewRepository(database.GORM)
-	dictionaryService, err := dictionary.NewService(dictionaryRepository, dictionaryRepository)
+	dictionaryService, err := dictionary.NewService(dictionary.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build dictionary service", "error", err)
 		os.Exit(1)
