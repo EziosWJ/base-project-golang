@@ -8,18 +8,14 @@ import (
 
 type Service struct {
 	store           Store
-	audit           AuditRecorder
 	defaultPassword string
 }
 
-func NewService(store Store, audit AuditRecorder, defaultPassword string) (*Service, error) {
+func NewService(store Store, defaultPassword string) (*Service, error) {
 	if store == nil || defaultPassword == "" {
 		return nil, ErrInvalid
 	}
-	if audit == nil {
-		audit = noop{}
-	}
-	return &Service{store, audit, defaultPassword}, nil
+	return &Service{store, defaultPassword}, nil
 }
 func (s *Service) UserPage(ctx context.Context, q UserPageQuery) (Page[User], error) {
 	q.Page, q.PageSize = page(q.Page, q.PageSize)
@@ -40,11 +36,10 @@ func (s *Service) CreateUser(ctx context.Context, m AuditMetadata, in UserCreate
 	if e != nil {
 		return e
 	}
-	u, e := s.store.Create(ctx, User{Username: in.Username, Nickname: in.Nickname, Password: string(h), Phone: in.Phone, Email: in.Email, Avatar: in.Avatar, Gender: gender(in.Gender), DeptID: in.DeptID, Status: in.Status, Remark: in.Remark})
-	if e != nil {
+	if _, e := s.store.Create(ctx, User{Username: in.Username, Nickname: in.Nickname, Password: string(h), Phone: in.Phone, Email: in.Email, Avatar: in.Avatar, Gender: gender(in.Gender), DeptID: in.DeptID, Status: in.Status, Remark: in.Remark}, event(m, "user.create", "user", 0, "创建用户")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.create", u.ID, m})
+	return nil
 }
 func (s *Service) UpdateUser(ctx context.Context, m AuditMetadata, id int64, in UserUpdateInput) error {
 	old, e := s.store.Find(ctx, id)
@@ -55,10 +50,10 @@ func (s *Service) UpdateUser(ctx context.Context, m AuditMetadata, id int64, in 
 		return e
 	}
 	u := User{ID: id, Nickname: in.Nickname, Phone: in.Phone, Email: in.Email, Avatar: in.Avatar, Gender: gender(in.Gender), DeptID: in.DeptID, Status: in.Status, Remark: in.Remark}
-	if e = s.store.Update(ctx, u, old.Status == 1 && in.Status == 0); e != nil {
+	if e = s.store.Update(ctx, u, old.Status == 1 && in.Status == 0, event(m, "user.update", "user", id, "修改用户")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.update", id, m})
+	return nil
 }
 func (s *Service) DeleteUser(ctx context.Context, m AuditMetadata, id int64) error {
 	u, e := s.store.Find(ctx, id)
@@ -68,18 +63,23 @@ func (s *Service) DeleteUser(ctx context.Context, m AuditMetadata, id int64) err
 	if u.IsBuiltin == 1 {
 		return ErrBuiltin
 	}
-	if e = s.store.Delete(ctx, id); e != nil {
+	if e = s.store.Delete(ctx, id, event(m, "user.delete", "user", id, "删除用户")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.delete", id, m})
+	return nil
 }
 func (s *Service) DeleteUsers(ctx context.Context, m AuditMetadata, ids []int64) error {
-	for _, id := range unique(ids) {
-		if e := s.DeleteUser(ctx, m, id); e != nil {
+	clean := unique(ids)
+	for _, id := range clean {
+		u, e := s.store.Find(ctx, id)
+		if e != nil {
 			return e
 		}
+		if u.IsBuiltin == 1 {
+			return ErrBuiltin
+		}
 	}
-	return nil
+	return s.store.DeleteUsers(ctx, clean, event(m, "user.delete", "user", 0, "删除用户"))
 }
 func (s *Service) SetUserStatus(ctx context.Context, m AuditMetadata, id int64, status int) error {
 	u, e := s.store.Find(ctx, id)
@@ -90,10 +90,10 @@ func (s *Service) SetUserStatus(ctx context.Context, m AuditMetadata, id int64, 
 		return ErrInvalid
 	}
 	u.Status = status
-	if e = s.store.Update(ctx, *u, status == 0); e != nil {
+	if e = s.store.Update(ctx, *u, status == 0, event(m, "user.status", "user", id, "修改用户状态")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.status", id, m})
+	return nil
 }
 func (s *Service) AssignUserRoles(ctx context.Context, m AuditMetadata, id int64, ids []int64) error {
 	if _, e := s.store.Find(ctx, id); e != nil {
@@ -107,10 +107,10 @@ func (s *Service) AssignUserRoles(ctx context.Context, m AuditMetadata, id int64
 	if !ok {
 		return ErrNotFound
 	}
-	if e = s.store.AssignRoles(ctx, id, ids); e != nil {
+	if e = s.store.AssignRoles(ctx, id, ids, event(m, "user.roles", "user", id, "分配用户角色")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.roles", id, m})
+	return nil
 }
 func (s *Service) ResetUserPassword(ctx context.Context, m AuditMetadata, id int64) (ResetPasswordResult, error) {
 	if _, e := s.store.Find(ctx, id); e != nil {
@@ -120,10 +120,7 @@ func (s *Service) ResetUserPassword(ctx context.Context, m AuditMetadata, id int
 	if e != nil {
 		return ResetPasswordResult{}, e
 	}
-	if e = s.store.ResetPassword(ctx, id, string(h)); e != nil {
-		return ResetPasswordResult{}, e
-	}
-	if e = s.audit.Record(ctx, AuditEvent{"user.reset_password", id, m}); e != nil {
+	if e = s.store.ResetPassword(ctx, id, string(h), event(m, "user.reset_password", "user", id, "重置用户密码")); e != nil {
 		return ResetPasswordResult{}, e
 	}
 	return ResetPasswordResult{s.defaultPassword}, nil
@@ -143,19 +140,19 @@ func (s *Service) ChangeCurrentPassword(ctx context.Context, m AuditMetadata, id
 	if e != nil {
 		return e
 	}
-	if e = s.store.ChangePassword(ctx, id, string(h)); e != nil {
+	if e = s.store.ChangePassword(ctx, id, string(h), event(m, "user.change_password", "user", id, "修改密码")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.change_password", id, m})
+	return nil
 }
 func (s *Service) UpdateCurrentAvatar(ctx context.Context, m AuditMetadata, id int64, a *string) error {
 	if _, e := s.store.Find(ctx, id); e != nil {
 		return e
 	}
-	if e := s.store.UpdateAvatar(ctx, id, a); e != nil {
+	if e := s.store.UpdateAvatar(ctx, id, a, event(m, "user.avatar", "user", id, "修改用户头像")); e != nil {
 		return e
 	}
-	return s.audit.Record(ctx, AuditEvent{"user.avatar", id, m})
+	return nil
 }
 func (s *Service) valid(ctx context.Context, in Input, id int64, create bool) error {
 	if strings.TrimSpace(in.Nickname) == "" || in.Status < 0 || in.Status > 1 || (create && strings.TrimSpace(in.Username) == "") {
@@ -180,6 +177,9 @@ func (s *Service) valid(ctx context.Context, in Input, id int64, create bool) er
 		}
 	}
 	return nil
+}
+func event(m AuditMetadata, a, r string, id int64, sum string) AuditEvent {
+	return AuditEvent{Action: a, Resource: r, ResourceID: id, Summary: sum, Metadata: m}
 }
 func gender(v string) string {
 	if v == "" {

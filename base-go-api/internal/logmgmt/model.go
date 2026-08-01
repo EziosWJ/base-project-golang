@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 )
 
 var (
@@ -87,14 +87,8 @@ type OperLogPageQuery struct {
 type Store interface {
 	LoginLogPage(context.Context, LoginLogPageQuery) (Page[LoginLog], error)
 	FindLoginLog(context.Context, int64) (*LoginLog, error)
-	ClearLoginLogs(context.Context) error
+	ClearLoginLogs(context.Context, audit.Event) error
 	OperLogPage(context.Context, OperLogPageQuery) (Page[OperLogRecord], error)
 	FindOperLog(context.Context, int64) (*OperLogDetail, error)
-	ClearOperLogs(context.Context) error
+	ClearOperLogs(context.Context, audit.Event) error
 }
-
-type Audit = rbac.AuditRecorder
-
-type noopAudit struct{}
-
-func (noopAudit) Record(context.Context, rbac.AuditEvent) error { return nil }

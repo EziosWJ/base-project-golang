@@ -44,15 +44,14 @@ Schema 使用版本化 Goose migration 管理。API 进程与生产启动不自�
 
 ### 7. DI
 
-采用手工依赖组装：Config → Database → Repository → Service → Handler → Router。基础设施可在启动阶段创建一次并共享指针，但不引入 DI Framework、Service Locator、业务 Singleton 或全局 Service。
+采用手工依赖组装：Config → Database → Repository → Service → Handler → Router。HTTP 应用以命名依赖对象接收完整的生产依赖，缺少任一已启用业务模块时启动失败；测试通过模块路由或应用内部基础 Router helper 构造最小场景，不以 `nil` 静默裁剪生产路由。基础设施可在启动阶段创建一次并共享指针，但不引入 DI Framework、Service Locator、业务 Singleton 或全局 Service。
 
 ### 8. 认证、日志与运行组件
 
-目标认证为 JWT，由 Gin middleware 校验登录态。JWT 使用 HS256，密钥经环境变量注入，包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`；不包含角色或菜单。角色、用户角色与角色菜单关系继续由数据库管理，`ADMIN` 是内置角色；首版不按 `permissionCode` 拦截接口。会话以 PostgreSQL `auth_session` 表持久化，JWT 的 `jti` 用于校验会话状态；登出立即撤销当前会话。该设计不引入 Redis、Casbin、ABAC 或其他复杂权限引擎。应用日志使用 `log/slog`，业务审计日志落库：middleware 将 request_id、IP、User-Agent 写入标准 `context.Context`，Service 显式记录审计，Repository 持久化；认证记录成功与失败登录，其他操作只在业务成功后记录。`/health` 只检查进程存活，`/ready` 检查 PostgreSQL 并在不可用时返回 503，`/metrics` 不要求 JWT、仅经内部网络或反向代理白名单供 Prometheus 抓取且不应用默认 CORS。少量任务优先使用 Go 原生 timer/ticker；文件先使用本地文件系统和 Docker Volume，文件服务与具体存储实现解耦，不提前引入完整 tracing 或分布式锁组件。
+目标认证为 JWT，由 Gin middleware 校验登录态。JWT 使用 HS256，密钥由运行配置提供（详见 ADR-0005），包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`；不包含角色或菜单。角色、用户角色与角色菜单关系继续由数据库管理，`ADMIN` 是内置角色；首版不按 `permissionCode` 拦截接口。会话以 PostgreSQL `auth_session` 表持久化，JWT 的 `jti` 用于校验会话状态；登出立即撤销当前会话。该设计不引入 Redis、Casbin、ABAC 或其他复杂权限引擎。应用日志使用 `log/slog`，业务审计日志落库：middleware 将 request_id、IP、User-Agent 写入标准 `context.Context`，Service 显式记录审计，Repository 持久化；认证记录成功与失败登录，其他操作只在业务成功后记录。`/health` 只检查进程存活，`/ready` 检查 PostgreSQL 并在不可用时返回 503，`/metrics` 不要求 JWT、仅经内部网络或反向代理白名单供 Prometheus 抓取且不应用默认 CORS。少量任务优先使用 Go 原生 timer/ticker；文件先使用本地文件系统和 Docker Volume，文件服务与具体存储实现解耦，不提前引入完整 tracing 或分布式锁组件。
 
-配置使用 Koanf v2，固定按默认值、基础 YAML、环境 YAML、`APP_` 环境变量的顺序覆盖；嵌套环境变量使用双下划线。密码、JWT 密钥和实际 DSN 只经环境变量或部署密钥注入，不进入 Git。
+配置机制与凭据存储策略由 ADR-0005 更新。开发 Docker Compose 启动独立的 PostgreSQL 命名 volume，并按 PostgreSQL、migrate、API 的顺序运行；数据库仅绑定本机端口。实际部署经外部 PostgreSQL 运行 migrate 与 API，不依赖 Compose 数据库容器。
 
-开发 Docker Compose 启动独立的 PostgreSQL 命名 volume，并按 PostgreSQL、migrate、API 的顺序运行；数据库仅绑定本机端口。实际部署经外部 PostgreSQL DSN 运行 migrate 与 API，不依赖 Compose 数据库容器。
 
 ### 9. Future microservices
 

@@ -9,17 +9,13 @@ import (
 
 type Service struct {
 	store Store
-	audit AuditRecorder
 }
 
-func NewService(store Store, audit AuditRecorder) (*Service, error) {
+func NewService(store Store) (*Service, error) {
 	if store == nil {
 		return nil, fmt.Errorf("rbac store is required")
 	}
-	if audit == nil {
-		audit = noOpAudit{}
-	}
-	return &Service{store, audit}, nil
+	return &Service{store}, nil
 }
 func (s *Service) RolePage(ctx context.Context, q RolePageQuery) (Page[Role], error) {
 	q.Page, q.PageSize = page(q.Page, q.PageSize)
@@ -48,11 +44,11 @@ func (s *Service) CreateRole(ctx context.Context, m AuditMetadata, in RoleInput)
 	if exists {
 		return Role{}, ErrConflict
 	}
-	v, e := s.store.CreateRole(ctx, Role{RoleName: in.RoleName, RoleCode: in.RoleCode, Status: in.Status, SortOrder: in.SortOrder, Remark: in.Remark, IsBuiltin: BuiltinNo})
+	v, e := s.store.CreateRole(ctx, Role{RoleName: in.RoleName, RoleCode: in.RoleCode, Status: in.Status, SortOrder: in.SortOrder, Remark: in.Remark, IsBuiltin: BuiltinNo}, event(m, "role.create", "role", 0, "创建角色"))
 	if e != nil {
 		return Role{}, e
 	}
-	return v, s.record(ctx, "role.create", "role", v.ID, "创建角色", m)
+	return v, nil
 }
 func (s *Service) UpdateRole(ctx context.Context, m AuditMetadata, id int64, in RoleInput) (Role, error) {
 	old, e := s.store.FindRole(ctx, id)
@@ -72,11 +68,11 @@ func (s *Service) UpdateRole(ctx context.Context, m AuditMetadata, id int64, in 
 	if exists {
 		return Role{}, ErrConflict
 	}
-	v, e := s.store.UpdateRole(ctx, Role{ID: id, RoleName: in.RoleName, RoleCode: in.RoleCode, Status: in.Status, SortOrder: in.SortOrder, Remark: in.Remark, IsBuiltin: old.IsBuiltin})
+	v, e := s.store.UpdateRole(ctx, Role{ID: id, RoleName: in.RoleName, RoleCode: in.RoleCode, Status: in.Status, SortOrder: in.SortOrder, Remark: in.Remark, IsBuiltin: old.IsBuiltin}, event(m, "role.update", "role", id, "更新角色"))
 	if e != nil {
 		return Role{}, e
 	}
-	return v, s.record(ctx, "role.update", "role", id, "更新角色", m)
+	return v, nil
 }
 func (s *Service) DeleteRole(ctx context.Context, m AuditMetadata, id int64) error {
 	v, e := s.store.FindRole(ctx, id)
@@ -93,18 +89,30 @@ func (s *Service) DeleteRole(ctx context.Context, m AuditMetadata, id int64) err
 	if n > 0 {
 		return fmt.Errorf("角色已绑定用户: %w", ErrConflict)
 	}
-	if e = s.store.DeleteRole(ctx, id); e != nil {
+	if e = s.store.DeleteRole(ctx, id, event(m, "role.delete", "role", id, "删除角色")); e != nil {
 		return e
 	}
-	return s.record(ctx, "role.delete", "role", id, "删除角色", m)
+	return nil
 }
 func (s *Service) DeleteRoles(ctx context.Context, m AuditMetadata, ids []int64) error {
-	for _, id := range unique(ids) {
-		if e := s.DeleteRole(ctx, m, id); e != nil {
+	clean := unique(ids)
+	for _, id := range clean {
+		v, e := s.store.FindRole(ctx, id)
+		if e != nil {
 			return e
 		}
+		if v.IsBuiltin == BuiltinYes {
+			return ErrBuiltinProtected
+		}
+		n, e := s.store.CountUsersByRole(ctx, id)
+		if e != nil {
+			return e
+		}
+		if n > 0 {
+			return fmt.Errorf("角色已绑定用户: %w", ErrConflict)
+		}
 	}
-	return nil
+	return s.store.DeleteRoles(ctx, clean, event(m, "role.delete", "role", 0, "删除角色"))
 }
 func (s *Service) SetRoleStatus(ctx context.Context, m AuditMetadata, id int64, status int) error {
 	if !validStatus(status) {
@@ -113,19 +121,19 @@ func (s *Service) SetRoleStatus(ctx context.Context, m AuditMetadata, id int64, 
 	if _, e := s.store.FindRole(ctx, id); e != nil {
 		return e
 	}
-	if e := s.store.SetRoleStatus(ctx, id, status); e != nil {
+	if e := s.store.SetRoleStatus(ctx, id, status, event(m, "role.status", "role", id, "更新角色状态")); e != nil {
 		return e
 	}
-	return s.record(ctx, "role.status", "role", id, "更新角色状态", m)
+	return nil
 }
 func (s *Service) AssignRoleMenus(ctx context.Context, m AuditMetadata, id int64, ids []int64) error {
 	if _, e := s.store.FindRole(ctx, id); e != nil {
 		return e
 	}
-	if e := s.store.ReplaceRoleMenus(ctx, id, unique(ids)); e != nil {
+	if e := s.store.ReplaceRoleMenus(ctx, id, unique(ids), event(m, "role.menus", "role", id, "分配角色菜单")); e != nil {
 		return e
 	}
-	return s.record(ctx, "role.menus", "role", id, "分配角色菜单", m)
+	return nil
 }
 func (s *Service) MenuTree(ctx context.Context) ([]Menu, error) {
 	v, e := s.store.ListMenus(ctx)
@@ -159,11 +167,11 @@ func (s *Service) CreateMenu(ctx context.Context, m AuditMetadata, in MenuInput)
 	if x {
 		return Menu{}, ErrConflict
 	}
-	v, e := s.store.CreateMenu(ctx, menuFrom(in, 0))
+	v, e := s.store.CreateMenu(ctx, menuFrom(in, 0), event(m, "menu.create", "menu", 0, "创建菜单"))
 	if e != nil {
 		return Menu{}, e
 	}
-	return v, s.record(ctx, "menu.create", "menu", v.ID, "创建菜单", m)
+	return v, nil
 }
 func (s *Service) UpdateMenu(ctx context.Context, m AuditMetadata, id int64, in MenuInput) (Menu, error) {
 	old, e := s.store.FindMenu(ctx, id)
@@ -190,11 +198,11 @@ func (s *Service) UpdateMenu(ctx context.Context, m AuditMetadata, id int64, in 
 	if x {
 		return Menu{}, ErrConflict
 	}
-	v, e := s.store.UpdateMenu(ctx, menuFrom(in, id))
+	v, e := s.store.UpdateMenu(ctx, menuFrom(in, id), event(m, "menu.update", "menu", id, "更新菜单"))
 	if e != nil {
 		return Menu{}, e
 	}
-	return v, s.record(ctx, "menu.update", "menu", id, "更新菜单", m)
+	return v, nil
 }
 func (s *Service) DeleteMenu(ctx context.Context, m AuditMetadata, id int64) error {
 	v, e := s.store.FindMenu(ctx, id)
@@ -218,18 +226,37 @@ func (s *Service) DeleteMenu(ctx context.Context, m AuditMetadata, id int64) err
 	if n > 0 {
 		return fmt.Errorf("菜单已绑定角色: %w", ErrConflict)
 	}
-	if e = s.store.DeleteMenu(ctx, id); e != nil {
+	if e = s.store.DeleteMenu(ctx, id, event(m, "menu.delete", "menu", id, "删除菜单")); e != nil {
 		return e
 	}
-	return s.record(ctx, "menu.delete", "menu", id, "删除菜单", m)
+	return nil
 }
 func (s *Service) DeleteMenus(ctx context.Context, m AuditMetadata, ids []int64) error {
-	for _, id := range unique(ids) {
-		if e := s.DeleteMenu(ctx, m, id); e != nil {
+	clean := unique(ids)
+	for _, id := range clean {
+		v, e := s.store.FindMenu(ctx, id)
+		if e != nil {
 			return e
 		}
+		if v.IsBuiltin == BuiltinYes {
+			return ErrBuiltinProtected
+		}
+		n, e := s.store.CountChildren(ctx, id)
+		if e != nil {
+			return e
+		}
+		if n > 0 {
+			return fmt.Errorf("存在子菜单: %w", ErrConflict)
+		}
+		n, e = s.store.CountRolesByMenu(ctx, id)
+		if e != nil {
+			return e
+		}
+		if n > 0 {
+			return fmt.Errorf("菜单已绑定角色: %w", ErrConflict)
+		}
 	}
-	return nil
+	return s.store.DeleteMenus(ctx, clean, event(m, "menu.delete", "menu", 0, "删除菜单"))
 }
 func (s *Service) SetMenuStatus(ctx context.Context, m AuditMetadata, id int64, status int) error {
 	if !validStatus(status) {
@@ -238,13 +265,13 @@ func (s *Service) SetMenuStatus(ctx context.Context, m AuditMetadata, id int64, 
 	if _, e := s.store.FindMenu(ctx, id); e != nil {
 		return e
 	}
-	if e := s.store.SetMenuStatus(ctx, id, status); e != nil {
+	if e := s.store.SetMenuStatus(ctx, id, status, event(m, "menu.status", "menu", id, "更新菜单状态")); e != nil {
 		return e
 	}
-	return s.record(ctx, "menu.status", "menu", id, "更新菜单状态", m)
+	return nil
 }
-func (s *Service) record(ctx context.Context, a, r string, id int64, sum string, m AuditMetadata) error {
-	return s.audit.Record(ctx, AuditEvent{Action: a, Resource: r, ResourceID: id, Summary: sum, Metadata: m})
+func event(m AuditMetadata, a, r string, id int64, sum string) AuditEvent {
+	return AuditEvent{Action: a, Resource: r, ResourceID: id, Summary: sum, Metadata: m}
 }
 func validRole(v RoleInput) error {
 	if strings.TrimSpace(v.RoleName) == "" || strings.TrimSpace(v.RoleCode) == "" || !validStatus(v.Status) {

@@ -58,46 +58,53 @@ func main() {
 		os.Exit(1)
 	}
 
-	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build RBAC service", "error", err)
 		os.Exit(1)
 	}
-	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build department service", "error", err)
 		os.Exit(1)
 	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), usermgmt.NewRBACAuditRecorder(auditRecorder), defaultUserPassword)
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), defaultUserPassword)
 	if err != nil {
 		slog.Error("build user service", "error", err)
 		os.Exit(1)
 	}
-	dictionaryRepository := dictionary.NewRepository(database.GORM)
-	dictionaryService, err := dictionary.NewService(dictionaryRepository, dictionaryRepository)
+	dictionaryService, err := dictionary.NewService(dictionary.NewRepository(database.GORM))
 	if err != nil {
 		slog.Error("build dictionary service", "error", err)
 		os.Exit(1)
 	}
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), auditRecorder)
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
 	fileStorage, err := filemgmt.NewLocalStorage(cfg.File.StorageRoot)
 	if err != nil {
 		slog.Error("build file storage", "error", err)
 		os.Exit(1)
 	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, auditRecorder)
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
 	if err != nil {
 		slog.Error("build file service", "error", err)
 		os.Exit(1)
 	}
-	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, auditRecorder)
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
 	if err != nil {
 		slog.Error("build log service", "error", err)
 		os.Exit(1)
 	}
 
-	application, err := app.New(*cfg, database, authService, rbacService, deptService, userService, dictionaryService, configService, fileService, logService)
+	application, err := app.New(*cfg, database, app.Dependencies{
+		Auth:       authService,
+		RBAC:       rbacService,
+		Department: deptService,
+		User:       userService,
+		Dictionary: dictionaryService,
+		SysConfig:  configService,
+		File:       fileService,
+		Log:        logService,
+	})
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)

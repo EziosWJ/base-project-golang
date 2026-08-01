@@ -3,7 +3,9 @@ package filemgmt
 import (
 	"context"
 	"errors"
+	"strconv"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"gorm.io/gorm"
 )
 
@@ -48,24 +50,40 @@ func (r *Repository) Find(ctx context.Context, id int64) (*File, error) {
 	return &f, nil
 }
 
-func (r *Repository) Create(ctx context.Context, f File) (File, error) {
-	err := r.db.WithContext(ctx).Create(&f).Error
+func (r *Repository) Create(ctx context.Context, f File, e AuditEvent) (File, error) {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&f).Error; err != nil {
+			return err
+		}
+		e.ResourceID = f.ID
+		f.AccessURL = "/api/system/file/" + strconv.FormatInt(f.ID, 10) + "/view"
+		if err := tx.Model(&File{}).Where("id=? AND deleted=0", f.ID).Update("access_url", f.AccessURL).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 	return f, err
 }
 
-func (r *Repository) SetAccessURL(ctx context.Context, id int64, accessURL string) error {
-	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Update("access_url", accessURL).Error
+func (r *Repository) Update(ctx context.Context, id int64, in UpdateInput, e AuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&File{}).Where("id=? AND deleted=0", id).Updates(map[string]any{"business_module": in.BusinessModule, "remark": in.Remark}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }
 
-func (r *Repository) Update(ctx context.Context, id int64, in UpdateInput) error {
-	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Updates(map[string]any{"business_module": in.BusinessModule, "remark": in.Remark}).Error
+func (r *Repository) Delete(ctx context.Context, id int64, e AuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&File{}).Where("id=? AND deleted=0", id).Update("deleted", 1).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }
 
-func (r *Repository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Update("deleted", 1).Error
-}
-
-func (r *Repository) DeleteBatch(ctx context.Context, ids []int64) error {
+func (r *Repository) DeleteBatch(ctx context.Context, ids []int64, e AuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&File{}).Where("id IN ? AND deleted=0", ids).Count(&count).Error; err != nil {
@@ -74,10 +92,24 @@ func (r *Repository) DeleteBatch(ctx context.Context, ids []int64) error {
 		if count != int64(len(ids)) {
 			return ErrNotFound
 		}
-		return tx.Model(&File{}).Where("id IN ? AND deleted=0", ids).Update("deleted", 1).Error
+		if err := tx.Model(&File{}).Where("id IN ? AND deleted=0", ids).Update("deleted", 1).Error; err != nil {
+			return err
+		}
+		for _, id := range ids {
+			e.ResourceID = id
+			if err := audit.RecordOn(ctx, tx, e); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
-func (r *Repository) SetStatus(ctx context.Context, id int64, status int) error {
-	return r.db.WithContext(ctx).Model(&File{}).Where("id=? AND deleted=0", id).Update("status", status).Error
+func (r *Repository) SetStatus(ctx context.Context, id int64, status int, e AuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&File{}).Where("id=? AND deleted=0", id).Update("status", status).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }

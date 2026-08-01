@@ -6,18 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/audit"
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )
 
-// Repository is the only dictionary type coupled to GORM. It implements both
-// persistence and audit recording so the rest of the package stays database agnostic.
+// Repository is the only dictionary type coupled to GORM.
 type Repository struct{ db *gorm.DB }
 
-var (
-	_ Store         = (*Repository)(nil)
-	_ AuditRecorder = (*Repository)(nil)
-)
+var _ Store = (*Repository)(nil)
 
 func NewRepository(db *gorm.DB) *Repository { return &Repository{db: db} }
 
@@ -57,17 +54,28 @@ func (r *Repository) DictCodeExists(ctx context.Context, code string, excludeID 
 	return count > 0, err
 }
 
-func (r *Repository) CreateType(ctx context.Context, value DictType) (DictType, error) {
-	err := r.db.WithContext(ctx).Create(&value).Error
+func (r *Repository) CreateType(ctx context.Context, value DictType, e AuditEvent) (DictType, error) {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&value).Error; err != nil {
+			return err
+		}
+		e.ResourceID = value.ID
+		return audit.RecordOn(ctx, tx, e)
+	})
 	return value, conflictError(err, ErrDictCodeConflict)
 }
 
-func (r *Repository) UpdateType(ctx context.Context, value DictType) (DictType, error) {
+func (r *Repository) UpdateType(ctx context.Context, value DictType, e AuditEvent) (DictType, error) {
 	now := time.Now().UTC()
-	err := r.db.WithContext(ctx).Model(&DictType{}).Where("id = ? AND deleted = 0", value.ID).Updates(map[string]any{
-		"dict_name": value.DictName, "dict_code": value.DictCode, "status": value.Status,
-		"sort_order": value.SortOrder, "remark": value.Remark, "update_time": now,
-	}).Error
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&DictType{}).Where("id = ? AND deleted = 0", value.ID).Updates(map[string]any{
+			"dict_name": value.DictName, "dict_code": value.DictCode, "status": value.Status,
+			"sort_order": value.SortOrder, "remark": value.Remark, "update_time": now,
+		}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 	value.UpdateTime = now
 	return value, conflictError(err, ErrDictCodeConflict)
 }
@@ -79,16 +87,24 @@ func (r *Repository) CountDataByType(ctx context.Context, typeID int64) (int64, 
 	return count, err
 }
 
-func (r *Repository) DeleteTypes(ctx context.Context, ids []int64) error {
+func (r *Repository) DeleteTypes(ctx context.Context, ids []int64, e AuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&DictType{}).Where("id IN ? AND deleted = 0", ids).
-			Updates(map[string]any{"deleted": 1, "update_time": time.Now().UTC()}).Error
+		if err := tx.Model(&DictType{}).Where("id IN ? AND deleted = 0", ids).
+			Updates(map[string]any{"deleted": 1, "update_time": time.Now().UTC()}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
 	})
 }
 
-func (r *Repository) SetTypeStatus(ctx context.Context, id int64, status int) error {
-	return r.db.WithContext(ctx).Model(&DictType{}).Where("id = ? AND deleted = 0", id).
-		Updates(map[string]any{"status": status, "update_time": time.Now().UTC()}).Error
+func (r *Repository) SetTypeStatus(ctx context.Context, id int64, status int, e AuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&DictType{}).Where("id = ? AND deleted = 0", id).
+			Updates(map[string]any{"status": status, "update_time": time.Now().UTC()}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 }
 
 func (r *Repository) PageData(ctx context.Context, query DataPageQuery) (Page[DictData], error) {
@@ -131,25 +147,39 @@ func (r *Repository) DictValueExists(ctx context.Context, typeID int64, value st
 	return count > 0, err
 }
 
-func (r *Repository) CreateData(ctx context.Context, value DictData) (DictData, error) {
-	err := r.db.WithContext(ctx).Create(&value).Error
+func (r *Repository) CreateData(ctx context.Context, value DictData, e AuditEvent) (DictData, error) {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&value).Error; err != nil {
+			return err
+		}
+		e.ResourceID = value.ID
+		return audit.RecordOn(ctx, tx, e)
+	})
 	return value, conflictError(err, ErrDictValueConflict)
 }
 
-func (r *Repository) UpdateData(ctx context.Context, value DictData) (DictData, error) {
+func (r *Repository) UpdateData(ctx context.Context, value DictData, e AuditEvent) (DictData, error) {
 	now := time.Now().UTC()
-	err := r.db.WithContext(ctx).Model(&DictData{}).Where("id = ? AND deleted = 0", value.ID).Updates(map[string]any{
-		"dict_type_id": value.DictTypeID, "dict_label": value.DictLabel, "dict_value": value.DictValue,
-		"sort_order": value.SortOrder, "remark": value.Remark, "update_time": now,
-	}).Error
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&DictData{}).Where("id = ? AND deleted = 0", value.ID).Updates(map[string]any{
+			"dict_type_id": value.DictTypeID, "dict_label": value.DictLabel, "dict_value": value.DictValue,
+			"sort_order": value.SortOrder, "remark": value.Remark, "update_time": now,
+		}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
+	})
 	value.UpdateTime = now
 	return value, conflictError(err, ErrDictValueConflict)
 }
 
-func (r *Repository) DeleteData(ctx context.Context, ids []int64) error {
+func (r *Repository) DeleteData(ctx context.Context, ids []int64, e AuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.Model(&DictData{}).Where("id IN ? AND deleted = 0", ids).
-			Updates(map[string]any{"deleted": 1, "update_time": time.Now().UTC()}).Error
+		if err := tx.Model(&DictData{}).Where("id IN ? AND deleted = 0", ids).
+			Updates(map[string]any{"deleted": 1, "update_time": time.Now().UTC()}).Error; err != nil {
+			return err
+		}
+		return audit.RecordOn(ctx, tx, e)
 	})
 }
 
@@ -167,34 +197,6 @@ func (r *Repository) dataQuery(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx).Table("sys_dict_data AS d").
 		Joins("JOIN sys_dict_type AS t ON t.id = d.dict_type_id AND t.deleted = 0").
 		Where("d.deleted = 0")
-}
-
-type operationLog struct {
-	ID              int64     `gorm:"column:id;primaryKey"`
-	ModuleName      string    `gorm:"column:module_name"`
-	OperationType   string    `gorm:"column:operation_type"`
-	RequestID       string    `gorm:"column:request_id"`
-	RequestMethod   string    `gorm:"column:request_method"`
-	RequestURL      string    `gorm:"column:request_url"`
-	OperatorID      int64     `gorm:"column:operator_id"`
-	OperatorIP      string    `gorm:"column:operator_ip"`
-	UserAgent       string    `gorm:"column:user_agent"`
-	OperationStatus string    `gorm:"column:operation_status"`
-	OperationTime   time.Time `gorm:"column:operation_time"`
-	CreateTime      time.Time `gorm:"column:create_time"`
-}
-
-func (operationLog) TableName() string { return "sys_oper_log" }
-
-func (r *Repository) Record(ctx context.Context, event AuditEvent) error {
-	now := time.Now().UTC()
-	return r.db.WithContext(ctx).Create(&operationLog{
-		ModuleName: event.Resource, OperationType: event.Action,
-		RequestID: event.Metadata.RequestID, RequestMethod: event.Metadata.RequestMethod,
-		RequestURL: event.Metadata.RequestURL, OperatorID: event.Metadata.ActorID,
-		OperatorIP: event.Metadata.ClientIP, UserAgent: event.Metadata.UserAgent,
-		OperationStatus: "SUCCESS", OperationTime: now, CreateTime: now,
-	}).Error
 }
 
 func conflictError(err error, conflict error) error {

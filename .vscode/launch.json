@@ -5,23 +5,31 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "java",
-            "name": "System API",
+            "type": "go",
+            "name": "Go API (dev)",
             "request": "launch",
-            "mainClass": "cn.ezios.baseapi.BaseApiAdminApplication",
-            "cwd": "${workspaceFolder}/base-api/system-api",
+            "mode": "auto",
+            "program": "${workspaceFolder}/base-go-api/cmd/api",
+            "cwd": "${workspaceFolder}/base-go-api",
             "env": {
-                "DB_URL": "jdbc:mysql://192.168.1.7:3306/base_project?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true",
-                "DB_USERNAME": "root",
-                "DB_PASSWORD": "bddq2024"
-            },
-            "args": "--spring.profiles.active=dev"
+                "APP_ENV": "dev"
+            }
         },
         {
-            "type": "java",
-            "name": "Current File",
+            "type": "go",
+            "name": "Go Migration (dev)",
             "request": "launch",
-            "mainClass": "${file}"
+            "mode": "auto",
+            "program": "${workspaceFolder}/base-go-api/cmd/migrate",
+            "cwd": "${workspaceFolder}/base-go-api",
+            "args": [
+                "up",
+                "--kind",
+                "all"
+            ],
+            "env": {
+                "APP_ENV": "dev"
+            }
         }
     ]
 }

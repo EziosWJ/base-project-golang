@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,15 +64,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	service, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	router, err := app.Build(config.Config{
-		Environment: config.EnvironmentTest,
-		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
-		Log:         config.LogConfig{Level: "error", Format: "text"},
-	}, database, service, nil, nil, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build authentication API: %v", err)
 	}
@@ -130,15 +123,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), rbac.NewGORMAuditRecorder(database.GORM))
-	if err != nil {
-		t.Fatalf("create RBAC service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, nil, nil, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build RBAC API: %v", err)
 	}
@@ -179,6 +164,108 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	}
 }
 
+func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
+	if err != nil {
+		t.Fatalf("build RBAC API: %v", err)
+	}
+	token := loginAdmin(t, router)
+
+	// 成功写操作后业务数据与审计日志同时存在。
+	created := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
+	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
+	var roleCount, auditCount int64
+	if err := database.GORM.Table("sys_role").Where("role_code='OPS' AND deleted=0").Count(&roleCount).Error; err != nil {
+		t.Fatalf("count roles: %v", err)
+	}
+	if roleCount != 1 {
+		t.Fatalf("role count = %d, want 1", roleCount)
+	}
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='role' AND operator_id=1 AND request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count operation logs: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("operation audit count = %d, want 1", auditCount)
+	}
+
+	// 让后续审计写入必然失败（NOT VALID 约束只校验新插入行）。
+	if err := database.GORM.Exec("ALTER TABLE sys_oper_log ADD CONSTRAINT chk_oper_status CHECK (operation_status <> 'SUCCESS') NOT VALID").Error; err != nil {
+		t.Fatalf("add audit constraint: %v", err)
+	}
+
+	// 审计写入失败时业务写入必须整体回滚。
+	attempt := serveJSON(router, http.MethodPost, "/api/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
+	if attempt.Code == http.StatusOK {
+		t.Fatalf("menu create must fail when audit write fails, body=%s", attempt.Body.String())
+	}
+	var menuCount int64
+	if err := database.GORM.Table("sys_menu").Where("menu_name='custom-menu'").Count(&menuCount).Error; err != nil {
+		t.Fatalf("count menus after failed create: %v", err)
+	}
+	if menuCount != 0 {
+		t.Fatalf("menu count = %d, want 0 after rollback", menuCount)
+	}
+}
+
+func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
+	if err != nil {
+		t.Fatalf("build sysconfig API: %v", err)
+	}
+	token := loginAdmin(t, router)
+
+	created := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"原子化","configKey":"atomic.config","configValue":"true"}`, token)
+	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
+	var configCount, auditCount int64
+	if err := database.GORM.Table("sys_config").Where("config_key='atomic.config' AND deleted=0").Count(&configCount).Error; err != nil {
+		t.Fatalf("count configs: %v", err)
+	}
+	if configCount != 1 {
+		t.Fatalf("config count = %d, want 1", configCount)
+	}
+	if err := database.GORM.Table("sys_oper_log").Where("module_name='config' AND operator_id=1 AND request_id <> ''").Count(&auditCount).Error; err != nil {
+		t.Fatalf("count operation logs: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("operation audit count = %d, want 1", auditCount)
+	}
+
+	// 让后续审计写入必然失败（NOT VALID 约束只校验新插入行）。
+	if err := database.GORM.Exec("ALTER TABLE sys_oper_log ADD CONSTRAINT chk_oper_status CHECK (operation_status <> 'SUCCESS') NOT VALID").Error; err != nil {
+		t.Fatalf("add audit constraint: %v", err)
+	}
+
+	// 审计写入失败时业务写入必须整体回滚。
+	attempt := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"回滚","configKey":"atomic.rollback","configValue":"true"}`, token)
+	if attempt.Code == http.StatusOK {
+		t.Fatalf("config create must fail when audit write fails, body=%s", attempt.Body.String())
+	}
+	if err := database.GORM.Table("sys_config").Where("config_key='atomic.rollback'").Count(&configCount).Error; err != nil {
+		t.Fatalf("count configs after failed create: %v", err)
+	}
+	if configCount != 0 {
+		t.Fatalf("config count = %d, want 0 after rollback", configCount)
+	}
+}
+
 func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
@@ -189,24 +276,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	auditRecorder := rbac.NewGORMAuditRecorder(database.GORM)
-	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM), auditRecorder)
-	if err != nil {
-		t.Fatalf("create RBAC service: %v", err)
-	}
-	deptService, err := dept.NewService(dept.NewRepository(database.GORM), auditRecorder)
-	if err != nil {
-		t.Fatalf("create department service: %v", err)
-	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), usermgmt.NewRBACAuditRecorder(auditRecorder), "admin123")
-	if err != nil {
-		t.Fatalf("create user service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, rbacService, deptService, userService, nil, nil, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build department and user API: %v", err)
 	}
@@ -271,18 +341,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	runMigrations(t, projectRoot(t), temporary.dsn)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	dictRepository := dictionary.NewRepository(database.GORM)
-	dictService, err := dictionary.NewService(dictRepository, dictRepository)
-	if err != nil {
-		t.Fatal(err)
-	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, dictService, configService, nil, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,17 +376,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
-	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM), audit)
-	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService, audit)
-	if err != nil {
-		t.Fatalf("create log service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, configService, nil, logService)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
 	if err != nil {
 		t.Fatalf("build log management API: %v", err)
 	}
@@ -422,21 +471,8 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
-	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
-	if err != nil {
-		t.Fatalf("create authentication service: %v", err)
-	}
-	audit := rbac.NewGORMAuditRecorder(database.GORM)
 	storageRoot := t.TempDir()
-	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
-	if err != nil {
-		t.Fatalf("create file storage: %v", err)
-	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage, audit)
-	if err != nil {
-		t.Fatalf("create file service: %v", err)
-	}
-	router, err := app.Build(testAPIConfig(), database, authService, nil, nil, nil, nil, nil, fileService, nil)
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, storageRoot))
 	if err != nil {
 		t.Fatalf("build file management API: %v", err)
 	}
@@ -676,23 +712,27 @@ func runMigrations(t *testing.T, root, dsn string) {
 
 	command := exec.CommandContext(ctx, "go", "run", "./cmd/migrate", "up", "--kind", "all")
 	command.Dir = root
-	command.Env = integrationEnvironment(dsn)
+	command.Env = integrationEnvironment(t, dsn)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("run migrations against temporary PostgreSQL: %v\n%s", err, output)
 	}
 }
 
-func integrationEnvironment(dsn string) []string {
-	environment := make([]string, 0, len(os.Environ())+3)
+func integrationEnvironment(t *testing.T, dsn string) []string {
+	t.Helper()
+	databaseConfig := databaseConfigFromDSN(t, dsn)
+	environment := make([]string, 0, len(os.Environ())+5)
 	for _, entry := range os.Environ() {
-		if strings.HasPrefix(entry, "APP_DATABASE__DSN=") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") {
+		if strings.HasPrefix(entry, "APP_DATABASE__") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") {
 			continue
 		}
 		environment = append(environment, entry)
 	}
 	return append(environment,
 		"APP_ENV=test",
-		"APP_DATABASE__DSN="+dsn,
+		"APP_DATABASE__URL="+databaseConfig.URL,
+		"APP_DATABASE__USERNAME="+databaseConfig.Username,
+		"APP_DATABASE__PASSWORD="+databaseConfig.Password,
 		"APP_JWT__SECRET=integration-test-secret-that-is-never-deployed",
 	)
 }
@@ -725,16 +765,37 @@ func verifyDatabaseReadiness(t *testing.T, dsn string) {
 
 func openTemporaryDatabase(t *testing.T, dsn string) *platformdatabase.Database {
 	t.Helper()
-	database, err := platformdatabase.Open(context.Background(), config.DatabaseConfig{
-		Driver:       platformdatabase.DriverPostgres,
-		DSN:          dsn,
-		MaxOpenConns: 2,
-		MaxIdleConns: 1,
-	})
+	databaseConfig := databaseConfigFromDSN(t, dsn)
+	databaseConfig.Driver = platformdatabase.DriverPostgres
+	databaseConfig.MaxOpenConns = 2
+	databaseConfig.MaxIdleConns = 1
+	database, err := platformdatabase.Open(context.Background(), databaseConfig)
 	if err != nil {
 		t.Fatalf("open database for readiness check: %v", err)
 	}
 	return database
+}
+
+func databaseConfigFromDSN(t *testing.T, dsn string) config.DatabaseConfig {
+	t.Helper()
+	endpoint, err := url.Parse(dsn)
+	if err != nil {
+		t.Fatalf("parse temporary PostgreSQL DSN: %v", err)
+	}
+	if endpoint.User == nil {
+		t.Fatal("temporary PostgreSQL DSN does not contain username and password")
+	}
+	password, hasPassword := endpoint.User.Password()
+	if !hasPassword {
+		t.Fatal("temporary PostgreSQL DSN does not contain username and password")
+	}
+	username := endpoint.User.Username()
+	endpoint.User = nil
+	return config.DatabaseConfig{
+		URL:      endpoint.String(),
+		Username: username,
+		Password: password,
+	}
 }
 
 func mustTokenManager(t *testing.T) *auth.TokenManager {
@@ -756,6 +817,57 @@ func testAPIConfig() config.Config {
 		Environment: config.EnvironmentTest,
 		CORS:        config.CORSConfig{AllowedOrigins: []string{"*"}},
 		Log:         config.LogConfig{Level: "error", Format: "text"},
+	}
+}
+
+// testDependencies constructs every business service from real repositories so
+// that app.Build receives a complete named dependency set, as required by the
+// HTTP application contract. Each test overrides only the modules it exercises.
+func testDependencies(t *testing.T, database *platformdatabase.Database, storageRoot string) app.Dependencies {
+	t.Helper()
+	authService, err := auth.NewService(auth.NewRepository(database.GORM), mustTokenManager(t))
+	if err != nil {
+		t.Fatalf("create authentication service: %v", err)
+	}
+	rbacService, err := rbac.NewService(rbac.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create RBAC service: %v", err)
+	}
+	deptService, err := dept.NewService(dept.NewRepository(database.GORM))
+	if err != nil {
+		t.Fatalf("create department service: %v", err)
+	}
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), "admin123")
+	if err != nil {
+		t.Fatalf("create user service: %v", err)
+	}
+	dictRepository := dictionary.NewRepository(database.GORM)
+	dictionaryService, err := dictionary.NewService(dictRepository)
+	if err != nil {
+		t.Fatalf("create dictionary service: %v", err)
+	}
+	configService := sysconfig.NewService(sysconfig.NewRepository(database.GORM))
+	fileStorage, err := filemgmt.NewLocalStorage(storageRoot)
+	if err != nil {
+		t.Fatalf("create file storage: %v", err)
+	}
+	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
+	if err != nil {
+		t.Fatalf("create file service: %v", err)
+	}
+	logService, err := logmgmt.NewService(logmgmt.NewRepository(database.GORM), configService)
+	if err != nil {
+		t.Fatalf("create log service: %v", err)
+	}
+	return app.Dependencies{
+		Auth:       authService,
+		RBAC:       rbacService,
+		Department: deptService,
+		User:       userService,
+		Dictionary: dictionaryService,
+		SysConfig:  configService,
+		File:       fileService,
+		Log:        logService,
 	}
 }
 

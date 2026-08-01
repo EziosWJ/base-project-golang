@@ -17,8 +17,7 @@ func TestTypeRulesAndAudit(t *testing.T) {
 	store := newFakeStore()
 	store.types[1] = DictType{ID: 1, DictName: "内置", DictCode: "BUILTIN", Status: 1, IsBuiltin: 1}
 	store.types[2] = DictType{ID: 2, DictName: "普通", DictCode: "NORMAL", Status: 1}
-	audit := &auditSpy{}
-	service, err := NewService(store, audit)
+	service, err := NewService(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,16 +29,16 @@ func TestTypeRulesAndAudit(t *testing.T) {
 	if created.Status != StatusEnabled || created.SortOrder != 0 || created.IsBuiltin != BuiltinNo {
 		t.Fatalf("create defaults = %+v", created)
 	}
-	if len(audit.events) != 1 || audit.events[0].Action != "dict-type.create" || audit.events[0].Metadata.ActorID != 7 {
-		t.Fatalf("audit events = %+v", audit.events)
+	if len(store.auditEvents) != 1 || store.auditEvents[0].Action != "dict-type.create" || store.auditEvents[0].Metadata.ActorID != 7 {
+		t.Fatalf("audit events = %+v", store.auditEvents)
 	}
 
 	_, err = service.CreateType(context.Background(), AuditMetadata{}, TypeInput{DictName: "重复", DictCode: "TEST"})
 	if !errors.Is(err, ErrDictCodeConflict) {
 		t.Fatalf("duplicate error = %v", err)
 	}
-	if len(audit.events) != 1 {
-		t.Fatalf("failed create wrote audit: %+v", audit.events)
+	if len(store.auditEvents) != 1 {
+		t.Fatalf("failed create wrote audit: %+v", store.auditEvents)
 	}
 
 	_, err = service.UpdateType(context.Background(), AuditMetadata{}, 1, TypeInput{DictName: "内置", DictCode: "CHANGED"})
@@ -64,15 +63,14 @@ func TestBatchValidationHappensBeforeDelete(t *testing.T) {
 	store := newFakeStore()
 	store.types[2] = DictType{ID: 2, DictName: "普通", DictCode: "NORMAL"}
 	store.types[3] = DictType{ID: 3, DictName: "内置", DictCode: "BUILTIN", IsBuiltin: BuiltinYes}
-	audit := &auditSpy{}
-	service, _ := NewService(store, audit)
+	service, _ := NewService(store)
 
 	err := service.DeleteTypes(context.Background(), AuditMetadata{}, []int64{2, 3})
 	if !errors.Is(err, ErrBuiltinProtected) {
 		t.Fatalf("batch error = %v", err)
 	}
-	if len(store.deletedTypes) != 0 || len(audit.events) != 0 {
-		t.Fatalf("failed batch mutated state: deleted=%v audit=%v", store.deletedTypes, audit.events)
+	if len(store.deletedTypes) != 0 || len(store.auditEvents) != 0 {
+		t.Fatalf("failed batch mutated state: deleted=%v audit=%v", store.deletedTypes, store.auditEvents)
 	}
 }
 
@@ -80,19 +78,18 @@ func TestDataRulesItemsAndEmptySlices(t *testing.T) {
 	t.Parallel()
 	store := newFakeStore()
 	store.types[1] = DictType{ID: 1, DictName: "状态", DictCode: "STATUS", Status: StatusEnabled}
-	audit := &auditSpy{}
-	service, _ := NewService(store, audit)
+	service, _ := NewService(store)
 
 	created, err := service.CreateData(context.Background(), AuditMetadata{}, DataInput{DictTypeID: 1, DictLabel: "启用", DictValue: "1"})
 	if err != nil {
 		t.Fatalf("create data: %v", err)
 	}
-	if created.SortOrder != 0 || len(audit.events) != 1 || audit.events[0].Action != "dict-data.create" {
-		t.Fatalf("created=%+v audit=%+v", created, audit.events)
+	if created.SortOrder != 0 || len(store.auditEvents) != 1 || store.auditEvents[0].Action != "dict-data.create" {
+		t.Fatalf("created=%+v audit=%+v", created, store.auditEvents)
 	}
 	_, err = service.CreateData(context.Background(), AuditMetadata{}, DataInput{DictTypeID: 1, DictLabel: "重复", DictValue: "1"})
-	if !errors.Is(err, ErrDictValueConflict) || len(audit.events) != 1 {
-		t.Fatalf("duplicate result err=%v audit=%v", err, audit.events)
+	if !errors.Is(err, ErrDictValueConflict) || len(store.auditEvents) != 1 {
+		t.Fatalf("duplicate result err=%v audit=%v", err, store.auditEvents)
 	}
 	_, err = service.CreateData(context.Background(), AuditMetadata{}, DataInput{DictTypeID: 999, DictLabel: "未知", DictValue: "x"})
 	if !errors.Is(err, ErrNotFound) {
@@ -110,11 +107,42 @@ func TestDataRulesItemsAndEmptySlices(t *testing.T) {
 	}
 }
 
+func TestWriteRollsBackWhenAuditFails(t *testing.T) {
+	store := newFakeStore()
+	store.auditError = errors.New("audit write failed")
+	service, _ := NewService(store)
+
+	_, err := service.CreateType(context.Background(), AuditMetadata{}, TypeInput{DictName: "测试", DictCode: "TEST"})
+	if err == nil {
+		t.Fatal("create must fail when audit fails")
+	}
+	if len(store.types) != 0 {
+		t.Fatal("type must roll back when audit fails")
+	}
+}
+
+func TestBatchDeleteWritesOneAuditEvent(t *testing.T) {
+	store := newFakeStore()
+	store.types[2] = DictType{ID: 2, DictName: "普通", DictCode: "NORMAL"}
+	store.types[3] = DictType{ID: 3, DictName: "测试", DictCode: "QA"}
+	service, _ := NewService(store)
+
+	if err := service.DeleteTypes(context.Background(), AuditMetadata{}, []int64{2, 3}); err != nil {
+		t.Fatalf("batch delete=%v", err)
+	}
+	if len(store.auditEvents) != 1 || store.auditEvents[0].Action != "dict-type.batch-delete" {
+		t.Fatalf("audit events=%+v", store.auditEvents)
+	}
+	if store.types[2].Deleted != 1 || store.types[3].Deleted != 1 {
+		t.Fatalf("batch delete left live rows: %+v", store.types)
+	}
+}
+
 func TestHandlerContractUsesEmptyArrayNullMutationAndTransportValidation(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 	store := newFakeStore()
-	service, _ := NewService(store, &auditSpy{})
+	service, _ := NewService(store)
 	handler, _ := NewHandler(service)
 	router := gin.New()
 	group := router.Group("/api/system")
@@ -152,13 +180,6 @@ func perform(router http.Handler, method, path, body string) *httptest.ResponseR
 	return response
 }
 
-type auditSpy struct{ events []AuditEvent }
-
-func (a *auditSpy) Record(_ context.Context, event AuditEvent) error {
-	a.events = append(a.events, event)
-	return nil
-}
-
 type fakeStore struct {
 	types        map[int64]DictType
 	data         map[int64]DictData
@@ -167,6 +188,8 @@ type fakeStore struct {
 	deletedTypes []int64
 	deletedData  []int64
 	items        []DictItem
+	auditEvents  []AuditEvent
+	auditError   error
 }
 
 func newFakeStore() *fakeStore {
@@ -200,15 +223,24 @@ func (f *fakeStore) DictCodeExists(_ context.Context, code string, excludeID int
 	return false, nil
 }
 
-func (f *fakeStore) CreateType(_ context.Context, value DictType) (DictType, error) {
+func (f *fakeStore) CreateType(_ context.Context, value DictType, e AuditEvent) (DictType, error) {
+	if f.auditError != nil {
+		return value, f.auditError
+	}
 	f.nextTypeID++
 	value.ID = f.nextTypeID
 	f.types[value.ID] = value
+	e.ResourceID = value.ID
+	f.auditEvents = append(f.auditEvents, e)
 	return value, nil
 }
 
-func (f *fakeStore) UpdateType(_ context.Context, value DictType) (DictType, error) {
+func (f *fakeStore) UpdateType(_ context.Context, value DictType, e AuditEvent) (DictType, error) {
+	if f.auditError != nil {
+		return value, f.auditError
+	}
 	f.types[value.ID] = value
+	f.auditEvents = append(f.auditEvents, e)
 	return value, nil
 }
 
@@ -222,20 +254,28 @@ func (f *fakeStore) CountDataByType(_ context.Context, typeID int64) (int64, err
 	return count, nil
 }
 
-func (f *fakeStore) DeleteTypes(_ context.Context, ids []int64) error {
+func (f *fakeStore) DeleteTypes(_ context.Context, ids []int64, e AuditEvent) error {
+	if f.auditError != nil {
+		return f.auditError
+	}
 	f.deletedTypes = append(f.deletedTypes, ids...)
 	for _, id := range ids {
 		value := f.types[id]
 		value.Deleted = 1
 		f.types[id] = value
 	}
+	f.auditEvents = append(f.auditEvents, e)
 	return nil
 }
 
-func (f *fakeStore) SetTypeStatus(_ context.Context, id int64, status int) error {
+func (f *fakeStore) SetTypeStatus(_ context.Context, id int64, status int, e AuditEvent) error {
+	if f.auditError != nil {
+		return f.auditError
+	}
 	value := f.types[id]
 	value.Status = status
 	f.types[id] = value
+	f.auditEvents = append(f.auditEvents, e)
 	return nil
 }
 
@@ -266,25 +306,38 @@ func (f *fakeStore) DictValueExists(_ context.Context, typeID int64, value strin
 	return false, nil
 }
 
-func (f *fakeStore) CreateData(_ context.Context, value DictData) (DictData, error) {
+func (f *fakeStore) CreateData(_ context.Context, value DictData, e AuditEvent) (DictData, error) {
+	if f.auditError != nil {
+		return value, f.auditError
+	}
 	f.nextDataID++
 	value.ID = f.nextDataID
 	f.data[value.ID] = value
+	e.ResourceID = value.ID
+	f.auditEvents = append(f.auditEvents, e)
 	return value, nil
 }
 
-func (f *fakeStore) UpdateData(_ context.Context, value DictData) (DictData, error) {
+func (f *fakeStore) UpdateData(_ context.Context, value DictData, e AuditEvent) (DictData, error) {
+	if f.auditError != nil {
+		return value, f.auditError
+	}
 	f.data[value.ID] = value
+	f.auditEvents = append(f.auditEvents, e)
 	return value, nil
 }
 
-func (f *fakeStore) DeleteData(_ context.Context, ids []int64) error {
+func (f *fakeStore) DeleteData(_ context.Context, ids []int64, e AuditEvent) error {
+	if f.auditError != nil {
+		return f.auditError
+	}
 	f.deletedData = append(f.deletedData, ids...)
 	for _, id := range ids {
 		value := f.data[id]
 		value.Deleted = 1
 		f.data[id] = value
 	}
+	f.auditEvents = append(f.auditEvents, e)
 	return nil
 }
 

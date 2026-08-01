@@ -22,8 +22,12 @@ services:
       target: migrate
     environment:
       APP_ENV: dev
-      APP_DATABASE__DSN: postgres://${POSTGRES_USER:-base_go_api}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-base_go_api}?sslmode=disable
+      APP_DATABASE__URL: postgres://postgres:5432/${POSTGRES_DB:-base_go_api}?sslmode=disable
+      APP_DATABASE__USERNAME: ${POSTGRES_USER:-base_go_api}
+      APP_DATABASE__PASSWORD: ${POSTGRES_PASSWORD}
       APP_JWT__SECRET: ${APP_JWT__SECRET:?set APP_JWT__SECRET in .env}
+      APP_LOG__LEVEL: debug
+      APP_LOG__FORMAT: text
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,8 +40,13 @@ services:
       target: api
     environment:
       APP_ENV: dev
-      APP_DATABASE__DSN: postgres://${POSTGRES_USER:-base_go_api}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-base_go_api}?sslmode=disable
+      APP_DATABASE__URL: postgres://postgres:5432/${POSTGRES_DB:-base_go_api}?sslmode=disable
+      APP_DATABASE__USERNAME: ${POSTGRES_USER:-base_go_api}
+      APP_DATABASE__PASSWORD: ${POSTGRES_PASSWORD}
       APP_JWT__SECRET: ${APP_JWT__SECRET:?set APP_JWT__SECRET in .env}
+      APP_SWAGGER__ENABLED: "true"
+      APP_LOG__LEVEL: debug
+      APP_LOG__FORMAT: text
     depends_on:
       migrate:
         condition: service_completed_successfully
