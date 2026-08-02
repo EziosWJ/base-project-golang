@@ -1,4 +1,4 @@
-# base-project-java
+# base-project-golang
 
 React 管理后台 + Go REST API 的 monorepo。
 
