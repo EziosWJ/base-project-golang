@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+env:
+  APP_ENV: dev
+  GOCACHE: '{{.ROOT_DIR}}/.task/go-build'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  db:migrate:
+    desc: Apply schema and seed migrations
+    dir: base-go-api
+    cmds:
+      - go run ./cmd/migrate up --kind all
+
+  db:migrate:schema:
+    desc: Apply schema migrations only
+    dir: base-go-api
+    cmds:
+      - go run ./cmd/migrate up --kind schema
+
+  db:migrate:seed:
+    desc: Apply seed migrations only
+    dir: base-go-api
+    cmds:
+      - go run ./cmd/migrate up --kind seed
+
+  api:
+    desc: Start the Go API
+    dir: base-go-api
+    cmds:
+      - go run ./cmd/api
+
+  web:
+    desc: Start the React development server
+    dir: react-admin
+    cmds:
+      - npm run dev
+
+  dev:
+    desc: Migrate the database and start API and web together
+    deps:
+      - db:migrate
+    cmds:
+      - task --parallel api web
+
+  backend:test:
+    desc: Run backend unit tests
+    dir: base-go-api
+    cmds:
+      - go test ./...
+
+  backend:integration:
+    desc: Run backend PostgreSQL integration tests
+    dir: base-go-api
+    cmds:
+      - go test -tags=integration ./integration
+
+  backend:check:
+    desc: Run backend tests and static checks
+    dir: base-go-api
+    cmds:
+      - go test ./...
+      - go vet ./...
+
+  frontend:lint:
+    desc: Run frontend lint
+    dir: react-admin
+    cmds:
+      - npm run lint
+
+  frontend:build:
+    desc: Build the frontend
+    dir: react-admin
+    cmds:
+      - npm run build
+
+  check:
+    desc: Run backend and frontend checks
+    deps:
+      - backend:check
+      - frontend:lint
+      - frontend:build
+
+  build:
+    desc: Build backend and frontend
+    deps:
+      - frontend:build
+    dir: base-go-api
+    cmds:
+      - go build ./cmd/api ./cmd/migrate
+
+  test:
+    desc: Run the default test suite
+    deps:
+      - backend:test

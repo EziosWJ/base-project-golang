@@ -26,6 +26,25 @@ project/
 - push 已禁用，可以放心在 `react-admin/` 和 `base-go-api/` 中改动代码
 - 参考脚手架结构时，按需读取具体文件，不要批量扫描
 
+## Taskfile 开发与启动入口
+
+根目录 `Taskfile.yml` 是项目日常开发、启动和验证的统一入口。Agent 优先使用这些任务，不要在已有等价任务时自行拼接目录切换、环境变量或启动命令。
+
+- 后端本地配置使用 `base-go-api/configs/config.dev.yaml`；数据库和 JWT 配置放在该文件中，不另建根目录 `.env.local` 作为后端运行配置。
+- `task db:migrate`：执行全部 Goose schema 和 seed migration；首次启动、数据库重建或修改 migration 后执行。
+- `task api`：启动 Go API，默认监听 `:8099`。
+- `task web`：启动 React 开发服务器，默认监听 `:5173`。
+- `task dev`：先执行数据库 migration，再并行启动 API 和前端；适合全新环境或需要确保数据库已更新时使用。
+- `task backend:test`：执行后端单元测试。
+- `task backend:check`：执行后端测试和 `go vet`。
+- `task backend:integration`：执行 PostgreSQL 集成测试，需要 Docker。
+- `task frontend:lint`：执行前端 ESLint。
+- `task frontend:build`：执行前端 TypeScript/Vite 构建。
+- `task check`：执行后端检查、前端 lint 和前端构建。
+- `task test`：执行默认后端测试集。
+
+推荐的 Agent 验证顺序：后端改动执行 `task backend:check`，前端改动执行 `task frontend:lint` 和 `task frontend:build`，涉及数据库结构时先执行 `task db:migrate`，需要联调时再启动 `task api` 或 `task dev`。长时间运行的任务必须配合健康检查或明确的超时与清理；API 使用 `/health` 检查存活、`/ready` 检查数据库就绪。
+
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
 ## 1. Think Before Coding

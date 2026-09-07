@@ -24,6 +24,27 @@ Go 1.26 · Gin · GORM · PostgreSQL · Goose migration · Koanf 配置 · JWT �
 
 ## 快速开始
 
+### 使用 Task（推荐）
+
+项目根目录提供跨平台的 `Taskfile.yml`。首次使用时，复制并填写后端本地配置：
+
+```powershell
+Copy-Item base-go-api/configs/config.dev.example.yaml base-go-api/configs/config.dev.yaml
+```
+
+在 `base-go-api/configs/config.dev.yaml` 中配置 `local_project` 数据库、`base_project_golang` schema、PostgreSQL 用户密码和 JWT secret。之后可在项目根目录执行：
+
+```text
+task db:migrate   # 恢复或更新数据库
+task api          # 启动 Go API（:8099）
+task web          # 启动 React（:5173）
+task dev          # 迁移数据库并同时启动前后端
+task check        # 执行后端检查和前端 lint/build
+task test         # 执行后端测试
+```
+
+Windows、Linux 和 macOS 使用相同命令；Docker Desktop 仅在运行 Docker 或集成测试时需要。
+
 ### 后端
 
 两种方式任选其一，详见 [base-go-api/README.md](base-go-api/README.md)。
