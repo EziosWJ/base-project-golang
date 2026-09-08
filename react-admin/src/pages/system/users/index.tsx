@@ -105,6 +105,8 @@ export function UsersPage() {
   const [roleDialogUser, setRoleDialogUser] = useState<UserRecord | null>(null);
   const [roleOptions, setRoleOptions] = useState<AssignableRole[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const roleRequestId = useRef(0);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(false);
   const [roleSubmitting, setRoleSubmitting] = useState(false);
   const [resetPasswordResult, setResetPasswordResult] = useState<{
@@ -255,7 +257,15 @@ export function UsersPage() {
     }
   };
 
+  const closeRoleDialog = () => {
+    roleRequestId.current += 1;
+    setRoleDialogUser(null);
+  };
+
   const openRoleDialog = async (user: UserRecord) => {
+    const requestId = ++roleRequestId.current;
+    setRoleError(null);
+    setRoleOptions([]);
     setRoleDialogUser(user);
     setSelectedRoleIds(user.roles?.map((role) => role.id) ?? []);
     setRoleLoading(true);
@@ -265,21 +275,24 @@ export function UsersPage() {
         getUserDetail(user.id),
         getAssignableRoles(),
       ]);
+      if (requestId !== roleRequestId.current) return;
       setRoleDialogUser(detail);
       setSelectedRoleIds(detail.roles?.map((role) => role.id) ?? []);
       setRoleOptions(roles);
     } catch (roleError) {
+      if (requestId !== roleRequestId.current) return;
+      setRoleError(getErrorMessage(roleError, "无法获取角色列表，请重试"));
       toast.error({
         title: "角色数据加载失败",
         description: getErrorMessage(roleError, "无法获取角色列表"),
       });
     } finally {
-      setRoleLoading(false);
+      if (requestId === roleRequestId.current) setRoleLoading(false);
     }
   };
 
   const submitRoles = async () => {
-    if (!roleDialogUser) return;
+    if (!roleDialogUser || roleLoading || roleError || roleSubmitting) return;
 
     setRoleSubmitting(true);
     try {
@@ -537,22 +550,19 @@ export function UsersPage() {
         onSubmit={submitUserForm}
       />
 
-      <RoleAssignDialog
+      {roleDialogUser && <RoleAssignDialog
+        key={roleDialogUser.id}
         user={roleDialogUser}
         roles={roleOptions}
         selectedRoleIds={selectedRoleIds}
         loading={roleLoading}
         submitting={roleSubmitting}
-        onToggle={(roleId, checked) => {
-          setSelectedRoleIds((current) =>
-            checked
-              ? Array.from(new Set([...current, roleId]))
-              : current.filter((id) => id !== roleId),
-          );
-        }}
-        onCancel={() => setRoleDialogUser(null)}
+        error={roleError}
+        onChange={setSelectedRoleIds}
+        onRetry={() => void openRoleDialog(roleDialogUser)}
+        onCancel={closeRoleDialog}
         onSubmit={submitRoles}
-      />
+      />}
 
       <PasswordResultDialog
         result={resetPasswordResult}

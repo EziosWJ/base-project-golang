@@ -582,8 +582,7 @@ export function SystemConfigsPage() {
             <Button
               size="sm"
               variant="ghost"
-              disabled={builtin}
-              title={builtin ? "内置配置不提供启停操作" : undefined}
+              title={builtin ? "内置配置允许修改启停状态" : undefined}
               onClick={() =>
                 setConfirmAction({
                   type: "status",
