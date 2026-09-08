@@ -14,6 +14,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/notification"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -21,16 +22,18 @@ import (
 )
 
 // Dependencies holds the named business services the HTTP application assembles.
-// All fields are required; a missing service fails application construction.
+// Core management services are required; notification routes are enabled when
+// the optional Notification service is supplied.
 type Dependencies struct {
-	Auth       *auth.Service
-	RBAC       *rbac.Service
-	Department *dept.Service
-	User       *usermgmt.Service
-	Dictionary *dictionary.Service
-	SysConfig  *sysconfig.Service
-	File       *filemgmt.Service
-	Log        *logmgmt.Service
+	Auth         *auth.Service
+	RBAC         *rbac.Service
+	Department   *dept.Service
+	User         *usermgmt.Service
+	Dictionary   *dictionary.Service
+	SysConfig    *sysconfig.Service
+	File         *filemgmt.Service
+	Log          *logmgmt.Service
+	Notification *notification.Service
 }
 
 // Application is the assembled HTTP application and its process logger.
@@ -115,6 +118,14 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		return nil, fmt.Errorf("create log handler: %w", err)
 	}
 	logmgmt.RegisterRoutes(system, logHandler)
+
+	if deps.Notification != nil {
+		notificationHandler, err := notification.NewHandler(deps.Notification)
+		if err != nil {
+			return nil, fmt.Errorf("create notification handler: %w", err)
+		}
+		notification.RegisterRoutes(system, notificationHandler)
+	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {
 		registerSwaggerUI(router)

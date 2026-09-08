@@ -18,6 +18,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/notification"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -68,7 +69,8 @@ func main() {
 		slog.Error("build department service", "error", err)
 		os.Exit(1)
 	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), defaultUserPassword)
+	notificationRepository := notification.NewRepository(database.GORM)
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM, notificationRepository), defaultUserPassword)
 	if err != nil {
 		slog.Error("build user service", "error", err)
 		os.Exit(1)
@@ -94,16 +96,22 @@ func main() {
 		slog.Error("build log service", "error", err)
 		os.Exit(1)
 	}
+	notificationService, err := notification.NewService(notificationRepository)
+	if err != nil {
+		slog.Error("build notification service", "error", err)
+		os.Exit(1)
+	}
 
 	application, err := app.New(*cfg, database, app.Dependencies{
-		Auth:       authService,
-		RBAC:       rbacService,
-		Department: deptService,
-		User:       userService,
-		Dictionary: dictionaryService,
-		SysConfig:  configService,
-		File:       fileService,
-		Log:        logService,
+		Auth:         authService,
+		RBAC:         rbacService,
+		Department:   deptService,
+		User:         userService,
+		Dictionary:   dictionaryService,
+		SysConfig:    configService,
+		File:         fileService,
+		Log:          logService,
+		Notification: notificationService,
 	})
 	if err != nil {
 		slog.Error("build application", "error", err)

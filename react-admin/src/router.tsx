@@ -5,6 +5,7 @@ import { AccountProfilePage } from "@/pages/account-profile";
 import { ChangePasswordPage } from "@/pages/change-password";
 import { DashboardPage } from "@/pages/dashboard";
 import { DetailDemoPage } from "@/pages/examples/detail-demo";
+import { FileUploadDemoPage } from "@/pages/examples/file-upload-demo";
 import { FormExamplePage } from "@/pages/form-example";
 import { ListDemoPage } from "@/pages/examples/list-demo";
 import { TreeDemoPage } from "@/pages/examples/tree-demo";
@@ -21,6 +22,8 @@ import { SystemOperLogsPage } from "@/pages/system/logs/oper-logs";
 import { SystemMenusPage } from "@/pages/system/menus";
 import { SystemRolesPage } from "@/pages/system/roles";
 import { UsersPage } from "@/pages/system/users";
+import { NotificationsPage } from "@/pages/notifications";
+import { NotificationManagePage } from "@/pages/system/notifications";
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +71,10 @@ export const router = createBrowserRouter([
         element: <DetailDemoPage />,
       },
       {
+        path: "examples/file-upload",
+        element: <FileUploadDemoPage />,
+      },
+      {
         path: "settings",
         element: <SettingsPage />,
       },
@@ -106,6 +113,18 @@ export const router = createBrowserRouter([
       {
         path: "system/file",
         element: <SystemFilesPage />,
+      },
+      {
+        path: "notifications",
+        element: <NotificationsPage />,
+      },
+      {
+        path: "notifications/:id",
+        element: <NotificationsPage />,
+      },
+      {
+        path: "system/notification",
+        element: <NotificationManagePage />,
       },
       {
         path: "account/profile",

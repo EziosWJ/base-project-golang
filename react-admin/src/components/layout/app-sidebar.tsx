@@ -6,6 +6,7 @@ import {
   convertUserMenusToNavItems,
   defaultNavItems,
   mergeNavItems,
+  notificationManageNavItem,
   type NavItem,
 } from "@/config/navigation";
 import { isApiError } from "@/lib/api-error";
@@ -53,15 +54,20 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
   const hasRequestedMenusRef = useRef(false);
   const menus = useAuthStore((state) => state.menus);
+  const user = useAuthStore((state) => state.user);
   const isLoadingMenus = useAuthStore((state) => state.isLoadingMenus);
   const fetchCurrentUserMenus = useAuthStore(
     (state) => state.fetchCurrentUserMenus,
   );
 
   const sidebarNavItems = useMemo(
-    () =>
-      mergeNavItems(defaultNavItems, convertUserMenusToNavItems(menus)),
-    [menus],
+    () => {
+      const base = user?.roles?.some((role) => role.roleCode === "ADMIN")
+        ? [...defaultNavItems, notificationManageNavItem]
+        : defaultNavItems;
+      return mergeNavItems(base, convertUserMenusToNavItems(menus));
+    },
+    [menus, user],
   );
 
   const activeGroupPaths = useMemo(

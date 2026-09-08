@@ -2,9 +2,11 @@ import {
   FileSearch,
   FileText,
   LayoutDashboard,
+  Bell,
   Network,
   PanelLeft,
   Table2,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { getMenuIcon } from "@/lib/menu-icons";
@@ -24,6 +26,11 @@ export const defaultNavItems: NavItem[] = [
     label: "Dashboard",
     path: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "我的通知",
+    path: "/notifications",
+    icon: Bell,
   },
 
   {
@@ -56,9 +63,20 @@ export const defaultNavItems: NavItem[] = [
         path: "/examples/detail",
         icon: FileSearch,
       },
+      {
+        label: "文件上传 Demo",
+        path: "/examples/file-upload",
+        icon: Upload,
+      },
     ],
   },
 ];
+
+export const notificationManageNavItem: NavItem = {
+  label: "通知管理",
+  path: "/system/notification",
+  icon: Bell,
+};
 
 function collectNavPaths(items: NavItem[]) {
   const paths = new Set<string>();
@@ -168,12 +186,14 @@ export function createUserMenuTitleMap(
 
 export const staticRouteTitleMap: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/notifications": "我的通知",
   "/forms/basic": "表单示例",
   "/examples": "页面示例",
   "/examples/list": "列表页 Demo",
   "/examples/tree": "树形结构 Demo",
   "/examples/tree-table": "左树右表 Demo",
   "/examples/detail": "详情页 Demo",
+  "/examples/file-upload": "文件上传 Demo",
   "/settings": "系统设置",
   "/system": "系统管理",
   "/system/user": "用户管理",
@@ -185,6 +205,7 @@ export const staticRouteTitleMap: Record<string, string> = {
   "/system/login-log": "登录日志",
   "/system/oper-log": "操作日志",
   "/system/file": "文件管理",
+  "/system/notification": "通知管理",
   "/account/profile": "个人中心",
   "/account/change-password": "修改密码",
 };

@@ -80,6 +80,12 @@ export type {
 } from "./system";
 export type { DataTableColumn } from "./table";
 export type {
+  NotificationPageQuery,
+  NotificationPageResult,
+  NotificationPublishRequest,
+  NotificationRecord,
+} from "./notification";
+export type {
   MenuQuery,
   MenuRecord,
   MenuStatus,

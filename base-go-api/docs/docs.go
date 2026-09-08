@@ -1499,6 +1499,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "单文件最大 50 MB；声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1559,6 +1560,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -2375,6 +2377,210 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/rbac.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "发布站内通知",
+                "parameters": [
+                    {
+                        "description": "通知内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.publishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification-admin/page": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "通知管理分页",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification/page": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "我的通知分页",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification/read-all": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "全部标记已读",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "未读通知数",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "通知详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "通知 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/notification/{id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "标记通知已读",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "通知 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
                         }
                     }
                 }
@@ -3849,6 +4055,38 @@ const docTemplate = `{
                 "data": {},
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "notification.ApiEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "notification.publishRequest": {
+            "type": "object",
+            "properties": {
+                "allUsers": {
+                    "type": "boolean"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "userIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

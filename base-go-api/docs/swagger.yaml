@@ -253,6 +253,27 @@ definitions:
       message:
         type: string
     type: object
+  notification.ApiEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  notification.publishRequest:
+    properties:
+      allUsers:
+        type: boolean
+      content:
+        type: string
+      title:
+        type: string
+      userIds:
+        items:
+          type: integer
+        type: array
+    type: object
   rbac.ApiEnvelope:
     properties:
       code:
@@ -1525,6 +1546,7 @@ paths:
     post:
       consumes:
       - multipart/form-data
+      description: 单文件最大 50 MB；声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。
       parameters:
       - description: 文件
         in: formData
@@ -1563,6 +1585,7 @@ paths:
     post:
       consumes:
       - multipart/form-data
+      description: 每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。
       parameters:
       - description: 文件列表
         in: formData
@@ -1905,6 +1928,127 @@ paths:
       summary: 菜单树
       tags:
       - 菜单管理
+  /api/system/notification:
+    post:
+      parameters:
+      - description: 通知内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.publishRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 发布站内通知
+      tags:
+      - 站内通知
+  /api/system/notification-admin/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 通知管理分页
+      tags:
+      - 站内通知
+  /api/system/notification/{id}:
+    get:
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 通知详情
+      tags:
+      - 站内通知
+  /api/system/notification/{id}/read:
+    put:
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 标记通知已读
+      tags:
+      - 站内通知
+  /api/system/notification/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 我的通知分页
+      tags:
+      - 站内通知
+  /api/system/notification/read-all:
+    put:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 全部标记已读
+      tags:
+      - 站内通知
+  /api/system/notification/unread-count:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 未读通知数
+      tags:
+      - 站内通知
   /api/system/oper-log/{id}:
     get:
       parameters:

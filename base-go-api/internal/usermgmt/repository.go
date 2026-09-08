@@ -8,11 +8,24 @@ import (
 	"gorm.io/gorm"
 )
 
-type Repository struct{ db *gorm.DB }
+type roleChangeNotifier interface {
+	RecordRoleChange(context.Context, *gorm.DB, int64, []string, []string) error
+}
+
+type Repository struct {
+	db       *gorm.DB
+	notifier roleChangeNotifier
+}
 
 var _ Store = (*Repository)(nil)
 
-func NewRepository(db *gorm.DB) *Repository { return &Repository{db} }
+func NewRepository(db *gorm.DB, notifiers ...roleChangeNotifier) *Repository {
+	var notifier roleChangeNotifier
+	if len(notifiers) > 0 {
+		notifier = notifiers[0]
+	}
+	return &Repository{db: db, notifier: notifier}
+}
 func (r *Repository) Page(ctx context.Context, q PageQuery) (Page[User], error) {
 	var p Page[User]
 	d := r.db.WithContext(ctx).Model(&User{}).Where("deleted=0")
@@ -142,6 +155,12 @@ func (r *Repository) DeleteUsers(ctx context.Context, ids []int64, e AuditEvent)
 }
 func (r *Repository) AssignRoles(ctx context.Context, id int64, ids []int64, e AuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var before []string
+		if r.notifier != nil {
+			if err := tx.Table("sys_role r").Select("r.role_code").Joins("JOIN sys_user_role ur ON ur.role_id=r.id").Where("ur.user_id=? AND r.deleted=0", id).Pluck("r.role_code", &before).Error; err != nil {
+				return err
+			}
+		}
 		if e := tx.Table("sys_user_role").Where("user_id=?", id).Delete(&struct{}{}).Error; e != nil {
 			return e
 		}
@@ -150,8 +169,38 @@ func (r *Repository) AssignRoles(ctx context.Context, id int64, ids []int64, e A
 				return e
 			}
 		}
+		if r.notifier != nil {
+			var after []string
+			if err := tx.Table("sys_role").Where("id IN ? AND deleted=0", ids).Pluck("role_code", &after).Error; err != nil {
+				return err
+			}
+			if !sameStrings(before, after) {
+				if err := r.notifier.RecordRoleChange(ctx, tx, id, before, after); err != nil {
+					return err
+				}
+			}
+		}
 		return audit.RecordOn(ctx, tx, e)
 	})
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	counts := map[string]int{}
+	for _, v := range a {
+		counts[v]++
+	}
+	for _, v := range b {
+		counts[v]--
+	}
+	for _, v := range counts {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
 }
 func (r *Repository) ResetPassword(ctx context.Context, id int64, p string, e AuditEvent) error {
 	return r.password(ctx, id, p, e)
