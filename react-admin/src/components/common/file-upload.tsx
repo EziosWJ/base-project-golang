@@ -1,4 +1,4 @@
-import { Upload, X } from "lucide-react";
+import { CheckCircle2, Upload, X } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 import { uploadFile } from "@/api/file";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ type FileUploadProps = FileUploadOptions & {
   className?: string;
   onUploaded?: (file: FileRecord) => void;
   onAccessUrlChange?: (accessUrl: string, file: FileRecord) => void;
+  onCleared?: () => void;
 };
 
 function getErrorMessage(error: unknown) {
@@ -32,11 +33,13 @@ export function FileUpload({
   className,
   onUploaded,
   onAccessUrlChange,
+  onCleared,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedName, setSelectedName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<FileRecord | null>(null);
 
   const handleSelect = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -44,6 +47,8 @@ export function FileUpload({
 
     setSelectedName(file.name);
     setErrorMessage("");
+    setUploadedFile(null);
+    onCleared?.();
     setUploading(true);
 
     try {
@@ -51,6 +56,7 @@ export function FileUpload({
         businessModule,
         remark,
       });
+      setUploadedFile(uploadedFile);
       onUploaded?.(uploadedFile);
       onAccessUrlChange?.(uploadedFile.accessUrl, uploadedFile);
     } catch (error) {
@@ -64,6 +70,8 @@ export function FileUpload({
   const handleClear = () => {
     setSelectedName("");
     setErrorMessage("");
+    setUploadedFile(null);
+    onCleared?.();
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -108,8 +116,17 @@ export function FileUpload({
       {helperText && (
         <p className="text-xs leading-5 text-text-tertiary">{helperText}</p>
       )}
+      {uploadedFile && (
+        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div className="min-w-0">
+            <p className="font-medium">上传成功</p>
+            <p className="mt-0.5 truncate">文件 ID {uploadedFile.id} · {uploadedFile.fileSize} B</p>
+          </div>
+        </div>
+      )}
       {errorMessage && (
-        <p className="text-xs leading-5 text-error">{errorMessage}</p>
+        <p className="text-xs leading-5 text-error" role="alert">{errorMessage}</p>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ package filemgmt
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"log/slog"
@@ -124,6 +125,108 @@ func TestUploadBatchKeepsPerFileResults(t *testing.T) {
 			t.Fatalf("record %d must have access_url: %+v", file.ID, file)
 		}
 	}
+}
+
+func TestUploadBatchReportsFailedFileIndexForDuplicateNames(t *testing.T) {
+	t.Parallel()
+	storage := &memoryStorage{}
+	store := &memoryStore{}
+	service, err := NewService(store, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fakeImage := multipartHeader(t, "same.png", "not an image", "image/png")
+	validImage := multipartHeader(t, "same.png", onePixelPNG(t), "image/png")
+
+	result, err := service.UploadBatch(context.Background(), AuditMetadata{ActorID: 1}, []*multipart.FileHeader{fakeImage, validImage}, "system", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Failed) != 1 || result.Failed[0].FileName != "same.png" || result.Failed[0].Index != 0 {
+		t.Fatalf("result = %+v", result)
+	}
+	if len(result.Succeeded) != 1 || result.Succeeded[0].OriginalName != "same.png" {
+		t.Fatalf("succeeded = %+v", result.Succeeded)
+	}
+}
+
+func TestUploadRejectsInvalidImageContent(t *testing.T) {
+	t.Parallel()
+	storage := &memoryStorage{}
+	store := &memoryStore{}
+	service, err := NewService(store, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header := multipartHeader(t, "photo.png", "not an image", "image/png")
+
+	if _, err = service.Upload(context.Background(), AuditMetadata{ActorID: 1}, header, "system", ""); !errors.Is(err, ErrInvalidImage) {
+		t.Fatalf("upload error = %v, want ErrInvalidImage", err)
+	}
+	if len(storage.saved) != 0 || len(store.records) != 0 {
+		t.Fatalf("invalid image must not be stored: saved=%v records=%v", storage.saved, store.records)
+	}
+}
+
+func TestUploadAcceptsValidImageContent(t *testing.T) {
+	t.Parallel()
+	storage := &memoryStorage{}
+	store := &memoryStore{}
+	service, err := NewService(store, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header := multipartHeader(t, "photo.png", onePixelPNG(t), "image/png")
+
+	file, err := service.Upload(context.Background(), AuditMetadata{ActorID: 1}, header, "system", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if file.MimeType != "image/png" || file.FileSize == 0 {
+		t.Fatalf("file = %+v", file)
+	}
+}
+
+func TestUploadRejectsTruncatedImageContent(t *testing.T) {
+	t.Parallel()
+	storage := &memoryStorage{}
+	service, err := NewService(&memoryStore{}, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := onePixelPNG(t)
+	truncated := content[:len(content)-5]
+	header := multipartHeader(t, "photo.png", truncated, "image/png")
+
+	if _, err = service.Upload(context.Background(), AuditMetadata{ActorID: 1}, header, "system", ""); !errors.Is(err, ErrInvalidImage) {
+		t.Fatalf("upload error = %v, want ErrInvalidImage", err)
+	}
+	if len(storage.saved) != 0 {
+		t.Fatalf("truncated image must not be stored: %v", storage.saved)
+	}
+}
+
+func TestUploadValidatesImageExtensionWhenContentTypeIsGeneric(t *testing.T) {
+	t.Parallel()
+	storage := &memoryStorage{}
+	service, err := NewService(&memoryStore{}, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header := multipartHeader(t, "photo.png", "not an image", "application/octet-stream")
+
+	if _, err = service.Upload(context.Background(), AuditMetadata{ActorID: 1}, header, "system", ""); !errors.Is(err, ErrInvalidImage) {
+		t.Fatalf("upload error = %v, want ErrInvalidImage", err)
+	}
+}
+
+func onePixelPNG(t *testing.T) string {
+	t.Helper()
+	data, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }
 
 func TestUploadBatchFailureDoesNotAffectIndependentFiles(t *testing.T) {

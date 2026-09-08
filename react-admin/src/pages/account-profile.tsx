@@ -12,7 +12,7 @@ import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
 import { isApiError } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/datetime";
-import { buildApiUrl } from "@/lib/http";
+import { useAuthenticatedFileUrl } from "@/hooks/use-authenticated-file-url";
 import { useAuthStore } from "@/store/auth-store";
 import type { CurrentUser } from "@/types";
 
@@ -104,7 +104,10 @@ export function AccountProfilePage() {
     user?.roles?.map((role) => role.roleName).filter(Boolean).join("、") || "-";
   const roleCodesText =
     user?.roles?.map((role) => role.roleCode).filter(Boolean).join("、") || "-";
-  const avatarUrl = user?.avatar ? buildApiUrl(user.avatar) : "";
+  const {
+    url: avatarUrl,
+    loading: avatarLoading,
+  } = useAuthenticatedFileUrl(user?.avatar);
 
   return (
     <>
@@ -136,6 +139,8 @@ export function AccountProfilePage() {
                   alt="当前用户头像"
                   className="h-full w-full object-cover"
                 />
+              ) : avatarLoading ? (
+                <span className="text-xs text-text-tertiary">加载中</span>
               ) : (
                 <UserRound className="h-6 w-6" aria-hidden />
               )}
@@ -165,9 +170,9 @@ export function AccountProfilePage() {
 
           <div className="border-t border-border pt-4">
             <FileUpload
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif"
               buttonText={updatingAvatar ? "更新中..." : "修改头像"}
-              helperText="建议上传清晰的正方形图片。"
+              helperText="支持 PNG、JPEG、GIF；建议上传清晰的正方形图片。"
               businessModule="account-avatar"
               disabled={updatingAvatar}
               onAccessUrlChange={handleAvatarUploaded}

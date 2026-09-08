@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { KeyRound, LogOut, UserRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { buildApiUrl } from "@/lib/http";
+import { useAuthenticatedFileUrl } from "@/hooks/use-authenticated-file-url";
 import { useAuthStore } from "@/store/auth-store";
 
 export function UserMenu() {
@@ -13,7 +13,7 @@ export function UserMenu() {
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const displayName = user?.nickname || user?.username || "管理员";
   const username = user?.username ?? "admin";
-  const avatarUrl = user?.avatar ? buildApiUrl(user.avatar) : "";
+  const { url: avatarUrl } = useAuthenticatedFileUrl(user?.avatar);
 
   const handleLogout = async () => {
     setMenuOpen(false);

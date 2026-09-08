@@ -2,10 +2,19 @@ package filemgmt
 
 import (
 	"context"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"log/slog"
+	"mime"
 	"mime/multipart"
+	"path/filepath"
 	"strings"
 )
+
+const maxImagePixels int64 = 25000000
 
 type Service struct {
 	store   Store
@@ -31,11 +40,15 @@ func (s *Service) Upload(ctx context.Context, m AuditMetadata, header *multipart
 		return File{}, err
 	}
 	defer func() { _ = src.Close() }()
+	mimeType, err := validateContentType(header.Header.Get("Content-Type"), header.Filename, src)
+	if err != nil {
+		return File{}, err
+	}
 	stored, err := s.storage.Save(ctx, header.Filename, src)
 	if err != nil {
 		return File{}, err
 	}
-	f := File{OriginalName: header.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: header.Header.Get("Content-Type"), FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
+	f := File{OriginalName: header.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: mimeType, FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
 	f, err = s.store.Create(ctx, f, AuditEvent{Action: "file.upload", Resource: "file", ResourceID: 0, Summary: "上传文件", Metadata: m})
 	if err != nil {
 		s.compensate(ctx, stored.Path)
@@ -57,19 +70,104 @@ func (s *Service) UploadBatch(ctx context.Context, m AuditMetadata, headers []*m
 		return BatchUploadResult{}, ErrFileEmpty
 	}
 	result := BatchUploadResult{Succeeded: []File{}, Failed: []BatchUploadFailure{}}
-	for _, header := range headers {
+	for index, header := range headers {
 		f, err := s.Upload(ctx, m, header, businessModule, remark)
 		if err != nil {
 			name := "unknown"
 			if header != nil && header.Filename != "" {
 				name = header.Filename
 			}
-			result.Failed = append(result.Failed, BatchUploadFailure{FileName: name, Message: err.Error()})
+			result.Failed = append(result.Failed, BatchUploadFailure{FileName: name, Message: err.Error(), Index: index})
 			continue
 		}
 		result.Succeeded = append(result.Succeeded, f)
 	}
 	return result, nil
+}
+
+func validateContentType(contentType, filename string, src io.ReadSeeker) (string, error) {
+	mediaType, _, parseErr := mime.ParseMediaType(contentType)
+	declaredImage := parseErr == nil && strings.HasPrefix(strings.ToLower(mediaType), "image/")
+	extensionImage := imageMimeFromExtension(filename)
+	if parseErr != nil && (strings.HasPrefix(strings.ToLower(strings.TrimSpace(contentType)), "image/") || extensionImage != "") {
+		return "", ErrInvalidImage
+	}
+	if !declaredImage && extensionImage == "" {
+		return contentType, nil
+	}
+
+	expectedMime := ""
+	if declaredImage {
+		expectedMime = canonicalImageMime(mediaType)
+		if expectedMime == "" {
+			return "", ErrInvalidImage
+		}
+	}
+	if extensionImage != "" {
+		if expectedMime != "" && expectedMime != extensionImage {
+			return "", ErrInvalidImage
+		}
+		expectedMime = extensionImage
+	}
+
+	config, _, err := image.DecodeConfig(src)
+	if err != nil || config.Width <= 0 || config.Height <= 0 || int64(config.Width) > maxImagePixels/int64(config.Height) {
+		return "", ErrInvalidImage
+	}
+	if _, err = src.Seek(0, io.SeekStart); err != nil {
+		return "", ErrInvalidImage
+	}
+	_, format, err := image.Decode(src)
+	if err != nil || !matchesImageMime(expectedMime, format) {
+		return "", ErrInvalidImage
+	}
+	if _, err = src.Seek(0, io.SeekStart); err != nil {
+		return "", ErrInvalidImage
+	}
+	return imageMimeFromFormat(format), nil
+}
+
+func matchesImageMime(mediaType, format string) bool {
+	return mediaType == imageMimeFromFormat(format)
+}
+
+func canonicalImageMime(mediaType string) string {
+	switch strings.ToLower(mediaType) {
+	case "image/png":
+		return "image/png"
+	case "image/jpeg", "image/jpg":
+		return "image/jpeg"
+	case "image/gif":
+		return "image/gif"
+	default:
+		return ""
+	}
+}
+
+func imageMimeFromFormat(format string) string {
+	switch format {
+	case "png":
+		return "image/png"
+	case "jpeg":
+		return "image/jpeg"
+	case "gif":
+		return "image/gif"
+	default:
+		return ""
+	}
+}
+
+func imageMimeFromExtension(filename string) string {
+	switch strings.ToLower(filepath.Ext(strings.ReplaceAll(filename, "\\", "/"))) {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	default:
+		return ""
+	}
 }
 
 func (s *Service) Page(ctx context.Context, q FilePageQuery) (Page[File], error) {

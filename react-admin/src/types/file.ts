@@ -22,6 +22,7 @@ export type FileUploadOptions = {
 export type FileUploadFailedItem = {
   fileName: string;
   message: string;
+  index: number;
 };
 
 export type FileUploadBatchResult = {

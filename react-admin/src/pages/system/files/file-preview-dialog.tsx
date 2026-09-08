@@ -1,8 +1,9 @@
-import { Download, X } from "lucide-react";
+import { Download, Loader2, X } from "lucide-react";
 import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { getFileViewUrl } from "@/api/file";
 import { Button } from "@/components/ui/button";
+import { useAuthenticatedFileUrl } from "@/hooks/use-authenticated-file-url";
 import type { FileRecord } from "@/types";
 
 type FilePreviewDialogProps = {
@@ -19,6 +20,16 @@ export function FilePreviewDialog({
   onDownload,
 }: FilePreviewDialogProps) {
   const titleId = useId();
+  const previewable = Boolean(
+    record &&
+      (record.mimeType.startsWith("image/") || record.mimeType === "application/pdf"),
+  );
+  const previewPath = record && previewable ? getFileViewUrl(record.id) : null;
+  const {
+    url: previewUrl,
+    loading: previewLoading,
+    error: previewError,
+  } = useAuthenticatedFileUrl(previewPath);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +48,6 @@ export function FilePreviewDialog({
 
   const isImage = record.mimeType.startsWith("image/");
   const isPdf = record.mimeType === "application/pdf";
-  const previewUrl = getFileViewUrl(record.id);
 
   return createPortal(
     <div
@@ -84,14 +94,23 @@ export function FilePreviewDialog({
         </header>
 
         <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-100 p-4">
-          {isImage && previewUrl && (
+          {previewLoading && (
+            <div className="flex items-center gap-2 text-sm text-text-tertiary" role="status">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              正在加载预览...
+            </div>
+          )}
+          {previewError && (
+            <p className="text-sm text-error" role="alert">{previewError}</p>
+          )}
+          {!previewLoading && !previewError && isImage && previewUrl && (
             <img
               src={previewUrl}
               alt={record.originalName}
               className="max-h-full max-w-full object-contain"
             />
           )}
-          {isPdf && previewUrl && (
+          {!previewLoading && !previewError && isPdf && previewUrl && (
             <iframe
               src={previewUrl}
               title={record.originalName}

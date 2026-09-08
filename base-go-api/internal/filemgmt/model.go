@@ -21,6 +21,7 @@ var (
 	ErrInvalid      = errors.New("参数错误")
 	ErrFileEmpty    = errors.New("文件不能为空")
 	ErrFileTooLarge = errors.New("单文件不能超过 50MB")
+	ErrInvalidImage = errors.New("图片内容无效")
 )
 
 type File struct {
@@ -80,6 +81,7 @@ type BatchUploadResult struct {
 type BatchUploadFailure struct {
 	FileName string `json:"fileName"`
 	Message  string `json:"message"`
+	Index    int    `json:"index"`
 }
 
 type AuditMetadata = audit.Metadata

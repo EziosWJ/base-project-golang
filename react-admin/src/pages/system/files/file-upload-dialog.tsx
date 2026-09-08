@@ -77,7 +77,11 @@ export function FileUploadDialog({
         businessModule: businessModule.trim() || undefined,
         remark: remark.trim() || undefined,
       });
-      setResult(uploadResult);
+      const mergedResult: FileUploadBatchResult = {
+        succeeded: [...(result?.succeeded ?? []), ...uploadResult.succeeded],
+        failed: uploadResult.failed,
+      };
+      setResult(mergedResult);
       if (uploadResult.succeeded.length > 0) {
         onUploaded(uploadResult.succeeded);
       }
@@ -88,8 +92,8 @@ export function FileUploadDialog({
         return;
       }
 
-      const failedNames = new Set(uploadResult.failed.map((item) => item.fileName));
-      setFiles((current) => current.filter((item) => failedNames.has(item.name)));
+      const failedIndices = new Set(uploadResult.failed.map((item) => item.index));
+      setFiles((current) => current.filter((_, index) => failedIndices.has(index)));
       toast.warning({
         title: "部分文件上传失败",
         description: `${uploadResult.succeeded.length} 个成功，${uploadResult.failed.length} 个失败。`,
@@ -270,7 +274,7 @@ export function FileUploadDialog({
               variant="primary"
               disabled={uploading || files.length === 0}
             >
-              {uploading ? "上传中..." : "上传"}
+              {uploading ? "上传中..." : result?.failed.length ? "重试失败项" : "上传"}
             </Button>
           </footer>
         </form>

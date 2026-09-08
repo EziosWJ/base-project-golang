@@ -79,6 +79,7 @@ type statusRequest struct {
 
 // upload godoc
 // @Summary 上传文件
+// @Description 单文件最大 50 MB；声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。
 // @Tags 文件管理
 // @Security BearerAuth
 // @Accept multipart/form-data
@@ -107,6 +108,7 @@ func (h *Handler) upload(c *gin.Context) {
 
 // uploadBatch godoc
 // @Summary 批量上传文件
+// @Description 每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。
 // @Tags 文件管理
 // @Security BearerAuth
 // @Accept multipart/form-data
@@ -416,7 +418,7 @@ func writeError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeNotFound, ErrNotFound.Error(), nil)
-	case errors.Is(err, ErrInvalid), errors.Is(err, ErrFileEmpty), errors.Is(err, ErrFileTooLarge):
+	case errors.Is(err, ErrInvalid), errors.Is(err, ErrFileEmpty), errors.Is(err, ErrFileTooLarge), errors.Is(err, ErrInvalidImage):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeBadRequest, err.Error(), nil)
 	default:
 		platformhttp.WriteError(c, http.StatusInternalServerError, platformhttp.CodeInternalError, "系统错误", nil)
