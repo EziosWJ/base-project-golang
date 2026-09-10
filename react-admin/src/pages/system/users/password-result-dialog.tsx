@@ -1,5 +1,14 @@
-import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { UserRecord } from "@/types";
 
 type PasswordResultDialogProps = {
@@ -11,35 +20,34 @@ export function PasswordResultDialog({
   result,
   onClose,
 }: PasswordResultDialogProps) {
-  if (!result || typeof document === "undefined") return null;
+  if (!result) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="w-full max-w-modal-sm rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-      >
-        <header className="border-b border-border px-5 py-4">
-          <h2 className="text-base font-semibold text-text-primary">
-            密码重置成功
-          </h2>
-          <p className="mt-1 text-sm text-text-tertiary">
+  return (
+    <Dialog
+      open={Boolean(result)}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+    >
+      <DialogOverlay />
+      <DialogContent className="max-w-modal-sm">
+        <DialogHeader>
+          <DialogTitle>密码重置成功</DialogTitle>
+          <DialogDescription className="text-sm">
             请将新密码线下通知用户「{result.user.nickname || result.user.username}」。
-          </p>
-        </header>
-        <div className="px-5 py-4">
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody className="max-h-none overflow-visible px-5 py-4">
           <div className="rounded-control border border-border bg-neutral-background px-space-4 py-space-3 font-mono text-lg font-semibold tabular-nums text-text-primary">
             {String(result.password)}
           </div>
-        </div>
-        <footer className="flex justify-end px-5 py-4">
+        </DialogBody>
+        <DialogFooter className="border-t-0 px-5 py-4">
           <Button variant="primary" onClick={onClose}>
             知道了
           </Button>
-        </footer>
-      </section>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

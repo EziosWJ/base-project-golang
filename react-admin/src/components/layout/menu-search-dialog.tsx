@@ -1,8 +1,17 @@
 import { ArrowDown, ArrowUp, CornerDownLeft, ExternalLink, Search, X } from "lucide-react";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { convertUserMenusToNavItems, defaultNavItems, mergeNavItems } from "@/config/navigation";
 import { buildMenuSearchIndex, searchMenus, type MenuSearchItem } from "@/lib/menu-search";
@@ -17,7 +26,6 @@ export default function MenuSearchDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [activePath, setActivePath] = useState<string | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
   const id = useId();
@@ -28,20 +36,6 @@ export default function MenuSearchDialog({ onClose }: { onClose: () => void }) {
   const activeIndex = Math.max(0, results.findIndex((item) => item.path === activePath));
   const activeItem = results[activeIndex];
   const pending = query !== deferredQuery;
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    const previousFocus = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    dialog?.showModal();
-    inputRef.current?.focus();
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog?.close();
-      document.body.style.overflow = previousOverflow;
-      if (previousFocus instanceof HTMLElement) previousFocus.focus();
-    };
-  }, []);
 
   useEffect(() => {
     document.getElementById(`${id}-option-${activeIndex}`)?.scrollIntoView({ block: "nearest" });
@@ -57,46 +51,27 @@ export default function MenuSearchDialog({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  return createPortal(
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={`${id}-title`}
-      aria-modal="true"
-      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-[640px] overflow-hidden rounded-admin border border-border bg-surface p-0 text-text-primary shadow-admin backdrop:bg-slate-950/30"
-      onCancel={(event) => {
+  return (
+    <Dialog
+      open
+      onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}
+      trapFocus
+      restoreFocus
+      lockScroll
+      onEscapeKeyDown={(event) => {
         event.preventDefault();
         if (!composingRef.current) onClose();
       }}
-      onKeyDown={(event) => {
-        if (event.key !== "Tab") return;
-        const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
-          'button:not([disabled]):not([tabindex="-1"]), input:not([disabled])',
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }}
-      onClick={(event) => {
-        if (event.target !== event.currentTarget) return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right ||
-          event.clientY < rect.top || event.clientY > rect.bottom) onClose();
-      }}
     >
+      <DialogOverlay />
+      <DialogContent className="max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-modal-md p-0 text-text-primary">
       <div className="flex max-h-[calc(100dvh-34px)] flex-col">
-        <header className="shrink-0 border-b border-border px-4 py-4 sm:px-5">
+        <DialogHeader className="block shrink-0 gap-0 px-4 py-4 sm:px-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 id={`${id}-title`} className="text-base font-semibold">菜单搜索</h2>
-            <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-              onClick={onClose} aria-label="关闭菜单搜索">
+            <DialogTitle>菜单搜索</DialogTitle>
+            <DialogClose aria-label="关闭菜单搜索" className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
               <X className="h-4 w-4" aria-hidden />
-            </Button>
+            </DialogClose>
           </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-tertiary" aria-hidden />
@@ -132,14 +107,14 @@ export default function MenuSearchDialog({ onClose }: { onClose: () => void }) {
               }}
             />
           </div>
-          <p id={`${id}-hint`} className="mt-2 text-xs text-text-tertiary">搜索当前导航中的页面，也可输入所属菜单名称。</p>
-        </header>
+          <DialogDescription id={`${id}-hint`} className="mt-space-2 text-xs">搜索当前导航中的页面，也可输入所属菜单名称。</DialogDescription>
+        </DialogHeader>
 
         <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3 text-xs text-text-tertiary sm:px-5" role="status">
           <span>{deferredQuery.trim() ? `找到 ${results.length} 个页面` : `全部页面 · ${results.length}`}</span>
           {loading && <span>正在加载更多菜单…</span>}
         </div>
-        <div className="min-h-0 overflow-y-auto px-2 pb-2" aria-busy={pending}>
+        <DialogBody className="min-h-0 overflow-y-auto px-2 py-0 pb-2" aria-busy={pending}>
           <ul id={`${id}-results`} role="listbox" aria-label="菜单搜索结果" className="space-y-1">
             {results.map((item, position) => {
               const Icon = item.icon;
@@ -178,14 +153,15 @@ export default function MenuSearchDialog({ onClose }: { onClose: () => void }) {
             <p className="mt-3 text-sm font-medium">未找到匹配菜单</p>
             <p className="mt-1 text-sm text-text-tertiary">试试其他名称、拼音或首字母。</p>
           </div>}
-        </div>
+        </DialogBody>
 
-        <footer className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border px-4 py-3 text-xs text-text-tertiary sm:px-5">
+        <DialogFooter className="shrink-0 flex-wrap justify-start gap-x-4 gap-y-2 px-4 py-3 text-xs text-text-tertiary sm:px-5">
           <span className="inline-flex items-center gap-1"><ArrowUp className="h-3 w-3" aria-hidden /><ArrowDown className="h-3 w-3" aria-hidden />选择</span>
           <span className="inline-flex items-center gap-1"><CornerDownLeft className="h-3 w-3" aria-hidden />跳转</span>
           <span><kbd className="font-sans">Esc</kbd> 关闭</span>
-        </footer>
+        </DialogFooter>
       </div>
-    </dialog>, document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

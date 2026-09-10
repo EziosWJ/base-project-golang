@@ -6,10 +6,8 @@ import {
   RotateCcw,
   Search,
   Trash2,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -25,6 +23,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { Field } from "@/components/common/field";
+import { FormDialog } from "@/components/common/form-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
@@ -814,45 +813,23 @@ function ConfigFormDialog({
     }
   }, [form, open, setValue, valueType]);
 
-  if (!open || typeof document === "undefined") return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[720px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="config-form-title"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2
-              id="config-form-title"
-              className="text-base font-semibold text-text-primary"
-            >
-              {mode === "edit" ? "编辑配置" : "新增配置"}
-            </h2>
-            <p className="mt-space-1 text-body-secondary text-text-tertiary">
-              编辑时配置键不可修改，但会随请求体提交给后端校验。
-            </p>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            disabled={loading}
-            onClick={onCancel}
-            aria-label="关闭配置表单"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
-
-        <form
-          className="max-h-[calc(100vh-150px)] overflow-y-auto px-5 py-5"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          <div className="grid gap-4 md:grid-cols-2">
+  return (
+    <FormDialog
+      open={open}
+      title={mode === "edit" ? "编辑配置" : "新增配置"}
+      description="编辑时配置键不可修改，但会随请求体提交给后端校验。"
+      loading={loading}
+      submitDisabled={editingConfig?.isBuiltin === 1}
+      loadingText="保存中..."
+      contentClassName="max-w-[720px]"
+      bodyClassName="max-h-[calc(100vh-150px)] px-card py-space-5"
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      trapFocus={false}
+      onCancel={onCancel}
+      onSubmit={() => void handleSubmit(onSubmit)()}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
             <Field
               label="配置名称"
               htmlFor="configName"
@@ -947,9 +924,9 @@ function ConfigFormDialog({
                 />
               )}
             </Field>
-          </div>
+      </div>
 
-          <div className="mt-4">
+      <div className="mt-4">
             <Field label="备注" htmlFor="remark" error={errors.remark?.message}>
               <Textarea
                 id="remark"
@@ -958,7 +935,7 @@ function ConfigFormDialog({
                 {...register("remark")}
               />
             </Field>
-          </div>
+      </div>
 
           {mode === "edit" && editingConfig?.isBuiltin === 1 && (
             <div className="mt-space-4 rounded-admin border border-border bg-neutral-background px-space-4 py-space-3 text-sm text-text-secondary">
@@ -966,21 +943,6 @@ function ConfigFormDialog({
             </div>
           )}
 
-          <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
-            <Button variant="secondary" disabled={loading} onClick={onCancel}>
-              取消
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              disabled={loading || editingConfig?.isBuiltin === 1}
-            >
-              {loading ? "保存中..." : "保存"}
-            </Button>
-          </footer>
-        </form>
-      </section>
-    </div>,
-    document.body,
+    </FormDialog>
   );
 }

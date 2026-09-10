@@ -1,9 +1,19 @@
 import { Search, ShieldCheck, X } from "lucide-react";
-import { useDeferredValue, useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useDeferredValue, useState } from "react";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { AssignableRole, UserRecord } from "@/types";
@@ -27,9 +37,6 @@ export function RoleAssignDialog({
 }: RoleAssignDialogProps) {
   const [query, setQuery] = useState("");
   const keyword = useDeferredValue(query.trim().toLowerCase());
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  const descriptionId = useId();
   const disabled = loading || submitting || !!error;
   const visibleRoles = roles.filter((role) =>
     `${role.roleName} ${role.roleCode}`.toLowerCase().includes(keyword),
@@ -41,44 +48,34 @@ export function RoleAssignDialog({
     { id, roleName: `角色 #${id}` },
   );
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    const previousFocus = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    dialog?.showModal();
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog?.close();
-      document.body.style.overflow = previousOverflow;
-      if (previousFocus instanceof HTMLElement) previousFocus.focus();
-    };
-  }, []);
-
-  return createPortal(
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={titleId}
-      aria-describedby={descriptionId}
-      aria-modal="true"
-      onCancel={(event) => { event.preventDefault(); if (!submitting) onCancel(); }}
-      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-modal-md overflow-hidden rounded-admin border border-border bg-surface p-0 text-text-primary shadow-admin backdrop:bg-slate-950/30"
+  return (
+    <Dialog
+      open
+      onOpenChange={(nextOpen) => { if (!nextOpen) onCancel(); }}
+      closeOnEscape={!submitting}
+      closeOnOverlayClick={false}
+      trapFocus
+      restoreFocus
+      lockScroll
     >
+      <DialogOverlay />
+      <DialogContent className="max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-modal-md p-0 text-text-primary">
       <div className="flex max-h-[calc(100dvh-34px)] flex-col">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-card py-space-4">
+        <DialogHeader className="shrink-0 gap-3 px-card py-space-4">
           <div className="min-w-0">
-            <h2 id={titleId} className="flex items-center gap-2 text-base font-semibold">
+            <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />分配角色
-            </h2>
-            <p id={descriptionId} className="mt-space-1 text-sm text-text-tertiary">
+            </DialogTitle>
+            <DialogDescription className="text-sm">
               可选择多个角色，保存后生效。
-            </p>
+            </DialogDescription>
           </div>
-          <Button size="icon" variant="ghost" disabled={submitting} onClick={onCancel} aria-label="关闭角色分配">
+          <DialogClose disabled={submitting} aria-label="关闭角色分配">
             <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
+          </DialogClose>
+        </DialogHeader>
 
-        <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4" aria-busy={loading}>
+        <DialogBody className="min-h-0 space-y-4 overflow-y-auto px-5 py-4" aria-busy={loading}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-background px-space-3 py-space-3 text-sm">
             <span className="text-text-tertiary">分配给</span>
             <span className="break-all font-medium">{user.nickname || user.username}</span>
@@ -155,16 +152,16 @@ export function RoleAssignDialog({
               </button>)}
             </div> : <p className="text-sm text-text-tertiary">尚未选择角色，保存后该用户将不再关联任何角色。</p>}
           </section>}
-        </div>
+        </DialogBody>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-4">
+        <DialogFooter className="shrink-0 px-5 py-4">
           <Button variant="secondary" disabled={submitting} onClick={onCancel}>取消</Button>
           <Button variant="primary" disabled={disabled} onClick={onSubmit}>
             {submitting ? "保存中..." : "保存分配"}
           </Button>
-        </footer>
+        </DialogFooter>
       </div>
-    </dialog>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

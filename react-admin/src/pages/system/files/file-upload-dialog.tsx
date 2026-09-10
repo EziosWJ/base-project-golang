@@ -1,9 +1,18 @@
 import { Upload, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { uploadFiles } from "@/api/file";
 import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +33,6 @@ export function FileUploadDialog({
   onCancel,
   onUploaded,
 }: FileUploadDialogProps) {
-  const titleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [businessModule, setBusinessModule] = useState("");
@@ -105,42 +113,27 @@ export function FileUploadDialog({
     }
   };
 
-  if (!open || typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !uploading) {
-          onCancel();
-        }
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onCancel();
       }}
+      closeOnEscape={!uploading}
+      closeOnOverlayClick={!uploading}
     >
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[520px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <h2 id={titleId} className="text-base font-semibold text-text-primary">
-            上传文件
-          </h2>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            disabled={uploading}
-            onClick={onCancel}
-            aria-label="关闭上传弹窗"
-          >
+      <DialogOverlay />
+      <DialogContent className="max-h-[calc(100vh-48px)] max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>上传文件</DialogTitle>
+          <DialogClose disabled={uploading} aria-label="关闭上传弹窗">
             <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
+          </DialogClose>
+        </DialogHeader>
 
-        <form className="px-5 py-4" onSubmit={(e) => void handleSubmit(e)}>
-          <div className="space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)}>
+          <DialogBody className="max-h-none overflow-visible px-card py-space-4">
+            <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-text-primary">
                 文件 <span className="ml-1 text-error">*</span>
@@ -258,9 +251,9 @@ export function FileUploadDialog({
                 )}
               </div>
             )}
-          </div>
+            </div>
 
-          <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+          <DialogFooter className="mt-5">
             <Button
               type="button"
               variant="secondary"
@@ -276,10 +269,9 @@ export function FileUploadDialog({
             >
               {uploading ? "上传中..." : result?.failed.length ? "重试失败项" : "上传"}
             </Button>
-          </footer>
+          </DialogFooter>
         </form>
-      </section>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

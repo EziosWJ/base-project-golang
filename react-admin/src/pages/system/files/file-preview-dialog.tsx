@@ -1,8 +1,15 @@
 import { Download, Loader2, X } from "lucide-react";
-import { useEffect, useId } from "react";
-import { createPortal } from "react-dom";
 import { getFileViewUrl } from "@/api/file";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuthenticatedFileUrl } from "@/hooks/use-authenticated-file-url";
 import type { FileRecord } from "@/types";
 
@@ -19,7 +26,6 @@ export function FilePreviewDialog({
   onCancel,
   onDownload,
 }: FilePreviewDialogProps) {
-  const titleId = useId();
   const previewable = Boolean(
     record &&
       (record.mimeType.startsWith("image/") || record.mimeType === "application/pdf"),
@@ -31,69 +37,31 @@ export function FilePreviewDialog({
     error: previewError,
   } = useAuthenticatedFileUrl(previewPath);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCancel();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel, open]);
-
-  if (!open || !record || typeof document === "undefined") return null;
+  if (!open || !record) return null;
 
   const isImage = record.mimeType.startsWith("image/");
   const isPdf = record.mimeType === "application/pdf";
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onCancel();
-        }
-      }}
-    >
-      <section
-        className="flex max-h-[calc(100vh-48px)] w-full max-w-[960px] flex-col overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
-        <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
-          <h2
-            id={titleId}
-            className="min-w-0 flex-1 truncate text-base font-semibold text-text-primary"
-          >
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onCancel(); }}>
+      <DialogOverlay className="bg-slate-950/50" />
+      <DialogContent className="flex max-h-[calc(100vh-48px)] max-w-[960px] flex-col">
+        <DialogHeader className="items-center px-5 py-3">
+          <DialogTitle className="min-w-0 flex-1 truncate">
             {record.originalName}
-          </h2>
+          </DialogTitle>
           <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => onDownload(record)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => onDownload(record)}>
               <Download className="h-4 w-4" aria-hidden />
               下载
             </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 shrink-0"
-              onClick={onCancel}
-              aria-label="关闭预览"
-            >
+            <DialogClose aria-label="关闭预览">
               <X className="h-4 w-4" aria-hidden />
-            </Button>
+            </DialogClose>
           </div>
-        </header>
+        </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-100 p-4">
+        <DialogBody className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-slate-100 p-4">
           {previewLoading && (
             <div className="flex items-center gap-2 text-sm text-text-tertiary" role="status">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -122,9 +90,8 @@ export function FilePreviewDialog({
               此文件类型不支持浏览器预览，请下载后查看。
             </div>
           )}
-        </div>
-      </section>
-    </div>,
-    document.body,
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,12 +1,10 @@
-import { X } from "lucide-react";
-import { createPortal } from "react-dom";
 import type { UseFormReturn } from "react-hook-form";
 import {
   deptOptionsToTreeSelectNodes,
 } from "@/api/dept";
 import { Field } from "@/components/common/field";
+import { FormDialog } from "@/components/common/form-dialog";
 import { TreeSelect } from "@/components/common/tree-select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,8 +59,6 @@ export function DeptFormDialog({
   onCancel,
   onSubmit,
 }: DeptFormDialogProps) {
-  if (!open || typeof document === "undefined") return null;
-
   const {
     formState: { errors },
     handleSubmit,
@@ -79,37 +75,26 @@ export function DeptFormDialog({
   const parentId = watch("parentId");
   const isBuiltin = editingDept?.isBuiltin === 1;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[760px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-      >
-        <header className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-text-primary">
-              {mode === "create" ? "新建部门" : "编辑部门"}
-            </h2>
-            <p className="mt-1 text-sm text-text-tertiary">
-              {isBuiltin
-                ? "内置部门编码不建议修改，已在表单中锁定。"
-                : "维护部门基础信息和启用状态。"}
-            </p>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            disabled={loading}
-            onClick={onCancel}
-            aria-label="关闭部门表单"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid max-h-[calc(100vh-184px)] gap-4 overflow-y-auto px-5 py-4 md:grid-cols-2">
+  return (
+    <FormDialog
+      open={open}
+      title={mode === "create" ? "新建部门" : "编辑部门"}
+      description={
+        isBuiltin
+          ? "内置部门编码不建议修改，已在表单中锁定。"
+          : "维护部门基础信息和启用状态。"
+      }
+      loading={loading}
+      contentClassName="max-w-[760px]"
+      bodyClassName="max-h-[calc(100vh-184px)] px-card py-space-4"
+      headerClassName="items-center gap-0"
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      trapFocus={false}
+      onCancel={onCancel}
+      onSubmit={() => void handleSubmit(onSubmit)()}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
             <Field
               label="上级部门"
               error={errors.parentId?.message}
@@ -199,23 +184,7 @@ export function DeptFormDialog({
                 />
               </Field>
             </div>
-          </div>
-          <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
-            <Button variant="secondary" disabled={loading} onClick={onCancel}>
-              取消
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              className={loading ? "cursor-wait" : undefined}
-            >
-              {loading ? "提交中..." : "保存"}
-            </Button>
-          </footer>
-        </form>
-      </section>
-    </div>,
-    document.body,
+      </div>
+    </FormDialog>
   );
 }

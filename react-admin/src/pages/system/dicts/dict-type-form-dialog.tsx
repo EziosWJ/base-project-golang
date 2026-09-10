@@ -1,8 +1,6 @@
-import { X } from "lucide-react";
-import { createPortal } from "react-dom";
 import type { UseFormReturn } from "react-hook-form";
 import { Field } from "@/components/common/field";
-import { Button } from "@/components/ui/button";
+import { FormDialog } from "@/components/common/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,8 +29,6 @@ export function DictTypeFormDialog({
   onCancel,
   onSubmit,
 }: DictTypeFormDialogProps) {
-  if (!open || typeof document === "undefined") return null;
-
   const {
     formState: { errors },
     handleSubmit,
@@ -40,43 +36,22 @@ export function DictTypeFormDialog({
   } = form;
   const isBuiltin = mode === "edit" && editingType?.isBuiltin === 1;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-modal-md overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="dict-type-form-title"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2
-              id="dict-type-form-title"
-              className="text-base font-semibold text-text-primary"
-            >
-              {mode === "edit" ? "编辑字典类型" : "新建字典类型"}
-            </h2>
-            <p className="mt-space-1 text-body-secondary text-text-tertiary">
-              内置字典的字典编码不可修改。
-            </p>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            disabled={loading}
-            onClick={onCancel}
-            aria-label="关闭字典类型表单"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
-
-        <form
-          className="max-h-[calc(100vh-150px)] overflow-y-auto px-5 py-5"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          <div className="grid gap-4 md:grid-cols-2">
+  return (
+    <FormDialog
+      open={open}
+      title={mode === "edit" ? "编辑字典类型" : "新建字典类型"}
+      description="内置字典的字典编码不可修改。"
+      loading={loading}
+      loadingText="保存中..."
+      contentClassName="max-w-modal-md"
+      bodyClassName="max-h-[calc(100vh-150px)] px-card py-space-5"
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      trapFocus={false}
+      onCancel={onCancel}
+      onSubmit={() => void handleSubmit(onSubmit)()}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
             <Field
               label="字典名称"
               htmlFor="dictName"
@@ -132,9 +107,9 @@ export function DictTypeFormDialog({
                 {...register("sortOrder")}
               />
             </Field>
-          </div>
+      </div>
 
-          <div className="mt-4">
+      <div className="mt-4">
             <Field label="备注" htmlFor="remark" error={errors.remark?.message}>
               <Textarea
                 id="remark"
@@ -143,19 +118,7 @@ export function DictTypeFormDialog({
                 {...register("remark")}
               />
             </Field>
-          </div>
-
-          <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
-            <Button variant="secondary" disabled={loading} onClick={onCancel}>
-              取消
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "保存中..." : "保存"}
-            </Button>
-          </footer>
-        </form>
-      </section>
-    </div>,
-    document.body,
+      </div>
+    </FormDialog>
   );
 }

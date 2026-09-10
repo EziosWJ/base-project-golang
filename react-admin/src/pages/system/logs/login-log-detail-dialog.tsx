@@ -1,8 +1,6 @@
-import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { DetailDialog } from "@/components/common/detail-dialog";
 import { StatusTag } from "@/components/common/status-tag";
-import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/datetime";
 import type { LoginLogRecord } from "@/types";
 import { getStatusMeta } from "./utils";
@@ -20,41 +18,20 @@ export function LoginLogDetailDialog({
   loading,
   onCancel,
 }: LoginLogDetailDialogProps) {
-  if (!open || typeof document === "undefined") return null;
-
   const statusMeta = getStatusMeta(detail?.loginStatus ?? "");
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="w-full max-w-[720px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="login-log-detail-title"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2
-              id="login-log-detail-title"
-              className="text-base font-semibold text-text-primary"
-            >
-              登录日志详情
-            </h2>
-            <p className="mt-space-1 text-body-secondary text-text-tertiary">
-              {loading ? "详情加载中" : `记录 ID：${detail?.id ?? "-"}`}
-            </p>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            onClick={onCancel}
-            aria-label="关闭登录日志详情"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
-        <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
+  return (
+    <DetailDialog
+      open={open}
+      title="登录日志详情"
+      description={loading ? "详情加载中" : `记录 ID：${detail?.id ?? "-"}`}
+      loading={loading}
+      contentClassName="max-w-[720px]"
+      bodyClassName="max-h-none grid gap-4 overflow-visible px-card py-space-5 md:grid-cols-2"
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      onCancel={onCancel}
+    >
           <DetailItem label="用户名" value={detail?.username} />
           <DetailItem
             label="登录状态"
@@ -76,10 +53,7 @@ export function LoginLogDetailDialog({
             value={detail?.message}
             className="md:col-span-2"
           />
-        </div>
-      </section>
-    </div>,
-    document.body,
+    </DetailDialog>
   );
 }
 

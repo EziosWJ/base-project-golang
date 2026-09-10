@@ -1,11 +1,21 @@
 import { X } from "lucide-react";
-import { createPortal } from "react-dom";
 import { StatusTag } from "@/components/common/status-tag";
 import {
   TreeCheckList,
   type TreeCheckNode,
 } from "@/components/common/tree-check-list";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { RoleDetailRecord } from "@/types";
 
 type RoleMenuDialogProps = {
@@ -29,41 +39,35 @@ export function RoleMenuDialog({
   onCancel,
   onSubmit,
 }: RoleMenuDialogProps) {
-  if (!role || typeof document === "undefined") return null;
+  if (!role) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[720px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="role-menu-title"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+  return (
+    <Dialog
+      open={Boolean(role)}
+      onOpenChange={(nextOpen) => { if (!nextOpen) onCancel(); }}
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+    >
+      <DialogOverlay />
+      <DialogContent className="max-w-[720px]">
+        <DialogHeader className="px-5 py-4">
           <div>
-            <h2
-              id="role-menu-title"
-              className="text-base font-semibold text-text-primary"
-            >
+            <DialogTitle>
               分配菜单
-            </h2>
-            <p className="mt-space-1 text-body-secondary text-text-tertiary">
+            </DialogTitle>
+            <DialogDescription>
               {role.roleName} / {role.roleCode}
-            </p>
+            </DialogDescription>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
+          <DialogClose
             disabled={loading || submitting}
-            onClick={onCancel}
             aria-label="关闭菜单分配"
           >
             <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
+          </DialogClose>
+        </DialogHeader>
 
-        <div className="max-h-[calc(100vh-180px)] overflow-y-auto px-5 py-5">
+        <DialogBody className="max-h-[calc(100vh-180px)] px-5 py-5">
           <div className="mb-3 flex items-center justify-between gap-3 text-sm">
             <span className="text-text-secondary">
               已选择{" "}
@@ -92,9 +96,9 @@ export function RoleMenuDialog({
               onCheckedChange={onCheckedChange}
             />
           )}
-        </div>
+        </DialogBody>
 
-        <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+        <DialogFooter className="px-5 py-4">
           <Button
             variant="secondary"
             disabled={loading || submitting}
@@ -109,9 +113,8 @@ export function RoleMenuDialog({
           >
             {submitting ? "保存中..." : "保存"}
           </Button>
-        </footer>
-      </section>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

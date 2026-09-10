@@ -1,9 +1,8 @@
-import { ExternalLink, X } from "lucide-react";
-import { createPortal } from "react-dom";
+import { ExternalLink } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import { Field } from "@/components/common/field";
+import { FormDialog } from "@/components/common/form-dialog";
 import { TreeSelect, type TreeSelectNode } from "@/components/common/tree-select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,8 +41,6 @@ export function MenuFormDialog({
 }: MenuFormDialogProps) {
   const menuType = form.watch("menuType");
 
-  if (!open || typeof document === "undefined") return null;
-
   const {
     formState: { errors },
     handleSubmit,
@@ -54,43 +51,22 @@ export function MenuFormDialog({
   const isBuiltin = mode === "edit" && editingMenu?.isBuiltin === 1;
   const parentId = watch("parentId");
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-modal-lg overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="menu-form-title"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2
-              id="menu-form-title"
-              className="text-base font-semibold text-text-primary"
-            >
-              {mode === "edit" ? "编辑菜单" : "新建菜单"}
-            </h2>
-            <p className="mt-space-1 text-body-secondary text-text-tertiary">
-              菜单类型使用 DIR / MENU / LINK，与后端协议保持一致。
-            </p>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 shrink-0"
-            disabled={loading}
-            onClick={onCancel}
-            aria-label="关闭菜单表单"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
-
-        <form
-          className="max-h-[calc(100vh-150px)] overflow-y-auto px-5 py-5"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          <div className="grid gap-4 md:grid-cols-2">
+  return (
+    <FormDialog
+      open={open}
+      title={mode === "edit" ? "编辑菜单" : "新建菜单"}
+      description="菜单类型使用 DIR / MENU / LINK，与后端协议保持一致。"
+      loading={loading}
+      loadingText="保存中..."
+      contentClassName="max-w-modal-lg"
+      bodyClassName="max-h-[calc(100vh-150px)] px-card py-space-5"
+      closeOnEscape={false}
+      closeOnOverlayClick={false}
+      trapFocus={false}
+      onCancel={onCancel}
+      onSubmit={() => void handleSubmit(onSubmit)()}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
             <Field label="父级菜单" error={errors.parentId?.message}>
               <TreeSelect
                 value={parentId}
@@ -260,9 +236,9 @@ export function MenuFormDialog({
                 {...register("sortOrder")}
               />
             </Field>
-          </div>
+      </div>
 
-          <div className="mt-4">
+      <div className="mt-4">
             <Field label="备注" htmlFor="remark" error={errors.remark?.message}>
               <Textarea
                 id="remark"
@@ -271,19 +247,7 @@ export function MenuFormDialog({
                 {...register("remark")}
               />
             </Field>
-          </div>
-
-          <footer className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
-            <Button variant="secondary" disabled={loading} onClick={onCancel}>
-              取消
-            </Button>
-            <Button variant="primary" type="submit" disabled={loading}>
-              {loading ? "保存中..." : "保存"}
-            </Button>
-          </footer>
-        </form>
-      </section>
-    </div>,
-    document.body,
+      </div>
+    </FormDialog>
   );
 }
