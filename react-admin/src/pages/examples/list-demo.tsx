@@ -1,6 +1,7 @@
 import { Eye, Pencil, Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DataTable } from "@/components/common/data-table";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { Pagination } from "@/components/common/pagination";
@@ -200,7 +201,7 @@ export function ListDemoPage() {
         </Select>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
+      <DataTableCard>
         <TableToolbar
           title="标准列表"
           description={`共 ${filteredRecords.length} 条数据。`}
@@ -225,7 +226,7 @@ export function ListDemoPage() {
           onPageChange={() => undefined}
           onPageSizeChange={() => undefined}
         />
-      </section>
+      </DataTableCard>
     </>
   );
 }

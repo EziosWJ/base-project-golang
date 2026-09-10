@@ -3,6 +3,7 @@ import { Plus, RotateCcw, Search } from "lucide-react";
 import { getPermissionTotal, getPermissions } from "@/api/rbac";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { DataTable } from "@/components/common/data-table";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
@@ -192,7 +193,7 @@ export function SystemPermissionsPage() {
         </Select>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
+      <DataTableCard>
         <TableToolbar
           title="权限点列表"
           description={`共 ${total} 条 mock 数据，当前显示 ${permissions.length} 条。`}
@@ -228,7 +229,7 @@ export function SystemPermissionsPage() {
             </Button>
           </div>
         </div>
-      </section>
+      </DataTableCard>
     </>
   );
 }
