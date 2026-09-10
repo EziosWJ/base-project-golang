@@ -1,13 +1,28 @@
 import { X } from "lucide-react";
-import { useEffect, useId, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type DetailDialogProps = {
   open: boolean;
   title: string;
   description?: ReactNode;
   loading?: boolean;
+  contentClassName?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  closeOnEscape?: boolean;
+  closeOnOverlayClick?: boolean;
+  trapFocus?: boolean;
   onCancel: () => void;
   children: ReactNode;
 };
@@ -17,83 +32,54 @@ export function DetailDialog({
   title,
   description,
   loading = false,
+  contentClassName,
+  headerClassName,
+  bodyClassName,
+  closeOnEscape = true,
+  closeOnOverlayClick = true,
+  trapFocus = false,
   onCancel,
   children,
 }: DetailDialogProps) {
-  const titleId = useId();
-  const descriptionId = useId();
-  const hasDescription = description !== undefined && description !== null;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCancel();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel, open]);
-
-  if (!open || typeof document === "undefined") {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onCancel();
-        }
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onCancel();
       }}
+      closeOnEscape={closeOnEscape}
+      closeOnOverlayClick={closeOnOverlayClick}
+      trapFocus={trapFocus}
     >
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[860px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={hasDescription ? descriptionId : undefined}
+      <DialogOverlay />
+      <DialogContent
+        className={cn(
+          "max-h-[calc(100vh-48px)] max-w-[860px]",
+          contentClassName,
+        )}
         aria-busy={loading || undefined}
       >
-        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
+        <DialogHeader className={headerClassName}>
           <div className="min-w-0">
-            <h2
-              id={titleId}
-              className="text-base font-semibold text-text-primary"
-            >
-              {title}
-            </h2>
-            {hasDescription && (
-              <div
-                id={descriptionId}
-                className="mt-space-1 text-body-secondary text-text-tertiary"
-              >
-                {description}
-              </div>
+            <DialogTitle>{title}</DialogTitle>
+            {description !== undefined && description !== null && (
+              <DialogDescription>{description}</DialogDescription>
             )}
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-control-sm w-8 shrink-0"
-            onClick={onCancel}
-            aria-label="关闭详情弹窗"
-          >
+          <DialogClose aria-label="关闭详情弹窗">
             <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
+          </DialogClose>
+        </DialogHeader>
 
-        <div className="max-h-[calc(100vh-150px)] overflow-y-auto px-card py-space-5">
+        <DialogBody
+          className={cn(
+            "max-h-[calc(100vh-150px)] px-card py-space-5",
+            bodyClassName,
+          )}
+        >
           {children}
-        </div>
-      </section>
-    </div>,
-    document.body,
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }

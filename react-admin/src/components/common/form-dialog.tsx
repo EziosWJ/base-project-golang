@@ -1,13 +1,17 @@
 import { X } from "lucide-react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
+import { type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type FormDialogProps = {
@@ -15,8 +19,17 @@ type FormDialogProps = {
   title: string;
   description?: ReactNode;
   loading?: boolean;
+  submitDisabled?: boolean;
   submitText?: string;
+  loadingText?: string;
   cancelText?: string;
+  contentClassName?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
+  closeOnEscape?: boolean;
+  closeOnOverlayClick?: boolean;
+  trapFocus?: boolean;
   onCancel: () => void;
   onSubmit: () => void | Promise<void>;
   children: ReactNode;
@@ -27,58 +40,21 @@ export function FormDialog({
   title,
   description,
   loading = false,
+  submitDisabled = false,
   submitText = "保存",
+  loadingText = "提交中...",
   cancelText = "取消",
+  contentClassName,
+  headerClassName,
+  bodyClassName,
+  footerClassName,
+  closeOnEscape = true,
+  closeOnOverlayClick = true,
+  trapFocus = true,
   onCancel,
   onSubmit,
   children,
 }: FormDialogProps) {
-  const titleId = useId();
-  const descriptionId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !loading) {
-        onCancel();
-        return;
-      }
-
-      if (event.key === "Tab" && containerRef.current) {
-        const focusable = containerRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusable.length === 0) return;
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [loading, onCancel, open]);
-
-  if (!open || typeof document === "undefined") {
-    return null;
-  }
-
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -87,73 +63,59 @@ export function FormDialog({
     }
   };
 
-  return createPortal(
-    <div
-      ref={containerRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !loading) {
-          onCancel();
-        }
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onCancel();
       }}
+      closeOnEscape={closeOnEscape && !loading}
+      closeOnOverlayClick={closeOnOverlayClick && !loading}
+      trapFocus={trapFocus}
     >
-      <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[760px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={description ? descriptionId : undefined}
+      <DialogOverlay />
+      <DialogContent
+        className={cn(
+          "max-h-[calc(100vh-48px)] max-w-[760px]",
+          contentClassName,
+        )}
       >
-        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
+        <DialogHeader className={headerClassName}>
           <div className="min-w-0">
-            <h2
-              id={titleId}
-              className="text-base font-semibold text-text-primary"
-            >
-              {title}
-            </h2>
+            <DialogTitle>{title}</DialogTitle>
             {description && (
-              <div
-                id={descriptionId}
-                className="mt-space-1 text-body-secondary text-text-tertiary"
-              >
-                {description}
-              </div>
+              <DialogDescription>{description}</DialogDescription>
             )}
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-control-sm w-8 shrink-0"
-            disabled={loading}
-            onClick={onCancel}
-            aria-label="关闭表单弹窗"
-          >
+          <DialogClose disabled={loading} aria-label="关闭表单弹窗">
             <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </header>
+          </DialogClose>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <div className="max-h-[calc(100vh-184px)] overflow-y-auto px-card py-space-4">
+          <DialogBody
+            className={cn(
+              "max-h-[calc(100vh-184px)] px-card py-space-4",
+              bodyClassName,
+            )}
+          >
             {children}
-          </div>
-          <footer className="flex justify-end gap-space-2 border-t border-border px-card py-space-4">
+          </DialogBody>
+          <DialogFooter className={footerClassName}>
             <Button variant="secondary" disabled={loading} onClick={onCancel}>
               {cancelText}
             </Button>
             <Button
               type="submit"
               variant="primary"
-              disabled={loading}
+              disabled={loading || submitDisabled}
               className={cn(loading && "cursor-wait")}
             >
-              {loading ? "提交中..." : submitText}
+              {loading ? loadingText : submitText}
             </Button>
-          </footer>
+          </DialogFooter>
         </form>
-      </section>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }
