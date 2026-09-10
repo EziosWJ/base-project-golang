@@ -16,6 +16,7 @@ import {
 } from "@/api/user";
 import { deptOptionsToTreeSelectNodes, getDeptOptions } from "@/api/dept";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -486,31 +487,44 @@ export function UsersPage() {
         </form>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
-        <TableToolbar
-          title="用户列表"
-          description={`共 ${total} 条数据，当前显示 ${users.length} 条。`}
-          actions={
-            <>
-              <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
-                {loading ? "加载中" : error ? "加载失败" : "已同步"}
-              </StatusTag>
-              <Button size="sm" variant="secondary" onClick={loadUsers}>
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                刷新
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={selectedUsers.length === 0}
-                onClick={() => setConfirmAction({ type: "batchDelete", users: selectedUsers })}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-                批量删除
-              </Button>
-            </>
-          }
-        />
+      <DataTableCard
+        toolbar={
+          <TableToolbar
+            title="用户列表"
+            description={`共 ${total} 条数据，当前显示 ${users.length} 条。`}
+            actions={
+              <>
+                <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
+                  {loading ? "加载中" : error ? "加载失败" : "已同步"}
+                </StatusTag>
+                <Button size="sm" variant="secondary" onClick={loadUsers}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  刷新
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={selectedUsers.length === 0}
+                  onClick={() => setConfirmAction({ type: "batchDelete", users: selectedUsers })}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  批量删除
+                </Button>
+              </>
+            }
+          />
+        }
+        pagination={
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        }
+      >
         <DataTable<UserRecord>
           columns={columns}
           dataSource={users}
@@ -527,15 +541,7 @@ export function UsersPage() {
             />
           }
         />
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          disabled={loading}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </section>
+      </DataTableCard>
 
       <UserFormDialog
         open={formOpen}
