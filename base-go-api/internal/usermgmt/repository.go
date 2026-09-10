@@ -55,10 +55,8 @@ func (r *Repository) Page(ctx context.Context, q PageQuery) (Page[User], error) 
 	if e != nil {
 		return p, e
 	}
-	for i := range p.Records {
-		if e = r.enrich(ctx, &p.Records[i]); e != nil {
-			return p, e
-		}
+	if e = r.enrichPage(ctx, p.Records); e != nil {
+		return p, e
 	}
 	return p, nil
 }
@@ -83,6 +81,64 @@ func (r *Repository) enrich(ctx context.Context, u *User) error {
 		u.DeptName = &name
 	}
 	return r.db.WithContext(ctx).Table("sys_role r").Select("r.id,r.role_name,r.role_code,r.status").Joins("JOIN sys_user_role ur ON ur.role_id=r.id").Where("ur.user_id=? AND r.deleted=0", u.ID).Scan(&u.Roles).Error
+}
+func (r *Repository) enrichPage(ctx context.Context, users []User) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	deptIDs := make([]int64, 0, len(users))
+	seenDeptIDs := make(map[int64]struct{}, len(users))
+	userIDs := make([]int64, 0, len(users))
+	for _, user := range users {
+		userIDs = append(userIDs, user.ID)
+		if user.DeptID != nil {
+			if _, ok := seenDeptIDs[*user.DeptID]; !ok {
+				seenDeptIDs[*user.DeptID] = struct{}{}
+				deptIDs = append(deptIDs, *user.DeptID)
+			}
+		}
+	}
+
+	deptNames := make(map[int64]string, len(deptIDs))
+	if len(deptIDs) > 0 {
+		var departments []struct {
+			ID       int64  `gorm:"column:id"`
+			DeptName string `gorm:"column:dept_name"`
+		}
+		if err := r.db.WithContext(ctx).Table("sys_dept").Select("id,dept_name").Where("id IN ? AND deleted=0", deptIDs).Scan(&departments).Error; err != nil {
+			return err
+		}
+		for _, department := range departments {
+			deptNames[department.ID] = department.DeptName
+		}
+	}
+
+	var roleRows []struct {
+		UserID   int64  `gorm:"column:user_id"`
+		ID       int64  `gorm:"column:id"`
+		RoleName string `gorm:"column:role_name"`
+		RoleCode string `gorm:"column:role_code"`
+		Status   int    `gorm:"column:status"`
+	}
+	if err := r.db.WithContext(ctx).Table("sys_role r").Select("ur.user_id,r.id,r.role_name,r.role_code,r.status").Joins("JOIN sys_user_role ur ON ur.role_id=r.id").Where("ur.user_id IN ? AND r.deleted=0", userIDs).Scan(&roleRows).Error; err != nil {
+		return err
+	}
+	rolesByUser := make(map[int64][]Role, len(userIDs))
+	for _, role := range roleRows {
+		rolesByUser[role.UserID] = append(rolesByUser[role.UserID], Role{
+			ID: role.ID, RoleName: role.RoleName, RoleCode: role.RoleCode, Status: role.Status,
+		})
+	}
+
+	for i := range users {
+		if users[i].DeptID != nil {
+			name := deptNames[*users[i].DeptID]
+			users[i].DeptName = &name
+		}
+		users[i].Roles = rolesByUser[users[i].ID]
+	}
+	return nil
 }
 func (r *Repository) UsernameExists(ctx context.Context, n string, x int64) (bool, error) {
 	var c int64
