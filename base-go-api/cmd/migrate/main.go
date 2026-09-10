@@ -16,12 +16,15 @@ import (
 
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/config"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 )
 
 const (
 	migrationKindSchema = "schema"
 	migrationKindSeed   = "seed"
 	migrationKindAll    = "all"
+
+	logClearDefaultMigrationVersion int64 = 3
 )
 
 // Goose's legacy package API keeps dialect and version-table configuration as
@@ -57,8 +60,14 @@ func run(ctx context.Context, args []string) error {
 	}()
 
 	for _, migrationKind := range migrationKinds(kind) {
-		if err := applyMigrations(ctx, db.SQL, migrationKind); err != nil {
+		previousVersion, currentVersion, err := applyMigrations(ctx, db.SQL, migrationKind)
+		if err != nil {
 			return err
+		}
+		if migrationKind == migrationKindSeed && shouldApplyLogClearDefault(previousVersion, currentVersion) {
+			if err := applyLogClearDefault(ctx, db.SQL, cfg.Environment); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -66,26 +75,59 @@ func run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func applyMigrations(ctx context.Context, sqlDB *sql.DB, kind string) error {
+func applyMigrations(ctx context.Context, sqlDB *sql.DB, kind string) (int64, int64, error) {
 	gooseMu.Lock()
 	defer gooseMu.Unlock()
 
 	directory := migrationDirectory(kind)
 	hasMigrations, err := hasSQLMigrations(directory)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	if !hasMigrations {
 		slog.Info("no migrations to apply", "kind", kind, "directory", directory)
-		return nil
+		return 0, 0, nil
 	}
 
 	if err := goose.SetDialect(database.DriverPostgres); err != nil {
-		return fmt.Errorf("set Goose dialect: %w", err)
+		return 0, 0, fmt.Errorf("set Goose dialect: %w", err)
 	}
 	goose.SetTableName(migrationTableName(kind))
+	previousVersion, err := goose.GetDBVersionContext(ctx, sqlDB)
+	if err != nil {
+		return 0, 0, fmt.Errorf("read %s migration version: %w", kind, err)
+	}
 	if err := goose.UpContext(ctx, sqlDB, directory); err != nil {
-		return fmt.Errorf("apply %s migrations: %w", kind, err)
+		return 0, 0, fmt.Errorf("apply %s migrations: %w", kind, err)
+	}
+	currentVersion, err := goose.GetDBVersionContext(ctx, sqlDB)
+	if err != nil {
+		return 0, 0, fmt.Errorf("read %s migration version after apply: %w", kind, err)
+	}
+	return previousVersion, currentVersion, nil
+}
+
+func shouldApplyLogClearDefault(previousVersion, currentVersion int64) bool {
+	return previousVersion < logClearDefaultMigrationVersion && currentVersion >= logClearDefaultMigrationVersion
+}
+
+func logClearEnabledDefault(environment string) string {
+	if environment == config.EnvironmentDev {
+		return "true"
+	}
+	return "false"
+}
+
+func applyLogClearDefault(ctx context.Context, sqlDB *sql.DB, environment string) error {
+	_, err := sqlDB.ExecContext(ctx, `
+		UPDATE sys_config
+		SET config_value = $1,
+		    update_time = CURRENT_TIMESTAMP
+		WHERE config_key = $2
+		  AND is_builtin = 1
+		  AND deleted = 0`, logClearEnabledDefault(environment), sysconfig.LogClearEnabledKey)
+	if err != nil {
+		return fmt.Errorf("apply log-clear default for %s: %w", environment, err)
 	}
 	return nil
 }

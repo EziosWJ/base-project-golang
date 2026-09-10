@@ -73,3 +73,39 @@ func TestMigrationKindsAndVersionTables(t *testing.T) {
 		t.Fatalf("seed version table = %q", got)
 	}
 }
+func TestLogClearEnabledDefaultByEnvironment(t *testing.T) {
+	for _, test := range []struct {
+		environment string
+		want        string
+	}{
+		{environment: "dev", want: "true"},
+		{environment: "test", want: "false"},
+		{environment: "prod", want: "false"},
+	} {
+		t.Run(test.environment, func(t *testing.T) {
+			if got := logClearEnabledDefault(test.environment); got != test.want {
+				t.Fatalf("logClearEnabledDefault(%q) = %q, want %q", test.environment, got, test.want)
+			}
+		})
+	}
+}
+
+func TestShouldApplyLogClearDefaultOnlyForCorrectiveMigration(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		previous int64
+		current  int64
+		want     bool
+	}{
+		{name: "before corrective migration", previous: 2, current: 2, want: false},
+		{name: "corrective migration just applied", previous: 2, current: 3, want: true},
+		{name: "new database", previous: 0, current: 3, want: true},
+		{name: "already normalized", previous: 3, current: 3, want: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := shouldApplyLogClearDefault(test.previous, test.current); got != test.want {
+				t.Fatalf("shouldApplyLogClearDefault(%d, %d) = %t, want %t", test.previous, test.current, got, test.want)
+			}
+		})
+	}
+}

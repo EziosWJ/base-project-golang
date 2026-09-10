@@ -54,6 +54,38 @@ func TestPostgresMigrationsUseEphemeralDatabase(t *testing.T) {
 	verifyDatabaseReadiness(t, database.dsn)
 }
 
+func TestLogClearSeedDefaultsByEnvironment(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	for _, test := range []struct {
+		environment string
+		want        string
+	}{
+		{environment: config.EnvironmentDev, want: "true"},
+		{environment: config.EnvironmentTest, want: "false"},
+		{environment: config.EnvironmentProd, want: "false"},
+	} {
+		t.Run(test.environment, func(t *testing.T) {
+			database := startPostgres(t)
+			runMigrationsWithEnvironment(t, projectRoot(t), database.dsn, test.environment)
+			connection := openTemporaryDatabase(t, database.dsn)
+			defer func() { _ = connection.Close() }()
+
+			var value struct {
+				ConfigValue string `gorm:"column:config_value"`
+			}
+			if err := connection.GORM.Table("sys_config").Select("config_value").Where("config_key=?", sysconfig.LogClearEnabledKey).Take(&value).Error; err != nil {
+				t.Fatalf("load log-clear seed: %v", err)
+			}
+			if value.ConfigValue != test.want {
+				t.Fatalf("log-clear seed for %s = %q, want %q", test.environment, value.ConfigValue, test.want)
+			}
+		})
+	}
+}
+
 func TestAuthContractUsesPostgresSessions(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
@@ -713,19 +745,23 @@ func (database temporaryPostgres) waitUntilReady(t *testing.T) {
 }
 
 func runMigrations(t *testing.T, root, dsn string) {
+	runMigrationsWithEnvironment(t, root, dsn, config.EnvironmentTest)
+}
+
+func runMigrationsWithEnvironment(t *testing.T, root, dsn, environment string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	command := exec.CommandContext(ctx, "go", "run", "./cmd/migrate", "up", "--kind", "all")
 	command.Dir = root
-	command.Env = integrationEnvironment(t, dsn)
+	command.Env = integrationEnvironment(t, dsn, environment)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("run migrations against temporary PostgreSQL: %v\n%s", err, output)
 	}
 }
 
-func integrationEnvironment(t *testing.T, dsn string) []string {
+func integrationEnvironment(t *testing.T, dsn, environmentName string) []string {
 	t.Helper()
 	databaseConfig := databaseConfigFromDSN(t, dsn)
 	environment := make([]string, 0, len(os.Environ())+5)
@@ -736,7 +772,7 @@ func integrationEnvironment(t *testing.T, dsn string) []string {
 		environment = append(environment, entry)
 	}
 	return append(environment,
-		"APP_ENV=test",
+		"APP_ENV="+environmentName,
 		"APP_DATABASE__URL="+databaseConfig.URL,
 		"APP_DATABASE__USERNAME="+databaseConfig.Username,
 		"APP_DATABASE__PASSWORD="+databaseConfig.Password,
