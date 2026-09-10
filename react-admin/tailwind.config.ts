@@ -17,6 +17,7 @@ export default {
         warning: "var(--color-warning)",
         error: "var(--color-error)",
         info: "var(--color-info)",
+        "overlay-background": "var(--color-overlay-background)",
         "success-background": "var(--color-success-background)",
         "success-border": "var(--color-success-border)",
         "warning-background": "var(--color-warning-background)",
