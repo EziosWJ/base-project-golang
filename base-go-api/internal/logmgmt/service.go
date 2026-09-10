@@ -9,7 +9,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
 )
 
-const clearEnabledKey = "system.log-clear-enabled"
+const clearEnabledKey = sysconfig.LogClearEnabledKey
 
 // ByKeyReader reads a sys_config value by key. *sysconfig.Service satisfies it.
 type ByKeyReader interface {
@@ -75,20 +75,20 @@ func validatePage(page, pageSize int) error {
 	return nil
 }
 
-// assertClearEnabled mirrors the Java log-clear gate: the switch is read from
-// sys_config and defaults to enabled when the row is missing or not BOOLEAN.
+// assertClearEnabled reads the sys_config gate and fails closed whenever the
+// switch is missing, disabled, malformed, or otherwise unavailable.
 func (s *Service) assertClearEnabled(ctx context.Context) error {
 	if s.config == nil {
-		return nil
+		return ErrForbidden
 	}
 	key, err := s.config.GetByKey(ctx, clearEnabledKey)
 	if err != nil {
 		if errors.Is(err, sysconfig.ErrNotFound) {
-			return nil
+			return ErrForbidden
 		}
 		return err
 	}
-	if !strings.EqualFold(key.ConfigValue, "true") {
+	if key == nil || key.ValueType != "BOOLEAN" || !strings.EqualFold(strings.TrimSpace(key.ConfigValue), "true") {
 		return ErrForbidden
 	}
 	return nil

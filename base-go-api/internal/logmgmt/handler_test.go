@@ -216,7 +216,7 @@ func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 func TestClearOperLogsSucceedsAndAudits(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
-	service, err := NewService(store, nil)
+	service, err := NewService(store, &configStub{value: "true"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,13 +232,37 @@ func TestClearOperLogsSucceedsAndAudits(t *testing.T) {
 	}
 }
 
-func TestClearWithoutConfigDefaultsToEnabled(t *testing.T) {
+func TestClearWithoutConfigIsForbidden(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
 	router := newServiceRouter(t, store, nil)
 	status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
-	if status != http.StatusOK || payload["code"].(float64) != 200 || !store.cleared {
+	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeForbidden || store.cleared {
 		t.Fatalf("status=%d payload=%v cleared=%v", status, payload, store.cleared)
+	}
+}
+
+func TestClearRejectsInvalidConfigAndReadErrors(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name       string
+		config     *configStub
+		wantStatus int
+		wantCode   float64
+	}{
+		{name: "missing config", config: &configStub{err: sysconfig.ErrNotFound}, wantStatus: http.StatusOK, wantCode: platformhttp.CodeForbidden},
+		{name: "wrong type", config: &configStub{value: "true", valueType: "TEXT"}, wantStatus: http.StatusOK, wantCode: platformhttp.CodeForbidden},
+		{name: "invalid value", config: &configStub{value: "yes"}, wantStatus: http.StatusOK, wantCode: platformhttp.CodeForbidden},
+		{name: "read error", config: &configStub{err: errors.New("config read failed")}, wantStatus: http.StatusInternalServerError, wantCode: platformhttp.CodeInternalError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := newMemoryStore()
+			router := newServiceRouter(t, store, test.config)
+			status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
+			if status != test.wantStatus || payload["code"].(float64) != test.wantCode || store.cleared {
+				t.Fatalf("status=%d payload=%v cleared=%v", status, payload, store.cleared)
+			}
+		})
 	}
 }
 
@@ -366,11 +390,22 @@ func (s *memoryStore) ClearOperLogs(_ context.Context, e audit.Event) error {
 	return nil
 }
 
-type configStub struct{ value string }
+type configStub struct {
+	value     string
+	valueType string
+	err       error
+}
 
 func (c *configStub) GetByKey(context.Context, string) (*sysconfig.ByKey, error) {
 	if c == nil {
 		return nil, sysconfig.ErrNotFound
 	}
-	return &sysconfig.ByKey{ConfigValue: c.value, ValueType: "BOOLEAN"}, nil
+	if c.err != nil {
+		return nil, c.err
+	}
+	valueType := c.valueType
+	if valueType == "" {
+		valueType = "BOOLEAN"
+	}
+	return &sysconfig.ByKey{ConfigValue: c.value, ValueType: valueType}, nil
 }

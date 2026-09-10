@@ -129,6 +129,53 @@ func TestBuiltinConfigProtected(t *testing.T) {
 		t.Fatal("builtin config must remain")
 	}
 }
+func TestBuiltinLogClearValueCanBeUpdatedWithoutChangingMetadata(t *testing.T) {
+	store := newMemoryStore()
+	remark := "控制日志清空接口是否可用"
+	store.configs[1] = Config{
+		ID: 1, ConfigName: "日志清空开关", ConfigKey: LogClearEnabledKey,
+		ConfigValue: "false", ConfigType: "SYSTEM", ValueType: "BOOLEAN",
+		Status: 1, IsBuiltin: builtin, Remark: &remark,
+	}
+	s := NewService(store)
+
+	if err := s.Update(context.Background(), audit.Metadata{}, 1, Input{ConfigValue: " TRUE "}); err != nil {
+		t.Fatalf("update builtin log-clear value=%v", err)
+	}
+
+	updated := store.configs[1]
+	if updated.ConfigValue != "true" || updated.ConfigName != "日志清空开关" || updated.ConfigKey != LogClearEnabledKey || updated.ValueType != "BOOLEAN" || updated.Remark == nil || *updated.Remark != remark {
+		t.Fatalf("builtin config metadata changed: %+v", updated)
+	}
+	if len(store.auditEvents) != 1 || store.auditEvents[0].Action != "config.update" || store.auditEvents[0].ResourceID != 1 {
+		t.Fatalf("update audit events=%+v", store.auditEvents)
+	}
+}
+
+func TestBuiltinLogClearValueRejectsInvalidValues(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		valueType string
+		value     string
+		want      error
+	}{
+		{name: "invalid boolean", valueType: "BOOLEAN", value: "yes", want: ErrInvalid},
+		{name: "invalid type", valueType: "TEXT", value: "true", want: ErrInvalid},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := newMemoryStore()
+			store.configs[1] = Config{ID: 1, ConfigKey: LogClearEnabledKey, ValueType: test.valueType, IsBuiltin: builtin}
+			s := NewService(store)
+			if err := s.Update(context.Background(), audit.Metadata{}, 1, Input{ConfigValue: test.value}); !errors.Is(err, test.want) {
+				t.Fatalf("update error=%v, want %v", err, test.want)
+			}
+			if len(store.auditEvents) != 0 {
+				t.Fatalf("invalid update wrote audit events=%+v", store.auditEvents)
+			}
+		})
+	}
+}
+
 func TestBatchDeleteWritesOneAuditEvent(t *testing.T) {
 	store := newMemoryStore()
 	store.configs[2] = Config{ID: 2, ConfigName: "运营", ConfigKey: "ops.enabled", ConfigValue: "true"}

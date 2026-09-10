@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	enabled = 1
-	builtin = 1
+	enabled            = 1
+	builtin            = 1
+	LogClearEnabledKey = "system.log-clear-enabled"
 )
 
 var (
@@ -207,7 +208,7 @@ func (s *Service) Update(c context.Context, m audit.Metadata, id int64, in Input
 		return e
 	}
 	if old.IsBuiltin == builtin {
-		return ErrBuiltin
+		return s.updateBuiltin(c, m, *old, in)
 	}
 	if e = valid(in); e != nil {
 		return e
@@ -220,6 +221,32 @@ func (s *Service) Update(c context.Context, m audit.Metadata, id int64, in Input
 		return ErrKey
 	}
 	return s.store.Update(c, makeConfig(in, id), event(m, "config.update", "config", id, "更新配置"))
+}
+
+func (s *Service) updateBuiltin(c context.Context, m audit.Metadata, old Config, in Input) error {
+	if old.ConfigKey != LogClearEnabledKey {
+		return ErrBuiltin
+	}
+	if old.ValueType != "BOOLEAN" {
+		return ErrInvalid
+	}
+	value, ok := normalizeBooleanValue(in.ConfigValue)
+	if !ok {
+		return ErrInvalid
+	}
+	old.ConfigValue = value
+	return s.store.Update(c, old, event(m, "config.update", "config", old.ID, "更新配置"))
+}
+
+func normalizeBooleanValue(value string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true":
+		return "true", true
+	case "false":
+		return "false", true
+	default:
+		return "", false
+	}
 }
 func (s *Service) Delete(c context.Context, m audit.Metadata, id int64) error {
 	v, e := s.store.Find(c, id)

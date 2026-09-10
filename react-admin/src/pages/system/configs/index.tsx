@@ -79,6 +79,8 @@ const DEFAULT_FILTERS: FilterState = {
   status: "all",
 };
 
+const LOG_CLEAR_ENABLED_KEY = "system.log-clear-enabled";
+
 const statusMeta: Record<ApiStatus, { label: string; tone: "success" | "neutral" }> = {
   1: { label: "启用", tone: "success" },
   0: { label: "禁用", tone: "neutral" },
@@ -151,6 +153,14 @@ function getConfigStatus(config?: Pick<SystemConfigRecord, "status">): ApiStatus
 
 function isBuiltinConfig(config: SystemConfigRecord) {
   return config.isBuiltin === 1;
+}
+
+function isEditableBuiltinConfig(config: SystemConfigRecord) {
+  return (
+    isBuiltinConfig(config) &&
+    config.configKey === LOG_CLEAR_ENABLED_KEY &&
+    config.valueType === "BOOLEAN"
+  );
 }
 
 function getConfigTypeLabel(
@@ -320,7 +330,7 @@ export function SystemConfigsPage() {
   };
 
   const openEditForm = async (config: SystemConfigRecord) => {
-    if (isBuiltinConfig(config)) {
+    if (isBuiltinConfig(config) && !isEditableBuiltinConfig(config)) {
       toast.warning("内置配置不允许编辑");
       return;
     }
@@ -565,6 +575,7 @@ export function SystemConfigsPage() {
       width: 260,
       render: (_, record) => {
         const builtin = isBuiltinConfig(record);
+        const editableBuiltin = isEditableBuiltinConfig(record);
         const nextStatus = getConfigStatus(record) === 1 ? 0 : 1;
 
         return (
@@ -572,8 +583,14 @@ export function SystemConfigsPage() {
             <Button
               size="sm"
               variant="ghost"
-              disabled={builtin}
-              title={builtin ? "内置配置不允许编辑" : undefined}
+              disabled={builtin && !editableBuiltin}
+              title={
+                builtin
+                  ? editableBuiltin
+                    ? "内置日志清空开关仅允许修改布尔值"
+                    : "内置配置不允许编辑"
+                  : undefined
+              }
               onClick={() => void openEditForm(record)}
             >
               <Pencil className="h-4 w-4" aria-hidden />
@@ -803,6 +820,9 @@ function ConfigFormDialog({
   } = form;
   const valueType = watch("valueType");
   const readonlyKey = mode === "edit";
+  const builtinValueOnly = editingConfig
+    ? isEditableBuiltinConfig(editingConfig)
+    : false;
 
   useEffect(() => {
     if (!open || valueType !== "BOOLEAN") return;
@@ -819,7 +839,7 @@ function ConfigFormDialog({
       title={mode === "edit" ? "编辑配置" : "新增配置"}
       description="编辑时配置键不可修改，但会随请求体提交给后端校验。"
       loading={loading}
-      submitDisabled={editingConfig?.isBuiltin === 1}
+      submitDisabled={editingConfig?.isBuiltin === 1 && !builtinValueOnly}
       loadingText="保存中..."
       contentClassName="max-w-[720px]"
       bodyClassName="max-h-[calc(100vh-150px)] px-card py-space-5"
@@ -838,7 +858,7 @@ function ConfigFormDialog({
             >
               <Input
                 id="configName"
-                disabled={loading}
+                disabled={loading || builtinValueOnly}
                 placeholder="例如：系统名称"
                 {...register("configName")}
               />
@@ -866,7 +886,11 @@ function ConfigFormDialog({
               htmlFor="configType"
               error={errors.configType?.message}
             >
-              <Select id="configType" disabled={loading} {...register("configType")}>
+              <Select
+                id="configType"
+                disabled={loading || builtinValueOnly}
+                {...register("configType")}
+              >
                 {configTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -880,7 +904,11 @@ function ConfigFormDialog({
               htmlFor="valueType"
               error={errors.valueType?.message}
             >
-              <Select id="valueType" disabled={loading} {...register("valueType")}>
+              <Select
+                id="valueType"
+                disabled={loading || builtinValueOnly}
+                {...register("valueType")}
+              >
                 {valueTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -890,7 +918,11 @@ function ConfigFormDialog({
             </Field>
 
             <Field label="状态" htmlFor="status" error={errors.status?.message}>
-              <Select id="status" disabled={loading} {...register("status")}>
+              <Select
+                id="status"
+                disabled={loading || builtinValueOnly}
+                {...register("status")}
+              >
                 {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -930,7 +962,7 @@ function ConfigFormDialog({
             <Field label="备注" htmlFor="remark" error={errors.remark?.message}>
               <Textarea
                 id="remark"
-                disabled={loading}
+                disabled={loading || builtinValueOnly}
                 placeholder="补充配置用途或维护说明"
                 {...register("remark")}
               />
@@ -939,7 +971,9 @@ function ConfigFormDialog({
 
           {mode === "edit" && editingConfig?.isBuiltin === 1 && (
             <div className="mt-space-4 rounded-admin border border-border bg-neutral-background px-space-4 py-space-3 text-sm text-text-secondary">
-              内置配置由系统维护，不允许编辑或删除。
+              {builtinValueOnly
+                ? "内置日志清空开关仅允许修改布尔值。"
+                : "内置配置由系统维护，不允许编辑或删除。"}
             </div>
           )}
 
