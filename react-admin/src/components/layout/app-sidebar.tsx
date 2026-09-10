@@ -198,9 +198,9 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
         {!collapsed && (
           <div className="min-w-0">
             <div className="truncate text-base font-semibold text-text-primary">
-              React Admin
+              智慧综合管理平台
             </div>
-            <div className="truncate text-xs text-text-tertiary">基础模板</div>
+            <div className="truncate text-xs text-text-tertiary">管理控制台</div>
           </div>
         )}
       </div>

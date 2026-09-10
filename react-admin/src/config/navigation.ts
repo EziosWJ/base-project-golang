@@ -23,7 +23,7 @@ export type NavItem = {
 
 export const defaultNavItems: NavItem[] = [
   {
-    label: "Dashboard",
+    label: "工作台",
     path: "/dashboard",
     icon: LayoutDashboard,
   },
@@ -185,7 +185,7 @@ export function createUserMenuTitleMap(
 }
 
 export const staticRouteTitleMap: Record<string, string> = {
-  "/dashboard": "Dashboard",
+  "/dashboard": "工作台",
   "/notifications": "我的通知",
   "/forms/basic": "表单示例",
   "/examples": "页面示例",

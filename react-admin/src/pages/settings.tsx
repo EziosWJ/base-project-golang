@@ -13,8 +13,8 @@ export function SettingsPage() {
       <ContentCard title="基础设置">
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            ["系统名称", "React Admin"],
-            ["认证方式", "Mock 登录"],
+            ["系统名称", "智慧综合管理平台"],
+            ["认证方式", "模拟登录"],
             ["权限模型", "登录态守卫"],
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg border border-border p-4">
@@ -30,4 +30,3 @@ export function SettingsPage() {
     </>
   );
 }
-

@@ -22,8 +22,8 @@ export function Breadcrumbs() {
   const menus = useAuthStore((state) => state.menus);
   const dynamicTitleMap = useMemo(() => createUserMenuTitleMap(menus), [menus]);
   const title = getRouteTitle(location.pathname, {
-    ...staticRouteTitleMap,
     ...dynamicTitleMap,
+    ...staticRouteTitleMap,
   });
 
   return (
