@@ -39,17 +39,17 @@ export const defaultNavItems: NavItem[] = [
     icon: FileText,
     children: [
       {
-        label: "表单示例",
+        label: "标准表单 Demo",
         path: "/forms/basic",
         icon: FileText,
       },
       {
-        label: "列表页 Demo",
+        label: "标准列表页 Demo",
         path: "/examples/list",
         icon: Table2,
       },
       {
-        label: "树形结构 Demo",
+        label: "树形列表 Demo",
         path: "/examples/tree",
         icon: Network,
       },
@@ -187,10 +187,10 @@ export function createUserMenuTitleMap(
 export const staticRouteTitleMap: Record<string, string> = {
   "/dashboard": "工作台",
   "/notifications": "我的通知",
-  "/forms/basic": "表单示例",
+  "/forms/basic": "标准表单 Demo",
   "/examples": "页面示例",
-  "/examples/list": "列表页 Demo",
-  "/examples/tree": "树形结构 Demo",
+  "/examples/list": "标准列表页 Demo",
+  "/examples/tree": "树形列表 Demo",
   "/examples/tree-table": "左树右表 Demo",
   "/examples/detail": "详情页 Demo",
   "/examples/file-upload": "文件上传 Demo",

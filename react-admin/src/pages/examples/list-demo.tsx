@@ -144,7 +144,7 @@ export function ListDemoPage() {
   return (
     <>
       <PageHeader
-        title="列表页 Demo"
+        title="标准列表页 Demo"
         description="标准后台列表页结构示例，包含筛选区、工具栏、表格、状态标签、行操作和分页。"
         actions={
           <Button variant="primary">

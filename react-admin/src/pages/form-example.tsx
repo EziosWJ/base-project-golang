@@ -84,7 +84,7 @@ export function FormExamplePage() {
   return (
     <>
       <PageHeader
-        title="表单示例"
+        title="标准表单 Demo"
         description="表单页示例，展示分组表单、Zod 校验和 React Hook Form 提交状态。"
       />
 

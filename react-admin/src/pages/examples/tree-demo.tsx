@@ -87,7 +87,7 @@ export function TreeDemoPage() {
   return (
     <>
       <PageHeader
-        title="树形结构 Demo"
+        title="树形列表 Demo"
         description="展示部门树、菜单树、分类树等场景的基础树形交互和右侧内容联动。"
       />
 
