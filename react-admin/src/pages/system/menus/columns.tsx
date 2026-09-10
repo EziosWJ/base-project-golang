@@ -77,7 +77,7 @@ export function createMenuColumns({
             className="flex items-center gap-2"
             style={{ paddingLeft: menu.level * 20 }}
           >
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-slate-50 text-text-secondary">
+            <span className="inline-flex h-control-sm w-8 shrink-0 items-center justify-center rounded-control border border-border bg-neutral-background text-text-secondary">
               <Icon className="h-4 w-4" aria-hidden />
             </span>
             <div className="min-w-0">

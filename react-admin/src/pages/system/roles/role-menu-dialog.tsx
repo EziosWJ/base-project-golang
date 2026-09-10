@@ -47,7 +47,7 @@ export function RoleMenuDialog({
             >
               分配菜单
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               {role.roleName} / {role.roleCode}
             </p>
           </div>
@@ -79,9 +79,9 @@ export function RoleMenuDialog({
 
           {loading ? (
             <div className="space-y-3">
-              <div className="h-9 animate-pulse rounded-lg bg-slate-100" />
-              <div className="h-9 animate-pulse rounded-lg bg-slate-100" />
-              <div className="h-9 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-control-md animate-pulse rounded-control bg-neutral-background" />
+              <div className="h-control-md animate-pulse rounded-control bg-neutral-background" />
+              <div className="h-control-md animate-pulse rounded-control bg-neutral-background" />
             </div>
           ) : (
             <TreeCheckList

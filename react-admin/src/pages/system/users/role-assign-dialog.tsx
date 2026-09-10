@@ -61,15 +61,15 @@ export function RoleAssignDialog({
       aria-describedby={descriptionId}
       aria-modal="true"
       onCancel={(event) => { event.preventDefault(); if (!submitting) onCancel(); }}
-      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-[640px] overflow-hidden rounded-admin border border-border bg-surface p-0 text-text-primary shadow-admin backdrop:bg-slate-950/30"
+      className="m-auto max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-modal-md overflow-hidden rounded-admin border border-border bg-surface p-0 text-text-primary shadow-admin backdrop:bg-slate-950/30"
     >
       <div className="flex max-h-[calc(100dvh-34px)] flex-col">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-card py-space-4">
           <div className="min-w-0">
             <h2 id={titleId} className="flex items-center gap-2 text-base font-semibold">
               <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />分配角色
             </h2>
-            <p id={descriptionId} className="mt-1 text-sm text-text-tertiary">
+            <p id={descriptionId} className="mt-space-1 text-sm text-text-tertiary">
               可选择多个角色，保存后生效。
             </p>
           </div>
@@ -79,7 +79,7 @@ export function RoleAssignDialog({
         </header>
 
         <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4" aria-busy={loading}>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-background px-3 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-background px-space-3 py-space-3 text-sm">
             <span className="text-text-tertiary">分配给</span>
             <span className="break-all font-medium">{user.nickname || user.username}</span>
             {user.nickname && <span className="break-all text-text-tertiary">@{user.username}</span>}
@@ -88,7 +88,7 @@ export function RoleAssignDialog({
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-text-tertiary" aria-hidden />
             <Input autoFocus value={query} onChange={(event) => setQuery(event.target.value)}
               placeholder="搜索角色名称或编码" aria-label="搜索角色名称或编码" className="pl-9 pr-10" disabled={submitting} />
-            {query && <Button size="icon" variant="ghost" className="absolute right-0 top-0 h-9 w-9"
+            {query && <Button size="icon" variant="ghost" className="absolute right-0 top-0 h-control-md w-9"
               disabled={submitting} onClick={() => setQuery("")} aria-label="清除搜索">
               <X className="h-4 w-4" aria-hidden />
             </Button>}
@@ -98,7 +98,7 @@ export function RoleAssignDialog({
             <div role="status" className="space-y-2">
               <span className="sr-only">正在加载角色</span>
               {Array.from({ length: 4 }).map((_, index) =>
-                <div key={index} className="h-16 rounded-lg bg-background motion-safe:animate-pulse" />,
+                <div key={index} className="h-16 rounded-control bg-background motion-safe:animate-pulse" />,
               )}
             </div>
           ) : error ? (
@@ -123,7 +123,7 @@ export function RoleAssignDialog({
                   const checked = selectedRoleIds.includes(role.id);
                   return (
                     <label key={role.id} className={cn(
-                      "flex min-w-0 items-start gap-3 rounded-lg border p-3 focus-within:ring-2 focus-within:ring-primary/30",
+                      "flex min-w-0 items-start gap-3 rounded-control border p-space-3 focus-within:ring-2 focus-within:ring-primary/30",
                       checked ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-background",
                       disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                     )}>
@@ -150,7 +150,7 @@ export function RoleAssignDialog({
               {selectedRoles.map((role) => <button key={role.id} type="button" disabled={disabled}
                 aria-label={`移除角色 ${role.roleName}`}
                 onClick={() => onChange(selectedRoleIds.filter((id) => id !== role.id))}
-                className="inline-flex max-w-full items-center gap-1 rounded-md bg-primary/5 px-2 py-1 text-sm text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">
+                className="inline-flex max-w-full items-center gap-1 rounded-tag bg-primary/5 px-space-2 py-1 text-sm text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60">
                 <span className="break-all">{role.roleName}</span><X className="h-3.5 w-3.5 shrink-0" aria-hidden />
               </button>)}
             </div> : <p className="text-sm text-text-tertiary">尚未选择角色，保存后该用户将不再关联任何角色。</p>}

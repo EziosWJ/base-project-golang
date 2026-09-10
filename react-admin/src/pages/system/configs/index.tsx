@@ -492,7 +492,7 @@ export function SystemConfigsPage() {
       dataIndex: "configKey",
       width: 240,
       render: (value) => (
-        <span className="block max-w-[240px] truncate font-mono text-[13px] text-text-secondary">
+        <span className="block max-w-[240px] truncate font-mono text-body-secondary text-text-secondary">
           {String(value || "-")}
         </span>
       ),
@@ -832,7 +832,7 @@ function ConfigFormDialog({
             >
               {mode === "edit" ? "编辑配置" : "新增配置"}
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               编辑时配置键不可修改，但会随请求体提交给后端校验。
             </p>
           </div>
@@ -878,7 +878,7 @@ function ConfigFormDialog({
                 id="configKey"
                 disabled={loading}
                 readOnly={readonlyKey}
-                className={cn(readonlyKey && "bg-slate-50 text-text-tertiary")}
+                className={cn(readonlyKey && "bg-neutral-background text-text-tertiary")}
                 placeholder="例如：system.name"
                 {...register("configKey")}
               />
@@ -961,7 +961,7 @@ function ConfigFormDialog({
           </div>
 
           {mode === "edit" && editingConfig?.isBuiltin === 1 && (
-            <div className="mt-4 rounded-admin border border-border bg-slate-50 px-4 py-3 text-sm text-text-secondary">
+            <div className="mt-space-4 rounded-admin border border-border bg-neutral-background px-space-4 py-space-3 text-sm text-text-secondary">
               内置配置由系统维护，不允许编辑或删除。
             </div>
           )}

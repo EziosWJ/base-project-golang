@@ -243,7 +243,7 @@ export function FileUploadDialog({
               <p className="text-sm text-error">{error}</p>
             )}
             {result && (
-              <div className="space-y-2 rounded-lg border border-border bg-slate-50 p-3 text-sm">
+              <div className="space-y-2 rounded-control border border-border bg-neutral-background p-space-3 text-sm">
                 <p className="font-medium text-text-primary">
                   本次上传：成功 {result.succeeded.length} 个，失败 {result.failed.length} 个
                 </p>

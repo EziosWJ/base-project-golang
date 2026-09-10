@@ -16,7 +16,7 @@ export function PasswordResultDialog({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
       <section
-        className="w-full max-w-[480px] rounded-admin border border-border bg-surface shadow-admin"
+        className="w-full max-w-modal-sm rounded-admin border border-border bg-surface shadow-admin"
         role="dialog"
         aria-modal="true"
       >
@@ -29,7 +29,7 @@ export function PasswordResultDialog({
           </p>
         </header>
         <div className="px-5 py-4">
-          <div className="rounded-lg border border-border bg-slate-50 px-4 py-3 font-mono text-lg font-semibold tabular-nums text-text-primary">
+          <div className="rounded-control border border-border bg-neutral-background px-space-4 py-space-3 font-mono text-lg font-semibold tabular-nums text-text-primary">
             {String(result.password)}
           </div>
         </div>

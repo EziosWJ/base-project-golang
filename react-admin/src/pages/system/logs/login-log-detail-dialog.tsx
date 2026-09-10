@@ -40,7 +40,7 @@ export function LoginLogDetailDialog({
             >
               登录日志详情
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               {loading ? "详情加载中" : `记录 ID：${detail?.id ?? "-"}`}
             </p>
           </div>
@@ -94,7 +94,7 @@ function DetailItem({
 }) {
   return (
     <div className={className}>
-      <div className="text-[13px] text-text-tertiary">{label}</div>
+      <div className="text-body-secondary text-text-tertiary">{label}</div>
       <div className="mt-1 break-words text-sm text-text-primary">
         {value || "-"}
       </div>

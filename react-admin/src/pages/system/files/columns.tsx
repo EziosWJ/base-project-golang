@@ -76,7 +76,7 @@ export function createFileColumns(actions: FileColumnActions): DataTableColumn<F
       dataIndex: "extension",
       width: 90,
       render: (value) => (
-        <span className="font-mono text-[13px] text-text-secondary">
+        <span className="font-mono text-body-secondary text-text-secondary">
           {String(value || "-")}
         </span>
       ),
@@ -86,7 +86,7 @@ export function createFileColumns(actions: FileColumnActions): DataTableColumn<F
       dataIndex: "mimeType",
       width: 180,
       render: (value) => (
-        <span className="block max-w-[180px] truncate font-mono text-[13px] text-text-secondary">
+        <span className="block max-w-[180px] truncate font-mono text-body-secondary text-text-secondary">
           {String(value || "-")}
         </span>
       ),

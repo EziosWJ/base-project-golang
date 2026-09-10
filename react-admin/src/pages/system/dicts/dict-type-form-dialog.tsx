@@ -43,7 +43,7 @@ export function DictTypeFormDialog({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
       <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[640px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
+        className="max-h-[calc(100vh-48px)] w-full max-w-modal-md overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dict-type-form-title"
@@ -56,7 +56,7 @@ export function DictTypeFormDialog({
             >
               {mode === "edit" ? "编辑字典类型" : "新建字典类型"}
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               内置字典的字典编码不可修改。
             </p>
           </div>
@@ -102,7 +102,7 @@ export function DictTypeFormDialog({
                 id="dictCode"
                 disabled={loading}
                 readOnly={isBuiltin}
-                className={isBuiltin ? "bg-slate-50 text-text-tertiary" : undefined}
+                className={isBuiltin ? "bg-neutral-background text-text-tertiary" : undefined}
                 placeholder="例如：gender"
                 {...register("dictCode")}
               />

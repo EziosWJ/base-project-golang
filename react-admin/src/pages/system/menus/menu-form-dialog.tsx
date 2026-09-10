@@ -57,7 +57,7 @@ export function MenuFormDialog({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
       <section
-        className="max-h-[calc(100vh-48px)] w-full max-w-[800px] overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
+        className="max-h-[calc(100vh-48px)] w-full max-w-modal-lg overflow-hidden rounded-admin border border-border bg-surface shadow-admin"
         role="dialog"
         aria-modal="true"
         aria-labelledby="menu-form-title"
@@ -70,7 +70,7 @@ export function MenuFormDialog({
             >
               {mode === "edit" ? "编辑菜单" : "新建菜单"}
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               菜单类型使用 DIR / MENU / LINK，与后端协议保持一致。
             </p>
           </div>
@@ -151,7 +151,7 @@ export function MenuFormDialog({
                 id="path"
                 disabled={loading}
                 readOnly={isBuiltin}
-                className={isBuiltin ? "bg-slate-50 text-text-tertiary" : undefined}
+                className={isBuiltin ? "bg-neutral-background text-text-tertiary" : undefined}
                 placeholder="/system/user"
                 {...register("path")}
               />
@@ -167,7 +167,7 @@ export function MenuFormDialog({
                 id="component"
                 disabled={loading || menuType === "LINK"}
                 readOnly={isBuiltin}
-                className={isBuiltin ? "bg-slate-50 text-text-tertiary" : undefined}
+                className={isBuiltin ? "bg-neutral-background text-text-tertiary" : undefined}
                 placeholder="system/user/index"
                 {...register("component")}
               />
@@ -204,7 +204,7 @@ export function MenuFormDialog({
                 id="permissionCode"
                 disabled={loading}
                 readOnly={isBuiltin}
-                className={isBuiltin ? "bg-slate-50 text-text-tertiary" : undefined}
+                className={isBuiltin ? "bg-neutral-background text-text-tertiary" : undefined}
                 placeholder="system:user:list"
                 {...register("permissionCode")}
               />
@@ -220,7 +220,7 @@ export function MenuFormDialog({
                 id="icon"
                 disabled={loading}
                 readOnly={isBuiltin}
-                className={isBuiltin ? "bg-slate-50 text-text-tertiary" : undefined}
+                className={isBuiltin ? "bg-neutral-background text-text-tertiary" : undefined}
                 placeholder="setting"
                 {...register("icon")}
               />

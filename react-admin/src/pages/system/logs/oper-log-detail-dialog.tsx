@@ -46,7 +46,7 @@ export function OperLogDetailDialog({
             >
               操作日志详情
             </h2>
-            <p className="mt-1 text-[13px] text-text-tertiary">
+            <p className="mt-space-1 text-body-secondary text-text-tertiary">
               {loading ? "详情加载中" : `记录 ID：${detail?.id ?? "-"}`}
             </p>
           </div>
@@ -117,7 +117,7 @@ function DetailItem({
 }) {
   return (
     <div className={className}>
-      <div className="text-[13px] text-text-tertiary">{label}</div>
+      <div className="text-body-secondary text-text-tertiary">{label}</div>
       <div className="mt-1 break-words text-sm text-text-primary">
         {value || "-"}
       </div>
@@ -128,8 +128,8 @@ function DetailItem({
 function SummaryBlock({ title, value }: { title: string; value: string }) {
   return (
     <div>
-      <div className="text-[13px] text-text-tertiary">{title}</div>
-      <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-slate-50 p-3 text-[13px] leading-5 text-text-secondary">
+      <div className="text-body-secondary text-text-tertiary">{title}</div>
+      <pre className="mt-space-2 max-h-64 overflow-auto rounded-control border border-border bg-neutral-background p-space-3 text-body-secondary text-text-secondary">
         {value}
       </pre>
     </div>

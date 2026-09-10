@@ -640,7 +640,7 @@ export function SystemDictsPage() {
             minWidth={1000}
             onRowClick={selectType}
             rowClassName={(record) =>
-              selectedType?.id === record.id ? "bg-blue-50/60" : undefined
+              selectedType?.id === record.id ? "bg-primary/5" : undefined
             }
             empty={
               <EmptyState
