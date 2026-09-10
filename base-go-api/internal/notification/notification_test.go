@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/auth"
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -70,5 +72,56 @@ func TestPublishRouteRejectsNonAdmin(t *testing.T) {
 	router.ServeHTTP(response, request)
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status=%d,want %d", response.Code, http.StatusForbidden)
+	}
+}
+
+func TestPageRoutesReturnEmptyRecordsArray(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, path := range []string{"/notification/page", "/notification-admin/page"} {
+		t.Run(path, func(t *testing.T) {
+			router := gin.New()
+			service, _ := NewService(&testStore{admin: true})
+			handler, _ := NewHandler(service)
+			RegisterRoutes(router, handler)
+			request := httptest.NewRequest(http.MethodGet, path, nil)
+			request = request.WithContext(auth.ContextWithPrincipal(request.Context(), auth.Principal{UserID: 9}))
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+
+			if response.Code != http.StatusOK {
+				t.Fatalf("status=%d,want %d", response.Code, http.StatusOK)
+			}
+			var body struct {
+				Data struct {
+					Records json.RawMessage `json:"records"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if string(body.Data.Records) != "[]" {
+				t.Fatalf("records=%s,want []", body.Data.Records)
+			}
+		})
+	}
+}
+
+func TestNotificationCreateDoesNotWriteQueryOnlyColumns(t *testing.T) {
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN: "host=localhost user=test dbname=test sslmode=disable",
+	}), &gorm.Config{DryRun: true, DisableAutomaticPing: true, SkipDefaultTransaction: true})
+	if err != nil {
+		t.Fatalf("open dry-run database: %v", err)
+	}
+
+	statement := db.Create(&Notification{Title: "公告", Content: "内容", SourceType: SourceManual}).Statement
+	if statement.Error != nil {
+		t.Fatalf("build insert: %v", statement.Error)
+	}
+	for _, column := range []string{"is_read", "recipient_count", "read_count"} {
+		if strings.Contains(statement.SQL.String(), `"`+column+`"`) {
+			t.Fatalf("insert writes query-only column %s: %s", column, statement.SQL.String())
+		}
 	}
 }

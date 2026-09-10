@@ -140,6 +140,7 @@ export function createFileColumns(actions: FileColumnActions): DataTableColumn<F
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 300,
       render: (_, record) => {

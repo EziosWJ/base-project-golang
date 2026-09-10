@@ -132,6 +132,7 @@ export function createRoleColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 320,
       render: (_, role) => (

@@ -169,6 +169,7 @@ export function createMenuColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 330,
       render: (_, menu) => (

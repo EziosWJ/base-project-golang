@@ -202,6 +202,7 @@ export function SystemLoginLogsPage() {
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 120,
       render: (_, record) => (

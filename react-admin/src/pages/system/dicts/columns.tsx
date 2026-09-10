@@ -135,6 +135,7 @@ export function createDictTypeColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 300,
       render: (_, record) => (
@@ -250,6 +251,7 @@ export function createDictDataColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 170,
       render: (_, record) => (

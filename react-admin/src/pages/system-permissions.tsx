@@ -115,6 +115,7 @@ export function SystemPermissionsPage() {
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 220,
       render: () => (

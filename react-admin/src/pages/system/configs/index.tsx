@@ -561,6 +561,7 @@ export function SystemConfigsPage() {
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 260,
       render: (_, record) => {

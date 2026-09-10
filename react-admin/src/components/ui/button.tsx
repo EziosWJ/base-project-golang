@@ -38,7 +38,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg border font-medium transition-colors disabled:pointer-events-none",
+        "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-lg border font-medium transition-colors disabled:pointer-events-none",
         variants[variant],
         sizes[size],
         className,
@@ -47,4 +47,3 @@ export function Button({
     />
   );
 }
-

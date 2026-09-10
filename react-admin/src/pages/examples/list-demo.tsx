@@ -122,6 +122,7 @@ export function ListDemoPage() {
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 180,
       render: () => (

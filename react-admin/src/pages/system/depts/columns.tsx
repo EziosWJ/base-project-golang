@@ -121,6 +121,7 @@ export function createDeptColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 260,
       render: (_, dept) => (

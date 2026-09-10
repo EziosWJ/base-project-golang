@@ -6,6 +6,6 @@ export type DataTableColumn<T> = {
   key?: string;
   width?: number | string;
   align?: "left" | "center" | "right";
+  nowrap?: boolean;
   render?: (value: T[keyof T] | undefined, record: T, index: number) => ReactNode;
 };
-

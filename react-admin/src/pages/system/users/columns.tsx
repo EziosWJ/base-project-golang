@@ -141,6 +141,7 @@ export function createUserColumns({
     {
       title: "操作",
       key: "actions",
+      nowrap: true,
       align: "center",
       width: 340,
       render: (_, user) => (

@@ -31,9 +31,9 @@ type Notification struct {
 	PublisherID    *int64    `gorm:"column:publisher_id" json:"publisherId"`
 	PublishTime    time.Time `gorm:"column:publish_time" json:"publishTime"`
 	CreateTime     time.Time `gorm:"column:create_time" json:"createTime"`
-	IsRead         int       `gorm:"column:is_read" json:"isRead"`
-	RecipientCount int64     `gorm:"column:recipient_count" json:"recipientCount,omitempty"`
-	ReadCount      int64     `gorm:"column:read_count" json:"readCount,omitempty"`
+	IsRead         int       `gorm:"column:is_read;->" json:"isRead"`
+	RecipientCount int64     `gorm:"column:recipient_count;->" json:"recipientCount,omitempty"`
+	ReadCount      int64     `gorm:"column:read_count;->" json:"readCount,omitempty"`
 }
 
 func (Notification) TableName() string { return "sys_notification" }
@@ -83,7 +83,11 @@ func NewService(store Store) (*Service, error) {
 }
 func (s *Service) Page(ctx context.Context, userID int64, q PageQuery) (Page, error) {
 	q.Page, q.PageSize = normalizePage(q.Page, q.PageSize)
-	return s.store.Page(ctx, userID, q)
+	page, err := s.store.Page(ctx, userID, q)
+	if page.Records == nil {
+		page.Records = []Notification{}
+	}
+	return page, err
 }
 func (s *Service) Find(ctx context.Context, userID, id int64) (*Notification, error) {
 	return s.store.Find(ctx, userID, id)
@@ -116,7 +120,11 @@ func (s *Service) AdminPage(ctx context.Context, actor int64, q PageQuery) (Page
 		return Page{}, ErrForbidden
 	}
 	q.Page, q.PageSize = normalizePage(q.Page, q.PageSize)
-	return s.store.AdminPage(ctx, q)
+	page, err := s.store.AdminPage(ctx, q)
+	if page.Records == nil {
+		page.Records = []Notification{}
+	}
+	return page, err
 }
 func trim(v string) string {
 	for len(v) > 0 && (v[0] == ' ' || v[0] == '\n' || v[0] == '\r' || v[0] == '\t') {

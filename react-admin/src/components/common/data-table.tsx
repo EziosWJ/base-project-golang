@@ -96,6 +96,7 @@ export function DataTable<T>({
                   "border-b border-border px-5 py-3 font-medium",
                   column.align === "center" && "text-center",
                   column.align === "right" && "text-right",
+                  column.nowrap && "whitespace-nowrap",
                 )}
                 style={{ width: column.width }}
                 scope="col"
@@ -137,7 +138,9 @@ export function DataTable<T>({
                       "border-b border-border px-5 py-3 align-middle",
                       column.align === "center" && "text-center",
                       column.align === "right" && "text-right",
+                      column.nowrap && "whitespace-nowrap",
                     )}
+                    style={{ width: column.width }}
                   >
                     {column.render
                       ? column.render(value, record, rowIndex)
