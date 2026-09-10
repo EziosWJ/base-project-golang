@@ -2,6 +2,7 @@ import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { clearOperLogs, getOperLogDetail, getOperLogPage } from "@/api/log";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -309,7 +310,7 @@ export function SystemOperLogsPage() {
         </SearchFilterBar>
       </form>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
+      <DataTableCard>
         <TableToolbar
           title="操作日志列表"
           description={`共 ${total} 条记录。`}
@@ -362,7 +363,7 @@ export function SystemOperLogsPage() {
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
-      </section>
+      </DataTableCard>
 
       <OperLogDetailDialog
         open={detailOpen}

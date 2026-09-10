@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getNotification, getNotifications, markAllNotificationsRead, markNotificationRead } from "@/api/notification";
 import { DataTable } from "@/components/common/data-table";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { Pagination } from "@/components/common/pagination";
@@ -35,10 +36,10 @@ export function NotificationsPage() {
   return (
     <div>
       <PageHeader title="我的通知" description="查看发给你的站内通知" actions={<><Button variant="secondary" size="sm" onClick={() => void load()}><RefreshCw className="h-4 w-4" />刷新</Button><Button variant="secondary" size="sm" onClick={() => void readAll()}><CheckCheck className="h-4 w-4" />全部已读</Button></>} />
-      <div className="overflow-hidden rounded-admin border border-border bg-surface">
+      <DataTableCard className="overflow-hidden shadow-none">
         <DataTable columns={columns} dataSource={records} rowKey="id" loading={loading} empty={<EmptyState title="暂无通知" description="你还没有收到站内通知。" />} />
         <Pagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-      </div>
+      </DataTableCard>
       {detail && (
         <Dialog
           open

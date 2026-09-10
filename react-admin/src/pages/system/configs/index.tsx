@@ -20,6 +20,7 @@ import {
   updateSystemConfigStatus,
 } from "@/api/system";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { Field } from "@/components/common/field";
@@ -701,36 +702,49 @@ export function SystemConfigsPage() {
         </form>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
-        <TableToolbar
-          title="配置项列表"
-          description={`共 ${total} 条数据，当前显示 ${configs.length} 条。`}
-          actions={
-            <>
-              <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
-                {loading ? "加载中" : error ? "加载失败" : "已同步"}
-              </StatusTag>
-              <Button size="sm" variant="secondary" onClick={loadConfigs}>
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                刷新
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={selectedConfigs.length === 0}
-                onClick={() =>
-                  setConfirmAction({
-                    type: "batchDelete",
-                    configs: selectedConfigs,
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-                批量删除
-              </Button>
-            </>
-          }
-        />
+      <DataTableCard
+        toolbar={
+          <TableToolbar
+            title="配置项列表"
+            description={`共 ${total} 条数据，当前显示 ${configs.length} 条。`}
+            actions={
+              <>
+                <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
+                  {loading ? "加载中" : error ? "加载失败" : "已同步"}
+                </StatusTag>
+                <Button size="sm" variant="secondary" onClick={loadConfigs}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  刷新
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={selectedConfigs.length === 0}
+                  onClick={() =>
+                    setConfirmAction({
+                      type: "batchDelete",
+                      configs: selectedConfigs,
+                    })
+                  }
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  批量删除
+                </Button>
+              </>
+            }
+          />
+        }
+        pagination={
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        }
+      >
         <DataTable<SystemConfigRecord>
           columns={columns}
           dataSource={configs}
@@ -747,15 +761,7 @@ export function SystemConfigsPage() {
             />
           }
         />
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          disabled={loading}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </section>
+      </DataTableCard>
 
       <ConfigFormDialog
         open={formOpen}

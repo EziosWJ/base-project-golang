@@ -14,6 +14,7 @@ import {
   updateFileStatus,
 } from "@/api/file";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -366,7 +367,7 @@ export function SystemFilesPage() {
         </form>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
+      <DataTableCard>
         <TableToolbar
           title="文件列表"
           description={`共 ${total} 条数据，当前显示 ${files.length} 条。`}
@@ -420,7 +421,7 @@ export function SystemFilesPage() {
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
-      </section>
+      </DataTableCard>
 
       <FileUploadDialog
         open={uploadOpen}

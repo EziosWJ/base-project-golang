@@ -6,6 +6,7 @@ import {
   getLoginLogPage,
 } from "@/api/log";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -268,7 +269,7 @@ export function SystemLoginLogsPage() {
         </SearchFilterBar>
       </form>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
+      <DataTableCard>
         <TableToolbar
           title="登录日志列表"
           description={`共 ${total} 条记录。`}
@@ -321,7 +322,7 @@ export function SystemLoginLogsPage() {
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
-      </section>
+      </DataTableCard>
 
       <LoginLogDetailDialog
         open={detailOpen}
