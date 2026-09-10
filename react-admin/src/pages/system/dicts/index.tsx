@@ -24,6 +24,7 @@ import {
   updateDictTypeStatus,
 } from "@/api/system";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -604,7 +605,7 @@ export function SystemDictsPage() {
             : "grid-cols-1",
         )}
       >
-        <section className="rounded-admin border border-border bg-surface shadow-admin">
+        <DataTableCard>
           <TableToolbar
             title="字典类型"
             description={`共 ${typeTotal} 条数据，当前显示 ${dictTypes.length} 条。`}
@@ -659,10 +660,10 @@ export function SystemDictsPage() {
             onPageChange={setTypePage}
             onPageSizeChange={setTypePageSize}
           />
-        </section>
+        </DataTableCard>
 
         {selectedType && (
-          <section className="rounded-admin border border-border bg-surface shadow-admin">
+          <DataTableCard>
             <TableToolbar
               title="字典项"
               description={`当前类型：${selectedType.dictName} / ${selectedType.dictCode}`}
@@ -765,7 +766,7 @@ export function SystemDictsPage() {
                 setItemPage(1);
               }}
             />
-          </section>
+          </DataTableCard>
         )}
       </div>
 

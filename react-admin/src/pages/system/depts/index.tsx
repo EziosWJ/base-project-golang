@@ -13,6 +13,7 @@ import {
   updateDeptStatus,
 } from "@/api/dept";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { DataTableCard } from "@/components/common/data-table-card";
 import { DataTable } from "@/components/common/data-table";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
@@ -360,31 +361,44 @@ export function SystemDeptsPage() {
         </form>
       </SearchFilterBar>
 
-      <section className="rounded-admin border border-border bg-surface shadow-admin">
-        <TableToolbar
-          title="部门列表"
-          description={`共 ${total} 条数据，当前显示 ${depts.length} 条。`}
-          actions={
-            <>
-              <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
-                {loading ? "加载中" : error ? "加载失败" : "已同步"}
-              </StatusTag>
-              <Button size="sm" variant="secondary" onClick={loadDepts}>
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                刷新
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={selectedDepts.length === 0}
-                onClick={() => setConfirmAction({ type: "batchDelete", depts: selectedDepts })}
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-                批量删除
-              </Button>
-            </>
-          }
-        />
+      <DataTableCard
+        toolbar={
+          <TableToolbar
+            title="部门列表"
+            description={`共 ${total} 条数据，当前显示 ${depts.length} 条。`}
+            actions={
+              <>
+                <StatusTag tone={loading ? "warning" : error ? "error" : "info"}>
+                  {loading ? "加载中" : error ? "加载失败" : "已同步"}
+                </StatusTag>
+                <Button size="sm" variant="secondary" onClick={loadDepts}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  刷新
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={selectedDepts.length === 0}
+                  onClick={() => setConfirmAction({ type: "batchDelete", depts: selectedDepts })}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  批量删除
+                </Button>
+              </>
+            }
+          />
+        }
+        pagination={
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        }
+      >
         <DataTable<DeptRecord>
           columns={columns}
           dataSource={depts}
@@ -401,15 +415,7 @@ export function SystemDeptsPage() {
             />
           }
         />
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          disabled={loading}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </section>
+      </DataTableCard>
 
       <DeptFormDialog
         open={formOpen}
