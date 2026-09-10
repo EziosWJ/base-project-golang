@@ -83,15 +83,15 @@ export function ConfirmDialog({
       }}
     >
       <section
-        className="w-full max-w-[480px] rounded-admin border border-border bg-surface shadow-admin"
+        className="w-full max-w-modal-sm rounded-admin border border-border bg-surface shadow-admin"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div className="flex min-w-0 items-start gap-3">
+        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
+          <div className="flex min-w-0 items-start gap-space-3">
             {danger && (
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-error">
+              <span className="mt-0.5 flex h-control-sm w-8 shrink-0 items-center justify-center rounded-control bg-error-background text-error">
                 <AlertTriangle className="h-4 w-4" aria-hidden />
               </span>
             )}
@@ -103,7 +103,7 @@ export function ConfirmDialog({
                 {title}
               </h2>
               {description && (
-                <div className="mt-1 text-sm text-text-tertiary">
+                <div className="mt-space-1 text-sm text-text-tertiary">
                   {description}
                 </div>
               )}
@@ -112,7 +112,7 @@ export function ConfirmDialog({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 shrink-0"
+            className="h-control-sm w-8 shrink-0"
             disabled={loading}
             onClick={onCancel}
             aria-label="关闭确认弹窗"
@@ -120,7 +120,7 @@ export function ConfirmDialog({
             <X className="h-4 w-4" aria-hidden />
           </Button>
         </header>
-        <footer className="flex justify-end gap-2 px-5 py-4">
+        <footer className="flex justify-end gap-space-2 px-card py-space-4">
           <Button variant="secondary" disabled={loading} onClick={onCancel}>
             {cancelText}
           </Button>

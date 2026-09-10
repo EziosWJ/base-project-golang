@@ -40,7 +40,7 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-t border-border px-5 py-3 text-sm text-text-secondary md:flex-row md:items-center md:justify-between",
+        "flex flex-col gap-space-3 border-t border-border px-card py-space-3 text-sm text-text-secondary md:flex-row md:items-center md:justify-between",
         className,
       )}
     >
@@ -57,12 +57,12 @@ export function Pagination({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-space-2">
         {onPageSizeChange && (
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-space-2">
             <span>每页</span>
             <Select
-              className="h-8 w-[84px]"
+              className="h-control-sm w-[84px]"
               value={String(safePageSize)}
               disabled={disabled}
               onChange={(event) => onPageSizeChange(Number(event.target.value))}
@@ -77,7 +77,7 @@ export function Pagination({
           </label>
         )}
 
-        <div className="flex items-center gap-2 tabular-nums">
+        <div className="flex items-center gap-space-2 tabular-nums">
           <Button
             size="sm"
             variant="secondary"

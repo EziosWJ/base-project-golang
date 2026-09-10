@@ -28,17 +28,17 @@ export function SourceSegmentPanel({
   };
 
   return (
-    <div className="p-4">
-      <h4 className="mb-3 text-xs font-medium text-text-tertiary">{title}</h4>
+    <div className="p-space-4">
+      <h4 className="mb-space-3 text-xs font-medium text-text-tertiary">{title}</h4>
       <div className="space-y-2">
         {segments.length > 0 ? (
           segments.map((segment, index) => (
             <div
               key={`${segment.materialId}-${segment.segmentIndex}-${index}`}
-              className="rounded-lg border border-border"
+              className="rounded-control border border-border"
             >
               <button
-                className="flex w-full items-start gap-2 px-3 py-2 text-left"
+                className="flex w-full items-start gap-space-2 px-space-3 py-space-2 text-left"
                 onClick={() => toggleSegment(index)}
               >
                 {expandedSegments.has(index) ? (
@@ -47,12 +47,12 @@ export function SourceSegmentPanel({
                   <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-text-tertiary" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-space-2">
                     <span className="truncate text-sm font-medium text-text-primary">
                       {segment.materialTitle}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-text-tertiary">
+                  <div className="mt-space-1 flex items-center gap-space-2 text-xs text-text-tertiary">
                     <span>片段 {segment.segmentIndex}</span>
                     <span>·</span>
                     <span>相关度 {(segment.score * 100).toFixed(0)}%</span>
@@ -60,7 +60,7 @@ export function SourceSegmentPanel({
                 </div>
               </button>
               {expandedSegments.has(index) && (
-                <div className="border-t border-border px-3 py-2">
+                <div className="border-t border-border px-space-3 py-space-2">
                   <p className="text-xs leading-relaxed text-text-secondary">
                     {segment.text}
                   </p>

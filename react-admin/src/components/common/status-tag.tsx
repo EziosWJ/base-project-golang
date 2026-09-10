@@ -8,18 +8,18 @@ type StatusTagProps = {
 };
 
 const tones: Record<StatusTone, string> = {
-  success: "border-green-100 bg-green-50 text-success",
-  warning: "border-amber-100 bg-amber-50 text-warning",
-  error: "border-red-100 bg-red-50 text-error",
-  info: "border-cyan-100 bg-cyan-50 text-info",
-  neutral: "border-slate-200 bg-slate-50 text-text-secondary",
+  success: "border-success-border bg-success-background text-success",
+  warning: "border-warning-border bg-warning-background text-warning",
+  error: "border-error-border bg-error-background text-error",
+  info: "border-info-border bg-info-background text-info",
+  neutral: "border-neutral-border bg-neutral-background text-text-secondary",
 };
 
 export function StatusTag({ children, tone = "neutral" }: StatusTagProps) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-md border px-2 text-xs font-medium",
+        "inline-flex h-6 items-center rounded-tag border px-space-2 text-xs font-medium",
         tones[tone],
       )}
     >
@@ -27,4 +27,3 @@ export function StatusTag({ children, tone = "neutral" }: StatusTagProps) {
     </span>
   );
 }
-

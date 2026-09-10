@@ -61,7 +61,7 @@ export function DetailDialog({
         aria-describedby={hasDescription ? descriptionId : undefined}
         aria-busy={loading || undefined}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
           <div className="min-w-0">
             <h2
               id={titleId}
@@ -72,7 +72,7 @@ export function DetailDialog({
             {hasDescription && (
               <div
                 id={descriptionId}
-                className="mt-1 text-[13px] text-text-tertiary"
+                className="mt-space-1 text-body-secondary text-text-tertiary"
               >
                 {description}
               </div>
@@ -81,7 +81,7 @@ export function DetailDialog({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 shrink-0"
+            className="h-control-sm w-8 shrink-0"
             onClick={onCancel}
             aria-label="关闭详情弹窗"
           >
@@ -89,7 +89,7 @@ export function DetailDialog({
           </Button>
         </header>
 
-        <div className="max-h-[calc(100vh-150px)] overflow-y-auto px-5 py-5">
+        <div className="max-h-[calc(100vh-150px)] overflow-y-auto px-card py-space-5">
           {children}
         </div>
       </section>

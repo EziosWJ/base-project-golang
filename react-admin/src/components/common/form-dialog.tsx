@@ -105,7 +105,7 @@ export function FormDialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
           <div className="min-w-0">
             <h2
               id={titleId}
@@ -116,7 +116,7 @@ export function FormDialog({
             {description && (
               <div
                 id={descriptionId}
-                className="mt-1 text-[13px] text-text-tertiary"
+                className="mt-space-1 text-body-secondary text-text-tertiary"
               >
                 {description}
               </div>
@@ -125,7 +125,7 @@ export function FormDialog({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 shrink-0"
+            className="h-control-sm w-8 shrink-0"
             disabled={loading}
             onClick={onCancel}
             aria-label="关闭表单弹窗"
@@ -135,10 +135,10 @@ export function FormDialog({
         </header>
 
         <form onSubmit={handleSubmit}>
-          <div className="max-h-[calc(100vh-184px)] overflow-y-auto px-5 py-4">
+          <div className="max-h-[calc(100vh-184px)] overflow-y-auto px-card py-space-4">
             {children}
           </div>
-          <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
+          <footer className="flex justify-end gap-space-2 border-t border-border px-card py-space-4">
             <Button variant="secondary" disabled={loading} onClick={onCancel}>
               {cancelText}
             </Button>

@@ -15,22 +15,21 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <div className="flex min-h-64 flex-col items-center justify-center rounded-admin border border-dashed border-border bg-slate-50 px-6 py-10 text-center">
+    <div className="flex min-h-64 flex-col items-center justify-center rounded-admin border border-dashed border-border bg-neutral-background px-space-6 py-10 text-center">
       <FileSearch className="h-10 w-10 text-text-tertiary" aria-hidden />
-      <h2 className="mt-4 text-base font-semibold text-text-primary">
+      <h2 className="mt-space-4 text-base font-semibold text-text-primary">
         {title}
       </h2>
       {description && (
-        <p className="mt-1 max-w-md text-sm text-text-tertiary">
+        <p className="mt-space-1 max-w-md text-sm text-text-tertiary">
           {description}
         </p>
       )}
       {actionText && onAction && (
-        <Button className="mt-4" variant="primary" onClick={onAction}>
+      <Button className="mt-space-4" variant="primary" onClick={onAction}>
           {actionText}
         </Button>
       )}
     </div>
   );
 }
-

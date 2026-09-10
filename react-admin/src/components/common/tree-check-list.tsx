@@ -84,7 +84,7 @@ export function TreeCheckList({
   return (
     <div
       className={cn(
-        "rounded-admin border border-border bg-surface p-2",
+        "rounded-admin border border-border bg-surface p-space-2",
         disabled && "opacity-70",
         className,
       )}
@@ -106,7 +106,7 @@ export function TreeCheckList({
           />
         ))
       ) : (
-        <div className="px-3 py-6 text-center text-sm text-text-tertiary">
+        <div className="px-space-3 py-space-6 text-center text-sm text-text-tertiary">
           暂无可选项
         </div>
       )}
@@ -166,7 +166,7 @@ function TreeCheckItem({
     <div>
       <div
         className={cn(
-          "flex h-8 items-center gap-1 rounded-md text-sm text-text-primary hover:bg-slate-50",
+          "flex h-control-sm items-center gap-space-1 rounded-tag text-sm text-text-primary hover:bg-neutral-background",
           itemDisabled && "text-text-tertiary",
         )}
         style={{ paddingLeft: 8 + level * 16 }}
@@ -192,11 +192,11 @@ function TreeCheckItem({
           <span className="h-6 w-6 shrink-0" />
         )}
 
-        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-space-2">
           <input
             ref={inputRef}
             type="checkbox"
-            className="h-4 w-4 rounded border-border text-primary accent-primary"
+            className="h-4 w-4 rounded-tight border-border text-primary accent-primary"
             checked={checkState.checked}
             disabled={itemDisabled}
             onChange={(event) => onCheckedChange(node, event.target.checked)}

@@ -25,11 +25,11 @@ export function ContentCard({
       )}
     >
       {(title || description || extra) && (
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <header className="flex items-start justify-between gap-space-4 border-b border-border px-card py-space-4">
           <div>
-            {title && <h2 className="text-base font-semibold">{title}</h2>}
+            {title && <h2 className="text-card-title font-semibold">{title}</h2>}
             {description && (
-              <p className="mt-1 text-[13px] text-text-tertiary">
+              <p className="mt-space-1 text-body-secondary text-text-tertiary">
                 {description}
               </p>
             )}
@@ -37,8 +37,7 @@ export function ContentCard({
           {extra}
         </header>
       )}
-      <div className={cn("p-5", bodyClassName)}>{children}</div>
+      <div className={cn("p-card", bodyClassName)}>{children}</div>
     </section>
   );
 }
-

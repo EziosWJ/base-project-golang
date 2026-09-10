@@ -9,8 +9,7 @@ type FormSectionProps = PropsWithChildren<{
 export function FormSection({ title, description, children }: FormSectionProps) {
   return (
     <ContentCard title={title} description={description}>
-      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+      <div className="grid gap-space-4 md:grid-cols-2">{children}</div>
     </ContentCard>
   );
 }
-

@@ -18,8 +18,8 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       className={cn(
-        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-transparent transition-colors",
-        checked ? "bg-primary" : "bg-slate-300",
+        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-pill border border-transparent transition-colors",
+        checked ? "bg-primary" : "bg-neutral-border",
         className,
       )}
       onClick={() => onCheckedChange(!checked)}
@@ -27,11 +27,10 @@ export function Switch({
     >
       <span
         className={cn(
-          "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+          "inline-block h-5 w-5 rounded-pill bg-white shadow-subtle transition-transform",
           checked ? "translate-x-[18px]" : "translate-x-0.5",
         )}
       />
     </button>
   );
 }
-

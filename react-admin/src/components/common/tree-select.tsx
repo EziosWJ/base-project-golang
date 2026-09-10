@@ -81,7 +81,7 @@ export function TreeSelect({
       <button
         type="button"
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 text-left text-sm outline-none transition-colors hover:border-slate-300 focus:border-primary disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-text-tertiary",
+          "flex h-control-md w-full items-center justify-between gap-space-2 rounded-control border border-border bg-surface px-space-3 text-left text-sm outline-none transition-colors hover:border-border focus:border-primary disabled:cursor-not-allowed disabled:bg-neutral-background disabled:text-text-tertiary",
           open && "border-primary",
         )}
         disabled={disabled}
@@ -101,7 +101,7 @@ export function TreeSelect({
           <span
             role="button"
             tabIndex={0}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-slate-100 hover:text-text-primary"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-tag text-text-tertiary hover:bg-neutral-background hover:text-text-primary"
             onClick={(event) => {
               event.stopPropagation();
               onChange(null, null);
@@ -125,7 +125,7 @@ export function TreeSelect({
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-admin border border-border bg-surface p-1 shadow-admin">
+        <div className="absolute z-30 mt-space-1 max-h-72 w-full overflow-auto rounded-admin border border-border bg-surface p-space-1 shadow-admin">
           {nodes.length > 0 ? (
             <div role="tree" aria-label="树形选择">
               {nodes.map((node) => (
@@ -144,7 +144,7 @@ export function TreeSelect({
               ))}
             </div>
           ) : (
-            <div className="px-3 py-6 text-center text-sm text-text-tertiary">
+            <div className="px-space-3 py-space-6 text-center text-sm text-text-tertiary">
               暂无可选项
             </div>
           )}
@@ -177,9 +177,9 @@ function TreeSelectItem({
     <div>
       <div
         className={cn(
-          "flex h-8 items-center gap-1 rounded-md text-sm",
-          selected && "bg-blue-50 text-primary",
-          !selected && "text-text-primary hover:bg-slate-50",
+          "flex h-control-sm items-center gap-space-1 rounded-tag text-sm",
+          selected && "bg-primary/5 text-primary",
+          !selected && "text-text-primary hover:bg-neutral-background",
           node.disabled && "cursor-not-allowed text-text-tertiary opacity-60",
         )}
         style={{ paddingLeft: 8 + level * 16 }}
@@ -206,7 +206,7 @@ function TreeSelectItem({
         )}
         <button
           type="button"
-          className="min-w-0 flex-1 truncate px-1 text-left outline-none disabled:cursor-not-allowed"
+          className="min-w-0 flex-1 truncate px-space-1 text-left outline-none disabled:cursor-not-allowed"
           disabled={node.disabled}
           onClick={() => onSelect(node)}
         >

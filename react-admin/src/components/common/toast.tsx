@@ -85,7 +85,7 @@ function ToastViewport({
 
   return createPortal(
     <div
-      className="fixed right-4 top-4 z-50 flex w-[min(360px,calc(100vw-32px))] flex-col gap-2"
+      className="fixed right-space-4 top-space-4 z-50 flex w-[min(360px,calc(100vw-32px))] flex-col gap-space-2"
       role="region"
       aria-label="消息通知"
     >
@@ -115,7 +115,7 @@ function ToastMessage({
 
   return (
     <div
-      className="flex gap-3 rounded-admin border border-border bg-surface p-3 text-sm shadow-admin"
+      className="flex gap-space-3 rounded-admin border border-border bg-surface p-space-3 text-sm shadow-admin"
       role={item.type === "error" ? "alert" : "status"}
     >
       <div className="mt-0.5 shrink-0">{icons[item.type]}</div>
@@ -128,7 +128,7 @@ function ToastMessage({
         {item.description && (
           <div
             className={cn(
-              "break-words text-[13px] text-text-tertiary",
+              "break-words text-body-secondary text-text-tertiary",
               item.title && "mt-0.5",
             )}
           >

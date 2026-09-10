@@ -79,7 +79,7 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-space-2">
         <input
           ref={inputRef}
           type="file"
@@ -99,11 +99,11 @@ export function FileUpload({
           {uploading ? "上传中..." : buttonText}
         </Button>
         {selectedName && (
-          <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-secondary">
+          <div className="flex min-w-0 items-center gap-space-2 rounded-control border border-border bg-surface px-space-3 py-1.5 text-sm text-text-secondary">
             <span className="max-w-[240px] truncate">{selectedName}</span>
             <button
               type="button"
-              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-tertiary hover:bg-slate-100 hover:text-text-primary"
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-tight text-text-tertiary hover:bg-neutral-background hover:text-text-primary"
               disabled={uploading}
               onClick={handleClear}
               aria-label="清除已选文件"
@@ -117,7 +117,7 @@ export function FileUpload({
         <p className="text-xs leading-5 text-text-tertiary">{helperText}</p>
       )}
       {uploadedFile && (
-        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
+        <div className="flex items-start gap-space-2 rounded-control border border-success-border bg-success-background px-space-3 py-space-2 text-xs text-success" role="status">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <div className="min-w-0">
             <p className="font-medium">上传成功</p>

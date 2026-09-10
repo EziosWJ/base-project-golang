@@ -45,11 +45,11 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (loading) {
     return (
-      <div className="space-y-3 p-5" aria-busy="true" aria-live="polite">
+      <div className="space-y-space-3 p-card" aria-busy="true" aria-live="polite">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
-            className="h-11 animate-pulse rounded-lg bg-slate-100"
+            className="h-11 animate-pulse rounded-control bg-neutral-background"
           />
         ))}
       </div>
@@ -58,7 +58,7 @@ export function DataTable<T>({
 
   if (error) {
     return (
-      <div className="p-5">
+      <div className="p-card">
         {typeof error === "string" ? (
           <EmptyState title="加载失败" description={error} />
         ) : (
@@ -70,7 +70,7 @@ export function DataTable<T>({
 
   if (dataSource.length === 0) {
     return (
-      <div className="p-5">
+      <div className="p-card">
         {empty ?? (
           <EmptyState
             title="暂无数据"
@@ -88,12 +88,12 @@ export function DataTable<T>({
         style={{ minWidth }}
       >
         <thead>
-          <tr className="bg-slate-50 text-sm text-text-secondary">
+          <tr className="bg-neutral-background text-sm text-text-secondary">
             {columns.map((column, index) => (
               <th
                 key={getColumnKey(column, index)}
                 className={cn(
-                  "border-b border-border px-5 py-3 font-medium",
+                  "border-b border-border px-space-5 py-space-3 font-medium",
                   column.align === "center" && "text-center",
                   column.align === "right" && "text-right",
                   column.nowrap && "whitespace-nowrap",
@@ -112,7 +112,7 @@ export function DataTable<T>({
               key={getRowKey(rowKey, record)}
               className={cn(
                 "transition-colors",
-                onRowClick && "cursor-pointer hover:bg-slate-50",
+                onRowClick && "cursor-pointer hover:bg-neutral-background",
                 rowClassName?.(record, rowIndex),
               )}
               onClick={(event) => {
@@ -135,7 +135,7 @@ export function DataTable<T>({
                   <td
                     key={getColumnKey(column, columnIndex)}
                     className={cn(
-                      "border-b border-border px-5 py-3 align-middle",
+                      "border-b border-border px-space-5 py-space-3 align-middle",
                       column.align === "center" && "text-center",
                       column.align === "right" && "text-right",
                       column.nowrap && "whitespace-nowrap",

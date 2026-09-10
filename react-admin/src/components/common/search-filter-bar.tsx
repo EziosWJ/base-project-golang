@@ -13,12 +13,12 @@ export function SearchFilterBar({
   children,
 }: SearchFilterBarProps) {
   return (
-    <ContentCard className={cn("mb-4", className)} bodyClassName="p-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(0,240px))] [&>*]:min-w-0 [&>form>*]:min-w-0">
+    <ContentCard className={cn("mb-space-4", className)} bodyClassName="p-card-compact">
+      <div className="flex flex-col gap-space-3 lg:flex-row lg:items-end">
+        <div className="grid min-w-0 flex-1 grid-cols-1 gap-space-3 sm:grid-cols-[repeat(auto-fit,minmax(0,240px))] [&>*]:min-w-0 [&>form>*]:min-w-0">
           {children}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>}
+        {actions && <div className="flex shrink-0 flex-wrap items-center justify-end gap-space-2">{actions}</div>}
       </div>
     </ContentCard>
   );
