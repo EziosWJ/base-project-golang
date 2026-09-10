@@ -252,6 +252,7 @@ export function FileUploadDialog({
               </div>
             )}
             </div>
+          </DialogBody>
 
           <DialogFooter className="mt-5">
             <Button
