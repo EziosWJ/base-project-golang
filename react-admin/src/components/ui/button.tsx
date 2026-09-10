@@ -17,7 +17,7 @@ const variants: Record<ButtonVariant, string> = {
   ghost:
     "border-transparent bg-transparent text-text-secondary hover:bg-neutral-background hover:text-text-primary active:bg-neutral-background disabled:text-text-tertiary",
   danger:
-    "border-error bg-error text-white hover:bg-error active:bg-error disabled:border-error/50 disabled:bg-error/50",
+    "border-error bg-error !text-white hover:bg-error hover:!text-white active:bg-error active:!text-white disabled:border-error/50 disabled:bg-error/50 disabled:!text-white",
 };
 
 const sizes: Record<ButtonSize, string> = {
