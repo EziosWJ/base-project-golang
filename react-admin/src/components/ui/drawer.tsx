@@ -1,4 +1,3 @@
-import type { HTMLAttributes } from "react";
 import {
   Dialog,
   DialogBody,
