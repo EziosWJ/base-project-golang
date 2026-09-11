@@ -8,12 +8,13 @@ import (
 )
 
 const (
-	CodeSuccess       = 200
-	CodeBadRequest    = 400
-	CodeUnauthorized  = 401
-	CodeForbidden     = 403
-	CodeNotFound      = 404
-	CodeInternalError = 500
+	CodeSuccess         = 200
+	CodeBadRequest      = 400
+	CodeUnauthorized    = 401
+	CodeForbidden       = 403
+	CodeNotFound        = 404
+	CodeTooManyRequests = 429
+	CodeInternalError   = 500
 )
 
 // ApiResponse is the response envelope kept compatible with the existing API.

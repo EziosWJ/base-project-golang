@@ -51,6 +51,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/auth.errorResponseEnvelope"
                         }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/auth.errorResponseEnvelope"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "string",
+                                "description": "等待重试的秒数"
+                            }
+                        }
                     }
                 }
             }

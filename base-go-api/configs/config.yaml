@@ -3,6 +3,7 @@ service:
 
 http:
   address: ":8099"
+  trusted_proxies: []
   read_timeout: 15s
   write_timeout: 15s
   idle_timeout: 60s
@@ -41,6 +42,17 @@ jwt:
   issuer: base-go-api
   audience: react-admin
   ttl: 2h
+
+auth:
+  login_guard:
+    ip_window: 10m
+    ip_max_attempts: 20
+    username_window: 10m
+    username_max_attempts: 5
+    backoff_initial: 1s
+    backoff_max: 30s
+    lock_duration: 10m
+    max_entries: 10000
 
 log:
   level: info

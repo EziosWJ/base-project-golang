@@ -18,6 +18,7 @@ type memoryStore struct {
 	failureLogs []LoginLog
 	successLogs []LoginLog
 	menus       []CurrentUserMenu
+	findCalls   int
 }
 
 func newMemoryStore(users ...User) *memoryStore {
@@ -29,6 +30,7 @@ func newMemoryStore(users ...User) *memoryStore {
 }
 
 func (s *memoryStore) FindUserByUsername(_ context.Context, username string) (*User, error) {
+	s.findCalls++
 	user, ok := s.users[username]
 	if !ok {
 		return nil, ErrUserNotFound
@@ -159,6 +161,47 @@ func TestLoginFailuresAreAudited(t *testing.T) {
 	}
 }
 
+func TestLoginGuardRejectsBeforeUserLookupAndFailureLog(t *testing.T) {
+	store := newMemoryStore(User{ID: 8, Username: "admin", PasswordHash: passwordHash(t, "correct-password"), Status: UserStatusEnabled})
+	guard := newTestLoginGuard(t, LoginGuardConfig{
+		IPWindow:       time.Minute,
+		IPMaxAttempts:  1,
+		BackoffInitial: time.Second,
+		BackoffMax:     2 * time.Second,
+		LockDuration:   time.Minute,
+		MaxEntries:     10,
+	})
+	service, _ := testService(t, store, guard)
+
+	_, err := service.Login(context.Background(), LoginInput{Username: "admin", Password: "wrong"}, LoginMetadata{ClientIP: "203.0.113.8"})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("first Login() error = %v, want invalid credentials", err)
+	}
+	_, err = service.Login(context.Background(), LoginInput{Username: "admin", Password: "wrong"}, LoginMetadata{ClientIP: "203.0.113.8"})
+	if !errors.Is(err, ErrLoginRateLimited) {
+		t.Fatalf("second Login() error = %v, want rate limited", err)
+	}
+	if store.findCalls != 1 {
+		t.Fatalf("user lookup calls = %d, want 1", store.findCalls)
+	}
+	if len(store.failureLogs) != 1 {
+		t.Fatalf("failure logs = %d, want 1", len(store.failureLogs))
+	}
+}
+
+func TestEmptyLoginInputDoesNotCreateCredentialFailureLog(t *testing.T) {
+	store := newMemoryStore()
+	service, _ := testService(t, store)
+
+	_, err := service.Login(context.Background(), LoginInput{Username: " ", Password: ""}, LoginMetadata{ClientIP: "203.0.113.8"})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("empty Login() error = %v, want invalid credentials", err)
+	}
+	if len(store.failureLogs) != 0 {
+		t.Fatalf("failure logs = %d, want 0", len(store.failureLogs))
+	}
+}
+
 func TestLogoutAndUserWideRevocationInvalidateConcurrentSessions(t *testing.T) {
 	store := newMemoryStore(User{ID: 9, Username: "user", PasswordHash: passwordHash(t, "password"), Status: UserStatusEnabled})
 	service, _ := testService(t, store)
@@ -267,7 +310,7 @@ func TestResponseDTOJSONNamesMatchFrontendContract(t *testing.T) {
 	}
 }
 
-func testService(t *testing.T, store Store) (*Service, *TokenManager) {
+func testService(t *testing.T, store Store, guards ...*LoginGuard) (*Service, *TokenManager) {
 	t.Helper()
 	manager, err := NewTokenManager(TokenConfig{SigningKey: "test-signing-key", Issuer: "issuer", Audience: "audience", TTL: 2 * time.Hour})
 	if err != nil {
@@ -280,7 +323,7 @@ func testService(t *testing.T, store Store) (*Service, *TokenManager) {
 		sequence++
 		return "test-jti-" + string(rune('0'+sequence)), nil
 	}
-	service, err := NewService(store, manager)
+	service, err := NewService(store, manager, guards...)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,8 +39,10 @@ log:
 	t.Setenv("APP_SERVICE__NAME", "environment-variable")
 	t.Setenv("APP_HTTP__ADDRESS", ":9090")
 	t.Setenv("APP_CORS__ALLOWED_ORIGINS", "https://admin.example, https://ops.example")
+	t.Setenv("APP_HTTP__TRUSTED_PROXIES", "10.0.0.0/8, 127.0.0.1")
 	t.Setenv("APP_DATABASE__USERNAME", "environment-user")
 	t.Setenv("APP_JWT__SECRET", "test-only-secret")
+	t.Setenv("APP_AUTH__LOGIN_GUARD__IP_MAX_ATTEMPTS", "7")
 
 	cfg, err := LoadFromDir(dir)
 	if err != nil {
@@ -71,6 +73,12 @@ log:
 			t.Errorf("CORS.AllowedOrigins[%d] = %q, want %q", i, cfg.CORS.AllowedOrigins[i], wantOrigins[i])
 		}
 	}
+	if len(cfg.HTTP.TrustedProxies) != 2 || cfg.HTTP.TrustedProxies[0] != "10.0.0.0/8" || cfg.HTTP.TrustedProxies[1] != "127.0.0.1" {
+		t.Errorf("HTTP.TrustedProxies = %#v, want parsed proxy list", cfg.HTTP.TrustedProxies)
+	}
+	if cfg.Auth.LoginGuard.IPMaxAttempts != 7 || cfg.Auth.LoginGuard.UsernameMaxAttempts != 5 {
+		t.Errorf("login guard config = %+v, want IP override and username default", cfg.Auth.LoginGuard)
+	}
 	if cfg.Database.URL != "postgres://localhost:5432/base_file?sslmode=disable" {
 		t.Errorf("Database.URL = %q, want YAML value", cfg.Database.URL)
 	}
@@ -85,6 +93,30 @@ log:
 	}
 	if cfg.JWT.TTL != 2*time.Hour {
 		t.Errorf("JWT.TTL = %s, want 2h", cfg.JWT.TTL)
+	}
+}
+
+func TestLoadFromDirRejectsInvalidTrustedProxyAndLoginGuard(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		wantErr string
+	}{
+		{name: "trusted proxy", config: "http:\n  trusted_proxies: [not-a-proxy]\n", wantErr: "http.trusted_proxies[0] must be an IP or CIDR"},
+		{name: "negative IP limit", config: "auth:\n  login_guard:\n    ip_max_attempts: -1\n", wantErr: "auth.login_guard.ip_max_attempts must not be negative"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeConfig(t, dir, "config.yaml", "database:\n  url: postgres://localhost:5432/base?sslmode=disable\n  username: user\n  password: password\njwt:\n  secret: secret\n"+test.config)
+			t.Setenv("APP_ENV", "test")
+
+			_, err := LoadFromDir(dir)
+			if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("LoadFromDir() error = %v, want containing %q", err, test.wantErr)
+			}
+		})
 	}
 }
 

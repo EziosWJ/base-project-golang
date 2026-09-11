@@ -97,7 +97,7 @@ func envKeyValue(key, value string) (string, interface{}) {
 	switch key {
 	case "env":
 		return key, strings.ToLower(strings.TrimSpace(value))
-	case "cors.allowed_origins", "cors.allowed_methods", "cors.allowed_headers", "cors.exposed_headers":
+	case "cors.allowed_origins", "cors.allowed_methods", "cors.allowed_headers", "cors.exposed_headers", "http.trusted_proxies":
 		return key, splitList(value)
 	default:
 		return key, value
@@ -122,31 +122,40 @@ func splitList(value string) []string {
 
 func defaultValues() map[string]interface{} {
 	return map[string]interface{}{
-		"env":                         EnvironmentDev,
-		"service.name":                "base-go-api",
-		"http.address":                ":8080",
-		"http.read_timeout":           "15s",
-		"http.write_timeout":          "15s",
-		"http.idle_timeout":           "60s",
-		"http.shutdown_timeout":       "10s",
-		"swagger.enabled":             false,
-		"cors.allowed_origins":        []string{"*"},
-		"cors.allowed_methods":        []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		"cors.allowed_headers":        []string{"Authorization", "Content-Type", "X-Request-ID"},
-		"cors.exposed_headers":        []string{"X-Request-ID"},
-		"cors.max_age":                "12h",
-		"cors.allow_credentials":      false,
-		"database.driver":             "postgres",
-		"database.max_open_conns":     25,
-		"database.max_idle_conns":     5,
-		"database.conn_max_lifetime":  "30m",
-		"database.conn_max_idle_time": "5m",
-		"file.storage_root":           "/var/lib/base-go-api/uploads",
-		"jwt.issuer":                  "base-go-api",
-		"jwt.audience":                "react-admin",
-		"jwt.ttl":                     "2h",
-		"log.level":                   "info",
-		"log.format":                  "json",
-		"log.add_source":              false,
+		"env":                                    EnvironmentDev,
+		"service.name":                           "base-go-api",
+		"http.address":                           ":8080",
+		"http.trusted_proxies":                   []string{},
+		"http.read_timeout":                      "15s",
+		"http.write_timeout":                     "15s",
+		"http.idle_timeout":                      "60s",
+		"http.shutdown_timeout":                  "10s",
+		"swagger.enabled":                        false,
+		"cors.allowed_origins":                   []string{"*"},
+		"cors.allowed_methods":                   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		"cors.allowed_headers":                   []string{"Authorization", "Content-Type", "X-Request-ID"},
+		"cors.exposed_headers":                   []string{"X-Request-ID"},
+		"cors.max_age":                           "12h",
+		"cors.allow_credentials":                 false,
+		"database.driver":                        "postgres",
+		"database.max_open_conns":                25,
+		"database.max_idle_conns":                5,
+		"database.conn_max_lifetime":             "30m",
+		"database.conn_max_idle_time":            "5m",
+		"file.storage_root":                      "/var/lib/base-go-api/uploads",
+		"jwt.issuer":                             "base-go-api",
+		"jwt.audience":                           "react-admin",
+		"jwt.ttl":                                "2h",
+		"auth.login_guard.ip_window":             "10m",
+		"auth.login_guard.ip_max_attempts":       20,
+		"auth.login_guard.username_window":       "10m",
+		"auth.login_guard.username_max_attempts": 5,
+		"auth.login_guard.backoff_initial":       "1s",
+		"auth.login_guard.backoff_max":           "30s",
+		"auth.login_guard.lock_duration":         "10m",
+		"auth.login_guard.max_entries":           10000,
+		"log.level":                              "info",
+		"log.format":                             "json",
+		"log.add_source":                         false,
 	}
 }

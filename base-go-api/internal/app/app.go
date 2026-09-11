@@ -55,6 +55,9 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	}
 
 	router := gin.New()
+	if err := router.SetTrustedProxies(cfg.HTTP.TrustedProxies); err != nil {
+		return nil, fmt.Errorf("configure trusted proxies: %w", err)
+	}
 	router.Use(
 		platformhttp.RequestMetadata(),
 		platformhttp.RequestLogger(logger),

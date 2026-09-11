@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -85,6 +86,8 @@ type errorResponseEnvelope struct {
 // @Param request body loginRequest true "登录请求"
 // @Success 200 {object} loginResponseEnvelope
 // @Failure 400 {object} errorResponseEnvelope
+// @Failure 429 {object} errorResponseEnvelope
+// @Header 429 {string} Retry-After "等待重试的秒数"
 // @Router /api/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var request loginRequest
@@ -183,6 +186,16 @@ func loginFieldErrors(request loginRequest) map[string]string {
 }
 
 func handleLoginError(c *gin.Context, err error) {
+	var rateLimitError *LoginRateLimitError
+	if errors.As(err, &rateLimitError) {
+		retryAfter := int64((rateLimitError.RetryAfter + time.Second - 1) / time.Second)
+		if retryAfter < 1 {
+			retryAfter = 1
+		}
+		c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+		platformhttp.WriteError(c, http.StatusTooManyRequests, platformhttp.CodeTooManyRequests, "请求过于频繁，请稍后再试", nil)
+		return
+	}
 	switch {
 	case errors.Is(err, ErrInvalidCredentials):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeBadRequest, ErrInvalidCredentials.Error(), nil)

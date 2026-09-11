@@ -152,6 +152,25 @@ func TestLoginValidationAndBusinessErrorsKeepLegacyContract(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitReturnsRetryAfterAnd429Envelope(t *testing.T) {
+	service := &handlerServiceStub{loginErr: &LoginRateLimitError{RetryAfter: 2500 * time.Millisecond}}
+	router := newAuthRouter(t, service, &authenticatorStub{})
+	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"admin","password":"wrong"}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusTooManyRequests)
+	}
+	if response.Header().Get("Retry-After") != "3" {
+		t.Fatalf("Retry-After = %q, want 3", response.Header().Get("Retry-After"))
+	}
+	assertJSON(t, response.Body.Bytes(), map[string]any{
+		"code": float64(http.StatusTooManyRequests), "message": "请求过于频繁，请稍后再试", "data": nil,
+	})
+}
+
 func TestProtectedRoutesRequireBearerAndExposePrincipal(t *testing.T) {
 	principal := Principal{UserID: 42, JTI: "session", ExpiresAt: time.Now().Add(time.Hour)}
 	service := &handlerServiceStub{

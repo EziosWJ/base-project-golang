@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -53,7 +54,7 @@ func main() {
 		}
 	}()
 
-	authService, err := newAuthService(database, cfg.JWT)
+	authService, err := newAuthService(database, cfg.JWT, cfg.Auth.LoginGuard)
 	if err != nil {
 		slog.Error("build authentication service", "error", err)
 		os.Exit(1)
@@ -147,7 +148,7 @@ func main() {
 	application.Logger.Info("HTTP server stopped")
 }
 
-func newAuthService(database *platformdatabase.Database, jwtConfig config.JWTConfig) (*auth.Service, error) {
+func newAuthService(database *platformdatabase.Database, jwtConfig config.JWTConfig, guardConfig config.LoginGuardConfig) (*auth.Service, error) {
 	tokens, err := auth.NewTokenManager(auth.TokenConfig{
 		SigningKey: jwtConfig.Secret,
 		Issuer:     jwtConfig.Issuer,
@@ -157,5 +158,18 @@ func newAuthService(database *platformdatabase.Database, jwtConfig config.JWTCon
 	if err != nil {
 		return nil, err
 	}
-	return auth.NewService(auth.NewRepository(database.GORM), tokens)
+	loginGuard, err := auth.NewLoginGuard(auth.LoginGuardConfig{
+		IPWindow:            guardConfig.IPWindow,
+		IPMaxAttempts:       guardConfig.IPMaxAttempts,
+		UsernameWindow:      guardConfig.UsernameWindow,
+		UsernameMaxAttempts: guardConfig.UsernameMaxAttempts,
+		BackoffInitial:      guardConfig.BackoffInitial,
+		BackoffMax:          guardConfig.BackoffMax,
+		LockDuration:        guardConfig.LockDuration,
+		MaxEntries:          guardConfig.MaxEntries,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build login guard: %w", err)
+	}
+	return auth.NewService(auth.NewRepository(database.GORM), tokens, loginGuard)
 }

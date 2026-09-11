@@ -30,6 +30,7 @@ type Config struct {
 	Database    DatabaseConfig `koanf:"database"`
 	File        FileConfig     `koanf:"file"`
 	JWT         JWTConfig      `koanf:"jwt"`
+	Auth        AuthConfig     `koanf:"auth"`
 	Log         LogConfig      `koanf:"log"`
 }
 
@@ -39,6 +40,7 @@ type ServiceConfig struct {
 
 type HTTPConfig struct {
 	Address         string        `koanf:"address"`
+	TrustedProxies  []string      `koanf:"trusted_proxies"`
 	ReadTimeout     time.Duration `koanf:"read_timeout"`
 	WriteTimeout    time.Duration `koanf:"write_timeout"`
 	IdleTimeout     time.Duration `koanf:"idle_timeout"`
@@ -79,6 +81,21 @@ type JWTConfig struct {
 	TTL      time.Duration `koanf:"ttl"`
 }
 
+type AuthConfig struct {
+	LoginGuard LoginGuardConfig `koanf:"login_guard"`
+}
+
+type LoginGuardConfig struct {
+	IPWindow            time.Duration `koanf:"ip_window"`
+	IPMaxAttempts       int           `koanf:"ip_max_attempts"`
+	UsernameWindow      time.Duration `koanf:"username_window"`
+	UsernameMaxAttempts int           `koanf:"username_max_attempts"`
+	BackoffInitial      time.Duration `koanf:"backoff_initial"`
+	BackoffMax          time.Duration `koanf:"backoff_max"`
+	LockDuration        time.Duration `koanf:"lock_duration"`
+	MaxEntries          int           `koanf:"max_entries"`
+}
+
 type LogConfig struct {
 	Level     string `koanf:"level"`
 	Format    string `koanf:"format"`
@@ -111,6 +128,18 @@ func (c Config) Validate() error {
 	}
 	if c.HTTP.ShutdownTimeout <= 0 {
 		errs = append(errs, errors.New("http.shutdown_timeout must be greater than zero"))
+	}
+	for index, proxy := range c.HTTP.TrustedProxies {
+		proxy = strings.TrimSpace(proxy)
+		if proxy == "" {
+			errs = append(errs, fmt.Errorf("http.trusted_proxies[%d] must not be empty", index))
+			continue
+		}
+		if net.ParseIP(proxy) == nil {
+			if _, _, err := net.ParseCIDR(proxy); err != nil {
+				errs = append(errs, fmt.Errorf("http.trusted_proxies[%d] must be an IP or CIDR", index))
+			}
+		}
 	}
 	if c.Swagger.Enabled && c.Environment != EnvironmentDev {
 		errs = append(errs, errors.New("swagger.enabled may only be true in dev"))
@@ -177,6 +206,32 @@ func (c Config) Validate() error {
 	}
 	if c.JWT.TTL <= 0 {
 		errs = append(errs, errors.New("jwt.ttl must be greater than zero"))
+	}
+
+	guard := c.Auth.LoginGuard
+	if guard.IPMaxAttempts < 0 {
+		errs = append(errs, errors.New("auth.login_guard.ip_max_attempts must not be negative"))
+	}
+	if guard.UsernameMaxAttempts < 0 {
+		errs = append(errs, errors.New("auth.login_guard.username_max_attempts must not be negative"))
+	}
+	if guard.IPMaxAttempts > 0 && guard.IPWindow <= 0 {
+		errs = append(errs, errors.New("auth.login_guard.ip_window must be greater than zero when IP protection is enabled"))
+	}
+	if guard.UsernameMaxAttempts > 0 && guard.UsernameWindow <= 0 {
+		errs = append(errs, errors.New("auth.login_guard.username_window must be greater than zero when username protection is enabled"))
+	}
+	if guard.BackoffInitial <= 0 {
+		errs = append(errs, errors.New("auth.login_guard.backoff_initial must be greater than zero"))
+	}
+	if guard.BackoffMax < guard.BackoffInitial {
+		errs = append(errs, errors.New("auth.login_guard.backoff_max must not be less than backoff_initial"))
+	}
+	if guard.LockDuration <= 0 {
+		errs = append(errs, errors.New("auth.login_guard.lock_duration must be greater than zero"))
+	}
+	if guard.MaxEntries <= 0 {
+		errs = append(errs, errors.New("auth.login_guard.max_entries must be greater than zero"))
 	}
 
 	if !oneOf(c.Log.Level, "debug", "info", "warn", "error") {

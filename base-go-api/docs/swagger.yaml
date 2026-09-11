@@ -485,6 +485,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/auth.errorResponseEnvelope'
+        "429":
+          description: Too Many Requests
+          headers:
+            Retry-After:
+              description: 等待重试的秒数
+              type: string
+          schema:
+            $ref: '#/definitions/auth.errorResponseEnvelope'
       summary: 登录
       tags:
       - 认证

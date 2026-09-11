@@ -13,6 +13,12 @@ database:
 jwt:
   secret: replace-with-a-random-local-development-jwt-secret
 
+auth:
+  login_guard:
+    # Set either max_attempts to 0 to disable that protection dimension.
+    ip_max_attempts: 20
+    username_max_attempts: 5
+
 file:
   # 必须替换为当前机器上的绝对路径；本机开发建议放在项目根目录 .data/uploads。
   storage_root: /home/your-user/project/base-project-golang/.data/uploads

@@ -172,6 +172,16 @@ func TestNewFailsWhenRequiredServiceMissing(t *testing.T) {
 	}
 }
 
+func TestNewRejectsInvalidTrustedProxy(t *testing.T) {
+	cfg := testConfig("test", false)
+	cfg.HTTP.TrustedProxies = []string{"not-a-proxy"}
+
+	_, err := New(cfg, readyProbe{}, newFakeStores().deps())
+	if err == nil || !strings.Contains(err.Error(), "configure trusted proxies") {
+		t.Fatalf("New() error = %v, want trusted proxy configuration error", err)
+	}
+}
+
 func TestBuildRegistersSwaggerOnlyInDev(t *testing.T) {
 	for _, test := range []struct {
 		name        string

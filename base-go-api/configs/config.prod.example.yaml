@@ -12,6 +12,11 @@ database:
 jwt:
   secret: change-me
 
+auth:
+  login_guard:
+    ip_max_attempts: 20
+    username_max_attempts: 5
+
 log:
   level: info
   format: json

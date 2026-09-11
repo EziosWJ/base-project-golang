@@ -11,34 +11,48 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const dummyPasswordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 // Service contains authentication rules. It only depends on context.Context,
 // Store, and TokenManager; it has no Gin, GORM, or concrete driver dependency.
 type Service struct {
-	store  Store
-	tokens *TokenManager
-	now    func() time.Time
+	store      Store
+	tokens     *TokenManager
+	loginGuard *LoginGuard
+	now        func() time.Time
 }
 
 var _ Authenticator = (*Service)(nil)
 
-func NewService(store Store, tokens *TokenManager) (*Service, error) {
+func NewService(store Store, tokens *TokenManager, guards ...*LoginGuard) (*Service, error) {
 	if store == nil {
 		return nil, errors.New("auth store is required")
 	}
 	if tokens == nil {
 		return nil, errors.New("JWT token manager is required")
 	}
-	return &Service{store: store, tokens: tokens, now: time.Now}, nil
+	var loginGuard *LoginGuard
+	if len(guards) > 0 {
+		loginGuard = guards[0]
+	}
+	return &Service{store: store, tokens: tokens, loginGuard: loginGuard, now: time.Now}, nil
 }
 
 func (s *Service) Login(ctx context.Context, input LoginInput, metadata LoginMetadata) (LoginResult, error) {
 	username := strings.TrimSpace(input.Username)
 	if username == "" || input.Password == "" {
-		return LoginResult{}, s.failLogin(ctx, username, metadata, "用户名或密码错误", ErrInvalidCredentials)
+		return LoginResult{}, ErrInvalidCredentials
+	}
+	if s.loginGuard != nil {
+		if err := s.loginGuard.Admit(metadata.ClientIP, username); err != nil {
+			loginAttempts.WithLabelValues(loginAttemptOutcomeGuardRejected).Inc()
+			return LoginResult{}, err
+		}
 	}
 
 	user, err := s.store.FindUserByUsername(ctx, username)
 	if errors.Is(err, ErrUserNotFound) {
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(input.Password))
 		return LoginResult{}, s.failLogin(ctx, username, metadata, "用户不存在", ErrInvalidCredentials)
 	}
 	if err != nil {
@@ -73,6 +87,10 @@ func (s *Service) Login(ctx context.Context, input LoginInput, metadata LoginMet
 	if err := s.store.CompleteLogin(ctx, user.ID, issued.IssuedAt, metadata.ClientIP, session, loginLog); err != nil {
 		return LoginResult{}, fmt.Errorf("complete login: %w", err)
 	}
+	if s.loginGuard != nil {
+		s.loginGuard.RecordSuccess(username)
+	}
+	loginAttempts.WithLabelValues(loginAttemptOutcomeSuccess).Inc()
 
 	return LoginResult{
 		TokenName:  "Authorization",
@@ -200,6 +218,10 @@ func menuComesFirst(left, right CurrentUserMenu) bool {
 }
 
 func (s *Service) failLogin(ctx context.Context, username string, metadata LoginMetadata, message string, result error) error {
+	if s.loginGuard != nil {
+		s.loginGuard.RecordFailure(metadata.ClientIP, username)
+	}
+	loginAttempts.WithLabelValues(loginAttemptOutcomeCredentialFailed).Inc()
 	now := s.now().UTC()
 	log := LoginLog{
 		Username:    username,
