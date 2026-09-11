@@ -28,6 +28,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/notification"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/sysconfig"
@@ -54,7 +55,7 @@ func TestPostgresMigrationsUseEphemeralDatabase(t *testing.T) {
 	verifyDatabaseReadiness(t, database.dsn)
 }
 
-func TestLogClearSeedDefaultsByEnvironment(t *testing.T) {
+func TestPostgresLogClearSeedDefaultsByEnvironment(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
@@ -614,7 +615,7 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	emptyUpload := serveMultipart(t, router, http.MethodPost, "/api/system/file/upload", token, []filePart{
 		{field: "file", filename: "empty.txt", contentType: "text/plain", content: ""},
 	}, "", "")
-	if emptyUpload.Code != http.StatusOK || !strings.Contains(emptyUpload.Body.String(), `"code":400`) {
+	if emptyUpload.Code != http.StatusBadRequest || !strings.Contains(emptyUpload.Body.String(), `"code":400`) {
 		t.Fatalf("empty upload = status %d body=%s", emptyUpload.Code, emptyUpload.Body.String())
 	}
 	missingStream := servePlain(t, router, http.MethodGet, "/api/system/file/99999/download", token)
@@ -626,6 +627,52 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	}
 	if auditCount != 4 {
 		t.Fatalf("file operation audit count = %d, want 4 (upload, update, status, delete)", auditCount)
+	}
+}
+
+func TestNotificationContractUsesPostgres(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for PostgreSQL integration tests")
+	}
+
+	temporary := startPostgres(t)
+	runMigrations(t, projectRoot(t), temporary.dsn)
+	database := openTemporaryDatabase(t, temporary.dsn)
+	defer func() { _ = database.Close() }()
+
+	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
+	if err != nil {
+		t.Fatalf("build PostgreSQL notification API: %v", err)
+	}
+	adminToken := loginAdmin(t, router)
+
+	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"postgres-notify-user","nickname":"PostgreSQL通知用户","status":1}`, adminToken)
+	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
+	assignedRoles := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
+	assertEnvelopeCode(t, assignedRoles, http.StatusOK, 200, "success")
+	userToken := loginUser(t, router, "postgres-notify-user", "admin123")
+
+	published := serveJSON(router, http.MethodPost, "/api/system/notification", `{"title":"PostgreSQL通知","content":"通知内容","userIds":[2]}`, adminToken)
+	assertEnvelopeCode(t, published, http.StatusOK, 200, "success")
+
+	page := serveJSON(router, http.MethodGet, "/api/system/notification/page?page=1&pageSize=20", "", userToken)
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"title":"PostgreSQL通知"`) || !strings.Contains(page.Body.String(), `"isRead":0`) {
+		t.Fatalf("PostgreSQL notification page = %d %s", page.Code, page.Body.String())
+	}
+	unread := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	if unread.Code != http.StatusOK || !strings.Contains(unread.Body.String(), `"data":2`) {
+		t.Fatalf("PostgreSQL unread count = %d %s", unread.Code, unread.Body.String())
+	}
+
+	var notificationID int64
+	if err := database.GORM.Table("sys_notification").Where("title = ?", "PostgreSQL通知").Pluck("id", &notificationID).Error; err != nil {
+		t.Fatalf("load PostgreSQL notification ID: %v", err)
+	}
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/notification/%d", notificationID), "", userToken)
+	assertEnvelopeCode(t, detail, http.StatusOK, 200, "success")
+	unreadAfterDetail := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	if unreadAfterDetail.Code != http.StatusOK || !strings.Contains(unreadAfterDetail.Body.String(), `"data":1`) {
+		t.Fatalf("PostgreSQL unread count after detail = %d %s", unreadAfterDetail.Code, unreadAfterDetail.Body.String())
 	}
 }
 
@@ -734,10 +781,26 @@ func startPostgres(t *testing.T) temporaryPostgres {
 
 func (database temporaryPostgres) waitUntilReady(t *testing.T) {
 	t.Helper()
+	endpoint, err := url.Parse(database.dsn)
+	if err != nil {
+		t.Fatalf("parse temporary PostgreSQL endpoint: %v", err)
+	}
 	deadline := time.Now().Add(45 * time.Second)
+	readyStreak := 0
 	for time.Now().Before(deadline) {
 		if err := exec.Command("docker", "exec", database.container, "pg_isready", "-U", "integration", "-d", "integration").Run(); err == nil {
-			return
+			connection, dialErr := net.DialTimeout("tcp", endpoint.Host, time.Second)
+			if dialErr == nil {
+				_ = connection.Close()
+				readyStreak++
+				if readyStreak >= 2 {
+					return
+				}
+			} else {
+				readyStreak = 0
+			}
+		} else {
+			readyStreak = 0
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -766,7 +829,7 @@ func integrationEnvironment(t *testing.T, dsn, environmentName string) []string 
 	databaseConfig := databaseConfigFromDSN(t, dsn)
 	environment := make([]string, 0, len(os.Environ())+5)
 	for _, entry := range os.Environ() {
-		if strings.HasPrefix(entry, "APP_DATABASE__") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") {
+		if strings.HasPrefix(entry, "APP_DATABASE__") || strings.HasPrefix(entry, "APP_JWT__SECRET=") || strings.HasPrefix(entry, "APP_ENV=") || strings.HasPrefix(entry, "APP_CONFIG_PROFILE=") {
 			continue
 		}
 		environment = append(environment, entry)
@@ -880,7 +943,8 @@ func testDependencies(t *testing.T, database *platformdatabase.Database, storage
 	if err != nil {
 		t.Fatalf("create department service: %v", err)
 	}
-	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM), "admin123")
+	notificationRepository := notification.NewRepository(database.GORM)
+	userService, err := usermgmt.NewService(usermgmt.NewRepository(database.GORM, notificationRepository), "admin123")
 	if err != nil {
 		t.Fatalf("create user service: %v", err)
 	}
@@ -903,15 +967,25 @@ func testDependencies(t *testing.T, database *platformdatabase.Database, storage
 		t.Fatalf("create log service: %v", err)
 	}
 	return app.Dependencies{
-		Auth:       authService,
-		RBAC:       rbacService,
-		Department: deptService,
-		User:       userService,
-		Dictionary: dictionaryService,
-		SysConfig:  configService,
-		File:       fileService,
-		Log:        logService,
+		Auth:         authService,
+		RBAC:         rbacService,
+		Department:   deptService,
+		User:         userService,
+		Dictionary:   dictionaryService,
+		SysConfig:    configService,
+		File:         fileService,
+		Log:          logService,
+		Notification: mustNotificationService(t, notificationRepository),
 	}
+}
+
+func mustNotificationService(t *testing.T, repository *notification.Repository) *notification.Service {
+	t.Helper()
+	service, err := notification.NewService(repository)
+	if err != nil {
+		t.Fatalf("create notification service: %v", err)
+	}
+	return service
 }
 
 func loginAdmin(t *testing.T, router http.Handler) string {
