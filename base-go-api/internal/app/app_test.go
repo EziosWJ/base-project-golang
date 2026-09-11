@@ -142,6 +142,20 @@ func TestBuildRegistersAllSystemManagementRoutes(t *testing.T) {
 	}
 }
 
+func TestBuildAuthenticatesMultipartRequestsBeforeBodyPolicy(t *testing.T) {
+	router, err := Build(testConfig("test", false), readyProbe{}, newFakeStores().deps())
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/system/file/upload", strings.NewReader("oversized or malformed body"))
+	request.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("multipart unauthenticated status = %d body=%s, want %d", response.Code, response.Body.String(), http.StatusUnauthorized)
+	}
+}
+
 func TestNewFailsWhenRequiredServiceMissing(t *testing.T) {
 	full := newFakeStores().deps()
 	for _, test := range []struct {

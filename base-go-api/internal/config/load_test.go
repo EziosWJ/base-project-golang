@@ -136,6 +136,9 @@ log:
 	if cfg.Environment != EnvironmentDev {
 		t.Errorf("Environment = %q, want dev", cfg.Environment)
 	}
+	if cfg.HTTP.ReadHeaderTimeout != 10*time.Second || cfg.HTTP.ReadTimeout != 5*time.Minute {
+		t.Errorf("HTTP timeouts = (%s, %s), want (10s, 5m)", cfg.HTTP.ReadHeaderTimeout, cfg.HTTP.ReadTimeout)
+	}
 	if cfg.Swagger.Enabled != true {
 		t.Errorf("Swagger.Enabled = %v, want true from APP_ override", cfg.Swagger.Enabled)
 	}

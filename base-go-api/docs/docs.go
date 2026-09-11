@@ -1499,7 +1499,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "单文件最大 50 MB；声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。",
+                "description": "原始请求体最多 55 MiB，单文件内容最多 50 MiB；businessModule 最多 50 个 Unicode 字符且最多 200 字节，remark 最多 500 个 Unicode 字符且最多 2000 字节，文件名最多 255 字节。声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1549,6 +1549,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/filemgmt.ApiEnvelope"
                         }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
                     }
                 }
             }
@@ -1560,7 +1572,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。",
+                "description": "原始请求体最多 210 MiB；最多 20 个文件，所有文件内容总量最多 200 MiB。每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1607,6 +1619,18 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/filemgmt.ApiEnvelope"
                         }

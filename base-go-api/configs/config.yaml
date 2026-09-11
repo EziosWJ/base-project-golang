@@ -3,7 +3,8 @@ service:
 
 http:
   address: ":8099"
-  read_timeout: 15s
+  read_header_timeout: 10s
+  read_timeout: 5m
   write_timeout: 15s
   idle_timeout: 60s
   shutdown_timeout: 10s

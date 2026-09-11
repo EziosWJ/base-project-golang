@@ -40,15 +40,32 @@ func (s *Service) Upload(ctx context.Context, m AuditMetadata, header *multipart
 		return File{}, err
 	}
 	defer func() { _ = src.Close() }()
-	mimeType, err := validateContentType(header.Header.Get("Content-Type"), header.Filename, src)
+	return s.uploadReader(ctx, m, UploadInput{
+		Filename: header.Filename, ContentType: header.Header.Get("Content-Type"), Size: header.Size, Reader: src,
+	}, businessModule, remark)
+}
+
+// UploadContent persists a bounded upload stream prepared by the HTTP layer.
+func (s *Service) UploadContent(ctx context.Context, m AuditMetadata, input UploadInput, businessModule, remark string) (File, error) {
+	return s.uploadReader(ctx, m, input, businessModule, remark)
+}
+
+func (s *Service) uploadReader(ctx context.Context, m AuditMetadata, input UploadInput, businessModule, remark string) (File, error) {
+	if input.Reader == nil || strings.TrimSpace(input.Filename) == "" || input.Size == 0 {
+		return File{}, ErrFileEmpty
+	}
+	if input.Size > MaxFileSize {
+		return File{}, ErrFileTooLarge
+	}
+	mimeType, err := validateContentType(input.ContentType, input.Filename, input.Reader)
 	if err != nil {
 		return File{}, err
 	}
-	stored, err := s.storage.Save(ctx, header.Filename, src)
+	stored, err := s.storage.Save(ctx, input.Filename, input.Reader)
 	if err != nil {
 		return File{}, err
 	}
-	f := File{OriginalName: header.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: mimeType, FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
+	f := File{OriginalName: input.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: mimeType, FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
 	f, err = s.store.Create(ctx, f, AuditEvent{Action: "file.upload", Resource: "file", ResourceID: 0, Summary: "上传文件", Metadata: m})
 	if err != nil {
 		s.compensate(ctx, stored.Path)
@@ -76,6 +93,29 @@ func (s *Service) UploadBatch(ctx context.Context, m AuditMetadata, headers []*m
 			name := "unknown"
 			if header != nil && header.Filename != "" {
 				name = header.Filename
+			}
+			result.Failed = append(result.Failed, BatchUploadFailure{FileName: name, Message: err.Error(), Index: index})
+			continue
+		}
+		result.Succeeded = append(result.Succeeded, f)
+	}
+	return result, nil
+}
+
+// UploadBatchContent persists the valid members of a parsed batch. The HTTP
+// layer performs batch-level preflight before this method is called, so this
+// method retains the existing per-file success/failure behavior.
+func (s *Service) UploadBatchContent(ctx context.Context, m AuditMetadata, inputs []UploadInput, businessModule, remark string) (BatchUploadResult, error) {
+	if len(inputs) == 0 {
+		return BatchUploadResult{}, ErrFileEmpty
+	}
+	result := BatchUploadResult{Succeeded: []File{}, Failed: []BatchUploadFailure{}}
+	for index, input := range inputs {
+		f, err := s.UploadContent(ctx, m, input, businessModule, remark)
+		if err != nil {
+			name := "unknown"
+			if input.Filename != "" {
+				name = input.Filename
 			}
 			result.Failed = append(result.Failed, BatchUploadFailure{FileName: name, Message: err.Error(), Index: index})
 			continue
