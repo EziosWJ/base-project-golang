@@ -11,6 +11,7 @@ require (
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/prometheus/client_golang v1.24.1
 	github.com/swaggo/files v1.0.1
@@ -18,6 +19,7 @@ require (
 	github.com/swaggo/swag v1.8.12
 	golang.org/x/crypto v0.54.0
 	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.2
 )
 

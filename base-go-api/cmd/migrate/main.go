@@ -60,12 +60,12 @@ func run(ctx context.Context, args []string) error {
 	}()
 
 	for _, migrationKind := range migrationKinds(kind) {
-		previousVersion, currentVersion, err := applyMigrations(ctx, db.SQL, migrationKind)
+		previousVersion, currentVersion, err := applyMigrationsForDriver(ctx, db.SQL, cfg.Database.Driver, migrationKind)
 		if err != nil {
 			return err
 		}
 		if migrationKind == migrationKindSeed && shouldApplyLogClearDefault(previousVersion, currentVersion) {
-			if err := applyLogClearDefault(ctx, db.SQL, cfg.Environment); err != nil {
+			if err := applyLogClearDefault(ctx, db.SQL, cfg.Database.Driver, cfg.Environment); err != nil {
 				return err
 			}
 		}
@@ -76,10 +76,14 @@ func run(ctx context.Context, args []string) error {
 }
 
 func applyMigrations(ctx context.Context, sqlDB *sql.DB, kind string) (int64, int64, error) {
+	return applyMigrationsForDriver(ctx, sqlDB, database.DriverPostgres, kind)
+}
+
+func applyMigrationsForDriver(ctx context.Context, sqlDB *sql.DB, driver, kind string) (int64, int64, error) {
 	gooseMu.Lock()
 	defer gooseMu.Unlock()
 
-	directory := migrationDirectory(kind)
+	directory := migrationDirectoryForDriver(driver, kind)
 	hasMigrations, err := hasSQLMigrations(directory)
 	if err != nil {
 		return 0, 0, err
@@ -89,7 +93,11 @@ func applyMigrations(ctx context.Context, sqlDB *sql.DB, kind string) (int64, in
 		return 0, 0, nil
 	}
 
-	if err := goose.SetDialect(database.DriverPostgres); err != nil {
+	gooseDialect, err := database.GooseDialect(driver)
+	if err != nil {
+		return 0, 0, err
+	}
+	if err := goose.SetDialect(gooseDialect); err != nil {
 		return 0, 0, fmt.Errorf("set Goose dialect: %w", err)
 	}
 	goose.SetTableName(migrationTableName(kind))
@@ -118,14 +126,18 @@ func logClearEnabledDefault(environment string) string {
 	return "false"
 }
 
-func applyLogClearDefault(ctx context.Context, sqlDB *sql.DB, environment string) error {
-	_, err := sqlDB.ExecContext(ctx, `
+func applyLogClearDefault(ctx context.Context, sqlDB *sql.DB, driver, environment string) error {
+	query, err := database.Rebind(driver, `
 		UPDATE sys_config
-		SET config_value = $1,
+		SET config_value = ?,
 		    update_time = CURRENT_TIMESTAMP
-		WHERE config_key = $2
+		WHERE config_key = ?
 		  AND is_builtin = 1
-		  AND deleted = 0`, logClearEnabledDefault(environment), sysconfig.LogClearEnabledKey)
+		  AND deleted = 0`)
+	if err != nil {
+		return fmt.Errorf("prepare log-clear default for %s: %w", driver, err)
+	}
+	_, err = sqlDB.ExecContext(ctx, query, logClearEnabledDefault(environment), sysconfig.LogClearEnabledKey)
 	if err != nil {
 		return fmt.Errorf("apply log-clear default for %s: %w", environment, err)
 	}
@@ -167,6 +179,13 @@ func parseArguments(args []string) (string, error) {
 
 func migrationDirectory(kind string) string {
 	return filepath.Join("migrations", kind)
+}
+
+func migrationDirectoryForDriver(driver, kind string) string {
+	if driver == database.DriverSQLite {
+		return filepath.Join("migrations", "sqlite", kind)
+	}
+	return migrationDirectory(kind)
 }
 
 func migrationTableName(kind string) string {

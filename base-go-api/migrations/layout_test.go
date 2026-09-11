@@ -1,6 +1,7 @@
 package migrations_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,40 +21,63 @@ var (
 )
 
 func TestMigrationStreamsHaveValidGooseFiles(t *testing.T) {
-	schemaFiles := migrationFiles(t, "schema")
-	if len(schemaFiles) == 0 {
-		t.Fatal("schema migration stream must contain a baseline")
+	for _, dialect := range []string{"postgres", "sqlite"} {
+		schemaFiles := migrationFiles(t, dialectPath(dialect, "schema"))
+		if len(schemaFiles) == 0 {
+			t.Fatalf("%s schema migration stream must contain a baseline", dialect)
+		}
+		assertGooseFiles(t, schemaFiles)
+		assertGooseFiles(t, migrationFiles(t, dialectPath(dialect, "seed")))
 	}
-	assertGooseFiles(t, schemaFiles)
-
-	// An empty seed stream is valid until a feature owns both its schema and
-	// built-in data. When seed SQL appears, it must still be valid Goose SQL.
-	assertGooseFiles(t, migrationFiles(t, "seed"))
 }
 
 func TestAdminSeedPasswordMatchesJavaContract(t *testing.T) {
-	contents := readFile(t, filepath.Join("seed", "00001_auth_seed.sql"))
-	hash := bcryptHash.Find(contents)
-	if hash == nil {
-		t.Fatal("authentication seed must contain a BCrypt password hash")
-	}
-	if err := bcrypt.CompareHashAndPassword(hash, []byte("admin123")); err != nil {
-		t.Fatalf("administrator seed password does not match admin123: %v", err)
+	for _, dialect := range []string{"postgres", "sqlite"} {
+		contents := readFile(t, filepath.Join(dialectPath(dialect, "seed"), "00001_auth_seed.sql"))
+		hash := bcryptHash.Find(contents)
+		if hash == nil {
+			t.Fatalf("%s authentication seed must contain a BCrypt password hash", dialect)
+		}
+		if err := bcrypt.CompareHashAndPassword(hash, []byte("admin123")); err != nil {
+			t.Fatalf("%s administrator seed password does not match admin123: %v", dialect, err)
+		}
 	}
 }
 
 func TestSchemaAndSeedResponsibilitiesStaySeparate(t *testing.T) {
-	for _, name := range migrationFiles(t, "schema") {
-		contents := readFile(t, name)
-		if schemaDML.Match(contents) {
-			t.Errorf("schema migration %s contains seed-data DML", name)
+	for _, dialect := range []string{"postgres", "sqlite"} {
+		for _, name := range migrationFiles(t, dialectPath(dialect, "schema")) {
+			contents := readFile(t, name)
+			if schemaDML.Match(contents) {
+				t.Errorf("schema migration %s contains seed-data DML", name)
+			}
+		}
+
+		for _, name := range migrationFiles(t, dialectPath(dialect, "seed")) {
+			contents := readFile(t, name)
+			if seedDDL.Match(contents) {
+				t.Errorf("seed migration %s contains schema DDL", name)
+			}
 		}
 	}
+}
 
-	for _, name := range migrationFiles(t, "seed") {
-		contents := readFile(t, name)
-		if seedDDL.Match(contents) {
-			t.Errorf("seed migration %s contains schema DDL", name)
+func TestDialectMigrationVersionsStayInLockstep(t *testing.T) {
+	for _, kind := range []string{"schema", "seed"} {
+		postgres := migrationVersions(t, dialectPath("postgres", kind))
+		sqlite := migrationVersions(t, dialectPath("sqlite", kind))
+		if len(postgres) != len(sqlite) {
+			t.Fatalf("%s migration versions differ: postgres=%v sqlite=%v", kind, postgres, sqlite)
+		}
+		for version := range postgres {
+			if !sqlite[version] {
+				t.Errorf("SQLite %s stream is missing logical migration version %05d", kind, version)
+			}
+		}
+		for version := range sqlite {
+			if !postgres[version] {
+				t.Errorf("PostgreSQL %s stream is missing logical migration version %05d", kind, version)
+			}
 		}
 	}
 }
@@ -90,6 +114,27 @@ func migrationFiles(t *testing.T, dir string) []string {
 	}
 	sort.Strings(files)
 	return files
+}
+
+func migrationVersions(t *testing.T, dir string) map[int]bool {
+	t.Helper()
+	versions := make(map[int]bool)
+	for _, name := range migrationFiles(t, dir) {
+		base := filepath.Base(name)
+		var version int
+		if _, err := fmt.Sscanf(base, "%05d_", &version); err != nil {
+			t.Fatalf("parse migration version %s: %v", name, err)
+		}
+		versions[version] = true
+	}
+	return versions
+}
+
+func dialectPath(dialect, kind string) string {
+	if dialect == "postgres" {
+		return kind
+	}
+	return filepath.Join(dialect, kind)
 }
 
 func readFile(t *testing.T, name string) []byte {
