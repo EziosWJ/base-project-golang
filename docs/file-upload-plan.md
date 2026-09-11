@@ -39,7 +39,7 @@
 - 图片上传支持 PNG、JPEG、GIF，服务端验证完整解码内容，最多 2500 万像素；文件预览与头像通过受信任 API 获取带鉴权的文件流，外部头像不附带登录凭证。
 - 补充既有 `SourceSegmentVO` 缺失类型，解除前端构建阻碍。
 - `task backend:check`、`task frontend:lint`、`task frontend:build` 均通过；构建仅提示 bundle 超过 500 kB。
-- 独立 PostgreSQL、临时 API 和临时文件目录上的 HTTP 验收通过：普通文件与合法图片上传、鉴权预览、伪装及截断图片拒绝、同名批量失败索引、匿名上传与预览拒绝。
+- 独立 PostgreSQL 与 SQLite、临时 API 和临时文件目录上的 HTTP 验收通过：普通文件与合法图片上传、鉴权预览、伪装及截断图片拒绝、同名批量失败索引、匿名上传与预览拒绝。
 - Chromium 实际交互通过：三个 demo、图片像素加载、清除图片、多文件失败重试与成功记录保留、390px 布局、个人头像、外部头像不携带 Token、原文件管理预览及同名重试。
 - 当前环境未安装 `golangci-lint`；已检查改动 Go 文件格式，并通过 `go vet`。
 

@@ -20,7 +20,7 @@ React 管理后台 + Go REST API 的 monorepo。
 React 19 · TypeScript · Vite 6 · Tailwind CSS · shadcn/ui · react-router-dom v7 · Zustand · react-hook-form + zod
 
 **后端 `base-go-api/`**
-Go 1.26 · Gin · GORM · PostgreSQL · Goose migration · Koanf 配置 · JWT 认证 · Prometheus · Swagger
+Go 1.26 · Gin · GORM · PostgreSQL/SQLite · Goose migration · Koanf 配置 · JWT 认证 · Prometheus · Swagger
 
 ## 快速开始
 
@@ -36,11 +36,16 @@ Copy-Item base-go-api/configs/config.dev.example.yaml base-go-api/configs/config
 
 ```text
 task db:migrate   # 恢复或更新数据库
+task db:migrate:sqlite # 使用 SQLite profile 迁移数据库
 task api          # 启动 Go API（:8099）
+task api:sqlite   # 使用 SQLite profile 启动 Go API
 task web          # 启动 React（:5173）
 task dev          # 迁移数据库并同时启动前后端
+task dev:sqlite   # 迁移 SQLite 并同时启动前后端
 task check        # 执行后端检查和前端 lint/build
 task test         # 执行后端测试
+task db:backup -- --source /path/app.db --destination /path/app-backup.db --verify
+task db:check     # 后端检查及 PostgreSQL/SQLite 数据库兼容门禁
 ```
 
 Windows、Linux 和 macOS 使用相同命令；Docker Desktop 仅在运行 Docker 或集成测试时需要。
@@ -71,7 +76,7 @@ APP_ENV=dev go run ./cmd/migrate up --kind all
 APP_ENV=dev go run ./cmd/api
 ```
 
-后端默认监听 `:8099`。测试：`go test ./...`，集成测试 `go test -tags=integration ./integration`（需 Docker）。
+后端默认监听 `:8099`。PostgreSQL 为默认数据库；SQLite 可通过 `task db:migrate:sqlite`、`task api:sqlite` 或 `task dev:sqlite` 使用独立 profile 启动，配置、锁降级、备份恢复和边界见 [后端 README](base-go-api/README.md)。测试：`go test ./...`，SQLite 集成测试不需要 Docker，PostgreSQL 集成测试 `go test -tags=integration ./integration` 需要 Docker。
 
 ### 前端
 

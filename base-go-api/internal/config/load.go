@@ -16,14 +16,17 @@ import (
 
 const delimiter = "."
 
+const sqliteConfigProfile = "sqlite"
+
 // Load reads configuration from DefaultDir.
 func Load() (*Config, error) {
 	return LoadFromDir(DefaultDir)
 }
 
 // LoadFromDir loads configuration in the fixed precedence order:
-// defaults, config.yaml, config.{APP_ENV}.yaml, then APP_ environment
-// variables. Environment-specific YAML is optional; config.yaml is required.
+// defaults, config.yaml, config.{APP_ENV}.yaml, an optional named profile,
+// then APP_ environment variables. Environment-specific YAML is optional;
+// config.yaml is required.
 func LoadFromDir(dir string) (*Config, error) {
 	environment, err := selectedEnvironment()
 	if err != nil {
@@ -42,6 +45,10 @@ func LoadFromDir(dir string) (*Config, error) {
 
 	environmentPath := filepath.Join(dir, "config."+environment+".yaml")
 	if err := loadYAML(k, environmentPath, false); err != nil {
+		return nil, err
+	}
+
+	if err := loadConfigProfile(k, dir); err != nil {
 		return nil, err
 	}
 
@@ -64,6 +71,17 @@ func LoadFromDir(dir string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+func loadConfigProfile(k *koanf.Koanf, dir string) error {
+	profile := strings.TrimSpace(strings.ToLower(os.Getenv("APP_CONFIG_PROFILE")))
+	if profile == "" {
+		return nil
+	}
+	if profile != sqliteConfigProfile {
+		return fmt.Errorf("APP_CONFIG_PROFILE must be empty or %q, got %q", sqliteConfigProfile, profile)
+	}
+	return loadYAML(k, filepath.Join(dir, "config."+profile+".yaml"), true)
 }
 
 func selectedEnvironment() (string, error) {

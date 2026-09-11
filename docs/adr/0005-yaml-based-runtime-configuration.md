@@ -24,10 +24,11 @@ Go API 原先要求数据库 DSN 和 JWT 密钥只能通过环境变量提供。
 
 ### 数据库连接
 
-PostgreSQL 数据库配置拆分为以下字段：
+数据库配置统一使用 `driver`、`url`、`username` 和 `password` 字段；`driver` 只允许 `postgres` 或 `sqlite`，未设置时默认为 `postgres`。PostgreSQL 配置拆分为以下字段：
 
 ```yaml
 database:
+  driver: postgres
   url: postgres://db.example.internal:5432/base_go_api?sslmode=require
   username: base_go_api
   password: change-me
@@ -35,14 +36,16 @@ database:
 
 `database.url` 必须只描述数据库地址、名称和连接参数，不得包含用户名或密码。应用在创建 GORM dialector 前验证 URL 并将 `username`、`password` 合成为最终 PostgreSQL 连接串；该过程会正确编码凭据中的 URL 特殊字符。
 
-对应的可选环境变量覆盖为 `APP_DATABASE__URL`、`APP_DATABASE__USERNAME`、`APP_DATABASE__PASSWORD` 与 `APP_JWT__SECRET`。
+SQLite 配置必须显式选择 `driver: sqlite`，`url` 是本地持久数据库文件路径，不使用 `:memory:` 或 URI 形式；用户名和密码必须省略。SQLite 的外键、WAL、忙等待、同步策略和 UTC 参数由应用统一管理，不能通过连接 URL 覆盖。
+
+对应的可选环境变量覆盖为 `APP_DATABASE__DRIVER`、`APP_DATABASE__URL`、`APP_DATABASE__USERNAME`、`APP_DATABASE__PASSWORD` 与 `APP_JWT__SECRET`。
 
 ## Consequences
 
 正向影响：
 
 - 本地调试和传统服务器部署可直接维护 YAML，无需依赖 shell 环境变量。
-- 数据库地址、账号和密码职责明确，密码中的特殊字符不再要求人工拼接或编码 DSN。
+- PostgreSQL 的数据库地址、账号和密码职责明确，密码中的特殊字符不再要求人工拼接或编码 DSN；SQLite 可以在不配置凭据的情况下使用本地持久文件。
 - Docker Compose 和容器编排仍可通过环境变量或 Secret 覆盖同一份配置。
 
 代价与约束：

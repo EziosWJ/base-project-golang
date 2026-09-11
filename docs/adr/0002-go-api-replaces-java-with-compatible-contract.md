@@ -1,6 +1,8 @@
 # Go API 兼容替代 Java system-api
 
-Status: accepted（认证内部实现部分由 ADR-0004 更新）
+Status: accepted（认证内部实现部分由 ADR-0004 更新；数据库正式支持边界由 ADR-0010 修订）
+
+本 ADR 中关于 PostgreSQL 的表述记录 Go 后端首次迁移基线；当前 SQLite 正式生产支持、单实例边界和双数据库兼容矩阵以 [ADR-0010](0010-sqlite-production-support.md) 为准。
 
 后端迁移目标是由 `base-go-api/` 中的 Go 服务最终替代 Java `system-api`，前端无需感知后端实现变化。迁移期间保留现有 `/api/**` 路径、HTTP 方法、请求参数、`ApiResponse<T>` 响应结构、分页格式和 Bearer Token 认证；Go 端继续兼容现有逻辑数据结构，但物理存储改为 PostgreSQL 17。Java 端只作为现状和行为参考，不再为本次迁移修改，也不参与 Java/Go 双写；迁移完成后生产环境只运行 Go 服务。
 

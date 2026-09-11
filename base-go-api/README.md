@@ -1,6 +1,6 @@
 # base-go-api 本地开发与调试
 
-`base-go-api` 是基于 Go、Gin、GORM 和 PostgreSQL 的 REST API。数据库结构与内置数据由独立的 Goose migration 管理；API 启动时不会执行 migration 或 GORM `AutoMigrate()`。
+`base-go-api` 是基于 Go、Gin、GORM 的 REST API，PostgreSQL 为默认数据库，SQLite 也可作为正式的单实例生产数据库。数据库结构与内置数据由独立的 Goose migration 管理；API 启动时不会执行 migration 或 GORM `AutoMigrate()`。
 
 ## 前置条件
 
@@ -16,6 +16,7 @@
 默认值
 → configs/config.yaml
 → configs/config.{APP_ENV}.yaml
+→ configs/config.{APP_CONFIG_PROFILE}.yaml（如果设置）
 → APP_ 环境变量
 ```
 
@@ -25,6 +26,7 @@
 
 - `configs/config.yaml`：基础配置，不含环境特定凭据；
 - `configs/config.dev.example.yaml`、`configs/config.prod.example.yaml`：环境模板，值为占位符，随仓库提交；
+- `configs/config.sqlite.yaml`：SQLite profile 配置，只覆盖数据库类型和本地文件路径，随仓库提交；
 - `configs/config.dev.yaml`、`configs/config.prod.yaml`：实际环境配置，可含真实凭据，已被 `.gitignore` 忽略。
 
 首次本地开发前，从开发模板复制并填写本机值：
@@ -50,6 +52,56 @@ jwt:
 `database.url` 只能包含数据库地址、数据库名和连接参数，不能包含用户名或密码；应用会使用 `username`、`password` 生成最终的 PostgreSQL 连接串。
 
 `.env` 只由 Docker Compose 读取，Go 程序不会自动加载它。直接执行 `go run` 或通过 VS Code 调试时，应使用 YAML 配置或在启动配置中显式注入环境变量。
+
+## SQLite 正式部署
+
+SQLite 必须显式配置 `database.driver: sqlite`，`database.url` 是本地持久文件路径；不配置 `username` 和 `password`：
+
+```yaml
+database:
+  driver: sqlite
+  url: .data/base-go-api.db
+  # username/password 必须省略
+```
+
+开发环境无需修改 PostgreSQL 的 `config.dev.yaml`，直接使用 SQLite profile 任务：
+
+```zsh
+task db:migrate:sqlite
+task api:sqlite
+# 或：task dev:sqlite
+```
+
+任务会自动加载 `configs/config.sqlite.yaml`；如需更换数据库文件位置，直接修改该文件的 `database.url`。首次使用时请确保 `base-go-api/.data` 目录存在，并准备好 JWT 配置。
+
+SQLite 生产支持的边界是单个 API 实例、一个本地持久卷和小规模低写并发。应用会为每个连接启用外键、WAL、5000ms 忙等待、`synchronous=NORMAL` 和 UTC 扫描；忙等待耗尽后返回统一的 HTTP 503（`code: 503`），不会把 `database is locked` 暴露给客户端，也不会重放业务事务。不要让多个 API 副本、网络文件系统或其他进程共享同一个数据库文件。持续出现锁超时、需要多副本/更高写吞吐，或恢复窗口不满足目标时，应使用默认的 PostgreSQL。
+
+SQLite 使用独立的 `migrations/sqlite/schema` 和 `migrations/sqlite/seed` Goose 树；两套树的逻辑版本号必须锁步。执行 migration 前确保数据库目录已经存在且由 API 用户可读写：
+
+```zsh
+cd base-go-api
+APP_ENV=prod go run ./cmd/migrate up --kind all
+APP_ENV=prod go run ./cmd/api
+```
+
+备份使用内置 SQLite online backup API，不依赖系统 `sqlite3` 命令。源库可以保持运行，但备份调度、保留周期、父目录权限和跨介质复制仍由部署方负责：
+
+```zsh
+cd ..
+task db:backup -- --source /var/lib/base-go-api/data/base-go-api.db \
+  --destination /var/lib/base-go-api/backups/base-go-api-$(date +%Y%m%d%H%M%S).db \
+  --verify
+```
+
+命令会执行 `PRAGMA integrity_check` 并将备份文件权限收紧为 `0600`。恢复时先停止 API，把已验证备份复制为新的数据库文件，再用当前发布执行 migration 并完成 `/ready`、管理员登录和核心读写冒烟验证；不要覆盖正在使用的源文件：
+
+```zsh
+cp /var/lib/base-go-api/backups/base-go-api-verified.db /var/lib/base-go-api/data/base-go-api-restored.db
+APP_ENV=prod APP_DATABASE__URL=/var/lib/base-go-api/data/base-go-api-restored.db go run ./cmd/migrate up --kind all
+APP_ENV=prod APP_DATABASE__URL=/var/lib/base-go-api/data/base-go-api-restored.db go run ./cmd/api
+```
+
+发布回退采用“恢复发布前备份 + 启动旧应用版本”，不承诺自动执行 migration `down`。生产数据文件、WAL/SHM 文件、备份文件和父目录都应只允许应用/备份用户访问；备份失败、完整性检查失败或恢复后的版本/业务校验失败时，不得切换流量。当前不支持 MySQL、SQLCipher 或 PostgreSQL/SQLite 之间的存量数据转换。
 
 ## 方式一：Docker Compose 一键启动
 
@@ -143,3 +195,12 @@ GOCACHE=/tmp/base-go-api-build go test -tags=integration ./integration
 ```
 
 集成测试需要 Docker daemon 可用，会执行 migration 并检查 Goose 版本表。
+
+运行 SQLite 文件库集成测试（不需要 Docker）：
+
+```zsh
+cd base-go-api
+GOCACHE=/tmp/base-go-api-build go test -tags=integration ./integration -run SQLite
+```
+
+仓库根目录的 `task db:check` 会执行后端检查以及 PostgreSQL、SQLite 两套集成契约；数据库相关变更必须同时通过两套数据库验证。

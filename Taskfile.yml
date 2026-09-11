@@ -19,6 +19,14 @@ tasks:
     cmds:
       - go run ./cmd/migrate up --kind all
 
+  db:migrate:sqlite:
+    desc: Apply SQLite schema and seed migrations using the SQLite profile
+    dir: base-go-api
+    env:
+      APP_CONFIG_PROFILE: sqlite
+    cmds:
+      - go run ./cmd/migrate up --kind all
+
   db:migrate:schema:
     desc: Apply schema migrations only
     dir: base-go-api
@@ -31,9 +39,23 @@ tasks:
     cmds:
       - go run ./cmd/migrate up --kind seed
 
+  db:backup:
+    desc: Create an online SQLite backup; pass CLI flags through CLI_ARGS
+    dir: base-go-api
+    cmds:
+      - go run ./cmd/backup {{.CLI_ARGS}}
+
   api:
     desc: Start the Go API
     dir: base-go-api
+    cmds:
+      - go run ./cmd/api
+
+  api:sqlite:
+    desc: Start the Go API with the SQLite profile
+    dir: base-go-api
+    env:
+      APP_CONFIG_PROFILE: sqlite
     cmds:
       - go run ./cmd/api
 
@@ -50,6 +72,15 @@ tasks:
     cmds:
       - task --parallel api web
 
+  dev:sqlite:
+    desc: Migrate SQLite and start the SQLite API and web together
+    env:
+      APP_CONFIG_PROFILE: sqlite
+    deps:
+      - db:migrate:sqlite
+    cmds:
+      - task --parallel api:sqlite web
+
   backend:test:
     desc: Run backend unit tests
     dir: base-go-api
@@ -60,7 +91,26 @@ tasks:
     desc: Run backend PostgreSQL integration tests
     dir: base-go-api
     cmds:
-      - go test -tags=integration ./integration
+      - go test -tags=integration ./integration -run 'Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
+
+  db:integration:postgres:
+    desc: Run the PostgreSQL database integration contract
+    dir: base-go-api
+    cmds:
+      - go test -tags=integration ./integration -run 'Postgres|Auth|RBAC|SysConfig|Department|Dictionary|Login|File|Notification|UserPage' -count=1
+
+  db:integration:sqlite:
+    desc: Run the file-backed SQLite database integration contract
+    dir: base-go-api
+    cmds:
+      - go test -tags=integration ./integration -run 'SQLite' -count=1
+
+  db:check:
+    desc: Run backend checks and both supported database integration contracts
+    deps:
+      - backend:check
+      - db:integration:postgres
+      - db:integration:sqlite
 
   backend:check:
     desc: Run backend tests and static checks
@@ -94,7 +144,7 @@ tasks:
       - frontend:build
     dir: base-go-api
     cmds:
-      - go build ./cmd/api ./cmd/migrate
+      - go build ./cmd/api ./cmd/migrate ./cmd/backup
 
   test:
     desc: Run the default test suite

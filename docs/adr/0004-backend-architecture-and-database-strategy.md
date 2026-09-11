@@ -4,6 +4,8 @@
 
 Accepted
 
+数据库兼容与部署策略中有关 SQLite 支持级别的内容，已由 [ADR-0010](0010-sqlite-production-support.md) 修订。
+
 ## Context
 
 本仓库已有独立的 React 管理后台和 `base-api/` Java 后端。后端迁移目标是创建 Go 服务逐步替代 Java API，同时保持前端已依赖接口的兼容性（详见 ADR-0002）。当前仓库尚未创建 Go 服务、`go.mod` 或 Go 依赖；本 ADR 是 Go 后端的已决策目标架构，不把它们描述为现状。
