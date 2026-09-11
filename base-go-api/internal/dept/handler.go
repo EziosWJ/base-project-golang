@@ -327,7 +327,9 @@ func err(c *gin.Context, e error) {
 		platform.OK(c, nil)
 		return
 	}
-	if errors.Is(e, ErrNotFound) {
+	if platform.IsTemporaryUnavailable(e) {
+		platform.TemporaryUnavailable(c)
+	} else if errors.Is(e, ErrNotFound) {
 		platform.WriteError(c, 200, 404, e.Error(), nil)
 	} else if errors.Is(e, ErrInvalid) || errors.Is(e, ErrConflict) || errors.Is(e, ErrBuiltin) || errors.Is(e, ErrDeleteBuiltin) || errors.Is(e, ErrHasChildren) || errors.Is(e, ErrHasUsers) {
 		platform.WriteError(c, 200, 400, e.Error(), nil)

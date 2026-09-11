@@ -3,6 +3,7 @@ package filemgmt
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"io"
 	"time"
@@ -77,6 +78,17 @@ type UpdateInput struct {
 type StoredFile struct {
 	Name, Path, Extension, MD5 string
 	Size                       int64
+}
+
+func validMD5(value string) bool {
+	if value == "" {
+		return true
+	}
+	if len(value) != 32 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 // UploadInput is a bounded, seekable file stream prepared by the HTTP layer.

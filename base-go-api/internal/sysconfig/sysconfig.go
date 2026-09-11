@@ -357,6 +357,10 @@ func (h *Handler) page(c *gin.Context) {
 	}
 	p, e := h.svc.Page(c.Request.Context(), q)
 	if e != nil {
+		if platform.IsTemporaryUnavailable(e) {
+			platform.TemporaryUnavailable(c)
+			return
+		}
 		platform.WriteError(c, 500, 500, "系统错误", nil)
 		return
 	}
@@ -515,7 +519,9 @@ func configError(c *gin.Context, e error, v any) {
 		platform.OK(c, v)
 		return
 	}
-	if errors.Is(e, ErrNotFound) {
+	if platform.IsTemporaryUnavailable(e) {
+		platform.TemporaryUnavailable(c)
+	} else if errors.Is(e, ErrNotFound) {
 		platform.WriteError(c, 200, 404, e.Error(), nil)
 	} else if errors.Is(e, ErrBuiltin) || errors.Is(e, ErrKey) || errors.Is(e, ErrInvalid) {
 		platform.WriteError(c, 200, 400, e.Error(), nil)

@@ -2,8 +2,10 @@
 package http
 
 import (
+	"errors"
 	stdhttp "net/http"
 
+	platformerrors "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,6 +53,16 @@ func WriteError(c *gin.Context, status, code int, message string, data any) {
 func AbortError(c *gin.Context, status, code int, message string, data any) {
 	c.Abort()
 	WriteError(c, status, code, message, data)
+}
+
+// IsTemporaryUnavailable lets handlers map an infrastructure availability
+// failure without importing a concrete database driver package.
+func IsTemporaryUnavailable(err error) bool {
+	return errors.Is(err, platformerrors.ErrTemporarilyUnavailable)
+}
+
+func TemporaryUnavailable(c *gin.Context) {
+	WriteError(c, stdhttp.StatusServiceUnavailable, CodeServiceUnavailable, "service temporarily unavailable", nil)
 }
 
 // NotFoundHandler retains the API envelope for unmatched API routes.

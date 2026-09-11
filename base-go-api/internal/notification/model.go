@@ -90,7 +90,15 @@ func (s *Service) Page(ctx context.Context, userID int64, q PageQuery) (Page, er
 	return page, err
 }
 func (s *Service) Find(ctx context.Context, userID, id int64) (*Notification, error) {
-	return s.store.Find(ctx, userID, id)
+	notification, err := s.store.Find(ctx, userID, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.store.MarkRead(ctx, userID, id); err != nil {
+		return nil, err
+	}
+	notification.IsRead = 1
+	return notification, nil
 }
 func (s *Service) UnreadCount(ctx context.Context, userID int64) (int64, error) {
 	return s.store.UnreadCount(ctx, userID)

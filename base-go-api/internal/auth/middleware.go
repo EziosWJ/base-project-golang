@@ -21,6 +21,11 @@ func BearerMiddleware(authenticator Authenticator) gin.HandlerFunc {
 
 		principal, err := authenticator.Authenticate(c.Request.Context(), token)
 		if err != nil {
+			if platformhttp.IsTemporaryUnavailable(err) {
+				c.Abort()
+				platformhttp.TemporaryUnavailable(c)
+				return
+			}
 			writeUnauthorized(c)
 			return
 		}

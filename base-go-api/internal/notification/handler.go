@@ -203,6 +203,8 @@ func writeMutation(c *gin.Context, e error) {
 }
 func writeError(c *gin.Context, e error) {
 	switch {
+	case platformhttp.IsTemporaryUnavailable(e):
+		platformhttp.TemporaryUnavailable(c)
 	case errors.Is(e, ErrForbidden):
 		platformhttp.WriteError(c, http.StatusForbidden, platformhttp.CodeForbidden, e.Error(), nil)
 	case errors.Is(e, ErrInvalid):

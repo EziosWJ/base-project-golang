@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	platformerrors "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/errors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -295,6 +296,16 @@ func TestProtectedRouteMapsAuthenticationAndUnexpectedErrors(t *testing.T) {
 	if response.Code != http.StatusInternalServerError {
 		t.Fatalf("unexpected error status = %d", response.Code)
 	}
+
+	authenticator.err = platformerrors.ErrTemporarilyUnavailable
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("temporary authentication error status = %d", response.Code)
+	}
+	assertJSON(t, response.Body.Bytes(), map[string]any{
+		"code": float64(http.StatusServiceUnavailable), "message": "service temporarily unavailable", "data": nil,
+	})
 }
 
 func assertJSON(t *testing.T, bytes []byte, want map[string]any) {

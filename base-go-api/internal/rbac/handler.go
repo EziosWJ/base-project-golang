@@ -559,6 +559,8 @@ func writeFields(c *gin.Context, fields map[string]string) {
 }
 func writeError(c *gin.Context, e error) {
 	switch {
+	case platformhttp.IsTemporaryUnavailable(e):
+		platformhttp.TemporaryUnavailable(c)
 	case errors.Is(e, ErrNotFound):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeNotFound, ErrNotFound.Error(), nil)
 	case errors.Is(e, ErrInvalidInput), errors.Is(e, ErrConflict), errors.Is(e, ErrBuiltinProtected):

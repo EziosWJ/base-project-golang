@@ -65,6 +65,10 @@ func (s *Service) uploadReader(ctx context.Context, m AuditMetadata, input Uploa
 	if err != nil {
 		return File{}, err
 	}
+	if !validMD5(stored.MD5) {
+		s.compensate(ctx, stored.Path)
+		return File{}, ErrInvalid
+	}
 	f := File{OriginalName: input.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: mimeType, FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
 	f, err = s.store.Create(ctx, f, AuditEvent{Action: "file.upload", Resource: "file", ResourceID: 0, Summary: "上传文件", Metadata: m})
 	if err != nil {

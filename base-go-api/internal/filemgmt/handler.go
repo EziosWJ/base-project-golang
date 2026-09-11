@@ -480,6 +480,8 @@ func writeFields(c *gin.Context, fields map[string]string) {
 
 func writeError(c *gin.Context, err error) {
 	switch {
+	case platformhttp.IsTemporaryUnavailable(err):
+		platformhttp.TemporaryUnavailable(c)
 	case platformhttp.IsRequestBodyTooLarge(err):
 		platformhttp.RecordMultipartRejection(c, nil, "body_too_large")
 		platformhttp.WriteError(c, http.StatusRequestEntityTooLarge, platformhttp.CodeRequestEntityTooLarge, "请求体超过大小限制", nil)

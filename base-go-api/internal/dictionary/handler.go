@@ -523,6 +523,8 @@ func badRequest(c *gin.Context, fields map[string]string) {
 
 func writeError(c *gin.Context, err error) {
 	switch {
+	case platformhttp.IsTemporaryUnavailable(err):
+		platformhttp.TemporaryUnavailable(c)
 	case errors.Is(err, ErrNotFound):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeNotFound, ErrNotFound.Error(), nil)
 	case errors.Is(err, ErrBuiltinProtected):

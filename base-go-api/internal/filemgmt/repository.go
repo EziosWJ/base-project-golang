@@ -51,6 +51,9 @@ func (r *Repository) Find(ctx context.Context, id int64) (*File, error) {
 }
 
 func (r *Repository) Create(ctx context.Context, f File, e AuditEvent) (File, error) {
+	if !validMD5(f.FileMD5) {
+		return f, ErrInvalid
+	}
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&f).Error; err != nil {
 			return err

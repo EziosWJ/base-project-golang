@@ -197,6 +197,8 @@ func handleLoginError(c *gin.Context, err error) {
 		return
 	}
 	switch {
+	case platformhttp.IsTemporaryUnavailable(err):
+		platformhttp.TemporaryUnavailable(c)
 	case errors.Is(err, ErrInvalidCredentials):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeBadRequest, ErrInvalidCredentials.Error(), nil)
 	case errors.Is(err, ErrUserDisabled):
@@ -207,6 +209,10 @@ func handleLoginError(c *gin.Context, err error) {
 }
 
 func handleProtectedError(c *gin.Context, err error) {
+	if platformhttp.IsTemporaryUnavailable(err) {
+		platformhttp.TemporaryUnavailable(c)
+		return
+	}
 	if errors.Is(err, ErrUnauthenticated) {
 		writeUnauthenticated(c)
 		return

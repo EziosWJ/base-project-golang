@@ -203,6 +203,9 @@ func conflictError(err error, conflict error) error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return conflict
+	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return conflict
