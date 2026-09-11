@@ -120,11 +120,12 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:         cfg.HTTP.Address,
-		Handler:      application.Router,
-		ReadTimeout:  cfg.HTTP.ReadTimeout,
-		WriteTimeout: cfg.HTTP.WriteTimeout,
-		IdleTimeout:  cfg.HTTP.IdleTimeout,
+		Addr:              cfg.HTTP.Address,
+		Handler:           application.Router,
+		ReadHeaderTimeout: cfg.HTTP.ReadHeaderTimeout,
+		ReadTimeout:       cfg.HTTP.ReadTimeout,
+		WriteTimeout:      cfg.HTTP.WriteTimeout,
+		IdleTimeout:       cfg.HTTP.IdleTimeout,
 	}
 
 	go func() {

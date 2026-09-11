@@ -82,7 +82,17 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	auth.RegisterRoutes(router, authHandler)
 
 	system := router.Group("/api/system")
-	system.Use(auth.BearerMiddleware(deps.Auth))
+	system.Use(
+		auth.BearerMiddleware(deps.Auth),
+		platformhttp.MultipartProtection(platformhttp.MultipartProtectionConfig{
+			Policies: map[string]platformhttp.MultipartPolicy{
+				"/api/system/file/upload":       {MaxBodyBytes: filemgmt.MaxSingleBodySize},
+				"/api/system/file/upload-batch": {MaxBodyBytes: filemgmt.MaxBatchBodySize},
+			},
+			MaxConcurrent: 8,
+			Logger:        logger,
+		}),
+	)
 
 	rbacHandler, err := rbac.NewHandler(deps.RBAC)
 	if err != nil {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -19,8 +19,8 @@ import (
 
 // HandlerService is the file-management use-case boundary consumed by HTTP.
 type HandlerService interface {
-	Upload(context.Context, AuditMetadata, *multipart.FileHeader, string, string) (File, error)
-	UploadBatch(context.Context, AuditMetadata, []*multipart.FileHeader, string, string) (BatchUploadResult, error)
+	UploadContent(context.Context, AuditMetadata, UploadInput, string, string) (File, error)
+	UploadBatchContent(context.Context, AuditMetadata, []UploadInput, string, string) (BatchUploadResult, error)
 	Page(context.Context, FilePageQuery) (Page[File], error)
 	Detail(context.Context, int64) (*File, error)
 	Update(context.Context, AuditMetadata, int64, UpdateInput) error
@@ -79,7 +79,7 @@ type statusRequest struct {
 
 // upload godoc
 // @Summary 上传文件
-// @Description 单文件最大 50 MB；声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。
+// @Description 原始请求体最多 55 MiB，单文件内容最多 50 MiB；businessModule 最多 50 个 Unicode 字符且最多 200 字节，remark 最多 500 个 Unicode 字符且最多 2000 字节，文件名最多 255 字节。声明为图片或使用 PNG、JPEG、GIF 扩展名的文件会校验真实内容，图片最多 25000000 像素。
 // @Tags 文件管理
 // @Security BearerAuth
 // @Accept multipart/form-data
@@ -90,25 +90,40 @@ type statusRequest struct {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
+// @Failure 413 {object} ApiEnvelope
+// @Failure 503 {object} ApiEnvelope
 // @Router /api/system/file/upload [post]
 func (h *Handler) upload(c *gin.Context) {
-	file, err := c.FormFile("file")
+	parsed, err := parseMultipartUpload(c.Request, "file", 1, 0)
 	if err != nil {
+		writeUploadParseError(c, "file", err)
+		return
+	}
+	defer parsed.cleanupFiles()
+	if len(parsed.files) == 0 {
 		writeFields(c, map[string]string{"file": "文件不能为空"})
 		return
 	}
-	businessModule, remark := c.PostForm("businessModule"), c.PostForm("remark")
+	if parsed.files[0].parseErr != nil {
+		if errors.Is(parsed.files[0].parseErr, ErrFileEmpty) {
+			writeFields(c, map[string]string{"file": "文件不能为空"})
+			return
+		}
+		writeError(c, parsed.files[0].parseErr)
+		return
+	}
+	businessModule, remark := parsed.businessModule, parsed.remark
 	if fields := validateMetadata(businessModule, &remark); len(fields) != 0 {
 		writeFields(c, fields)
 		return
 	}
-	result, err := h.service.Upload(c.Request.Context(), auditMetadata(c), file, businessModule, remark)
+	result, err := h.service.UploadContent(c.Request.Context(), auditMetadata(c), parsed.files[0].input, businessModule, remark)
 	writeResult(c, result, err)
 }
 
 // uploadBatch godoc
 // @Summary 批量上传文件
-// @Description 每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。
+// @Description 原始请求体最多 210 MiB；最多 20 个文件，所有文件内容总量最多 200 MiB。每个文件独立返回成功或失败结果；失败项带原始文件索引，便于同名文件精确重试。
 // @Tags 文件管理
 // @Security BearerAuth
 // @Accept multipart/form-data
@@ -119,21 +134,55 @@ func (h *Handler) upload(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
+// @Failure 413 {object} ApiEnvelope
+// @Failure 503 {object} ApiEnvelope
 // @Router /api/system/file/upload-batch [post]
 func (h *Handler) uploadBatch(c *gin.Context) {
-	form, err := c.MultipartForm()
-	if err != nil || len(form.File["files"]) == 0 {
+	parsed, err := parseMultipartUpload(c.Request, "files", MaxBatchFiles, MaxBatchContentSize)
+	if err != nil {
+		writeUploadParseError(c, "files", err)
+		return
+	}
+	defer parsed.cleanupFiles()
+	if len(parsed.files) == 0 {
 		writeFields(c, map[string]string{"files": "文件不能为空"})
 		return
 	}
-	businessModule, remark := c.PostForm("businessModule"), c.PostForm("remark")
+	businessModule, remark := parsed.businessModule, parsed.remark
 	if fields := validateMetadata(businessModule, &remark); len(fields) != 0 {
 		writeFields(c, fields)
 		return
 	}
-	result, err := h.service.UploadBatch(
-		c.Request.Context(), auditMetadata(c), form.File["files"], businessModule, remark,
-	)
+	inputs := make([]UploadInput, 0, len(parsed.files))
+	originalIndexes := make([]int, 0, len(parsed.files))
+	result := BatchUploadResult{Succeeded: []File{}, Failed: []BatchUploadFailure{}}
+	for index, file := range parsed.files {
+		if file.parseErr != nil {
+			result.Failed = append(result.Failed, BatchUploadFailure{
+				FileName: batchFailureName(file.input.Filename), Message: file.parseErr.Error(), Index: index,
+			})
+			continue
+		}
+		inputs = append(inputs, file.input)
+		originalIndexes = append(originalIndexes, index)
+	}
+	if len(inputs) > 0 {
+		serviceResult, serviceErr := h.service.UploadBatchContent(
+			c.Request.Context(), auditMetadata(c), inputs, businessModule, remark,
+		)
+		if serviceErr != nil {
+			writeError(c, serviceErr)
+			return
+		}
+		result.Succeeded = append(result.Succeeded, serviceResult.Succeeded...)
+		for _, failure := range serviceResult.Failed {
+			if failure.Index >= 0 && failure.Index < len(originalIndexes) {
+				failure.Index = originalIndexes[failure.Index]
+			}
+			result.Failed = append(result.Failed, failure)
+		}
+	}
+	sort.SliceStable(result.Failed, func(i, j int) bool { return result.Failed[i].Index < result.Failed[j].Index })
 	writeResult(c, result, err)
 }
 
@@ -372,6 +421,21 @@ func validateMetadata(businessModule string, remark *string) map[string]string {
 	return fields
 }
 
+func writeUploadParseError(c *gin.Context, field string, err error) {
+	if errors.Is(err, ErrFileEmpty) {
+		writeFields(c, map[string]string{field: "文件不能为空"})
+		return
+	}
+	writeError(c, err)
+}
+
+func batchFailureName(filename string) string {
+	if filename == "" {
+		return "unknown"
+	}
+	return filename
+}
+
 func validIDs(ids []int64) bool {
 	if len(ids) == 0 {
 		return false
@@ -416,6 +480,21 @@ func writeFields(c *gin.Context, fields map[string]string) {
 
 func writeError(c *gin.Context, err error) {
 	switch {
+	case platformhttp.IsRequestBodyTooLarge(err):
+		platformhttp.RecordMultipartRejection(c, nil, "body_too_large")
+		platformhttp.WriteError(c, http.StatusRequestEntityTooLarge, platformhttp.CodeRequestEntityTooLarge, "请求体超过大小限制", nil)
+	case errors.Is(err, ErrBatchTooMany):
+		platformhttp.RecordMultipartRejection(c, nil, "file_count_limit")
+		platformhttp.WriteError(c, http.StatusRequestEntityTooLarge, platformhttp.CodeRequestEntityTooLarge, ErrBatchTooMany.Error(), nil)
+	case errors.Is(err, ErrBatchTooLarge):
+		platformhttp.RecordMultipartRejection(c, nil, "batch_size_limit")
+		platformhttp.WriteError(c, http.StatusRequestEntityTooLarge, platformhttp.CodeRequestEntityTooLarge, ErrBatchTooLarge.Error(), nil)
+	case errors.Is(err, ErrMultipartFieldLarge), errors.Is(err, ErrFilenameTooLong):
+		platformhttp.RecordMultipartRejection(c, nil, "part_size_limit")
+		platformhttp.WriteError(c, http.StatusRequestEntityTooLarge, platformhttp.CodeRequestEntityTooLarge, err.Error(), nil)
+	case errors.Is(err, ErrMultipartMalformed):
+		platformhttp.RecordMultipartRejection(c, nil, "malformed")
+		platformhttp.WriteError(c, http.StatusBadRequest, platformhttp.CodeBadRequest, ErrMultipartMalformed.Error(), nil)
 	case errors.Is(err, ErrNotFound):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeNotFound, ErrNotFound.Error(), nil)
 	case errors.Is(err, ErrInvalid), errors.Is(err, ErrFileEmpty), errors.Is(err, ErrFileTooLarge), errors.Is(err, ErrInvalidImage):

@@ -39,12 +39,13 @@ type ServiceConfig struct {
 }
 
 type HTTPConfig struct {
-	Address         string        `koanf:"address"`
-	TrustedProxies  []string      `koanf:"trusted_proxies"`
-	ReadTimeout     time.Duration `koanf:"read_timeout"`
-	WriteTimeout    time.Duration `koanf:"write_timeout"`
-	IdleTimeout     time.Duration `koanf:"idle_timeout"`
-	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
+	Address           string        `koanf:"address"`
+	TrustedProxies    []string      `koanf:"trusted_proxies"`
+	ReadHeaderTimeout time.Duration `koanf:"read_header_timeout"`
+	ReadTimeout       time.Duration `koanf:"read_timeout"`
+	WriteTimeout      time.Duration `koanf:"write_timeout"`
+	IdleTimeout       time.Duration `koanf:"idle_timeout"`
+	ShutdownTimeout   time.Duration `koanf:"shutdown_timeout"`
 }
 
 type SwaggerConfig struct {
@@ -116,6 +117,9 @@ func (c Config) Validate() error {
 
 	if err := validateAddress(c.HTTP.Address); err != nil {
 		errs = append(errs, err)
+	}
+	if c.HTTP.ReadHeaderTimeout <= 0 {
+		errs = append(errs, errors.New("http.read_header_timeout must be greater than zero"))
 	}
 	if c.HTTP.ReadTimeout <= 0 {
 		errs = append(errs, errors.New("http.read_timeout must be greater than zero"))

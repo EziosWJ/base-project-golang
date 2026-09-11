@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -77,7 +80,16 @@ func newHandlerRouter(t *testing.T, service HandlerService) *gin.Engine {
 		t.Fatal(err)
 	}
 	router := gin.New()
-	router.Use(platformhttp.RequestMetadata())
+	router.Use(
+		platformhttp.RequestMetadata(),
+		platformhttp.MultipartProtection(platformhttp.MultipartProtectionConfig{
+			Policies: map[string]platformhttp.MultipartPolicy{
+				"/api/system/file/upload":       {MaxBodyBytes: MaxSingleBodySize},
+				"/api/system/file/upload-batch": {MaxBodyBytes: MaxBatchBodySize},
+			},
+			MaxConcurrent: 8,
+		}),
+	)
 	RegisterRoutes(router.Group("/api/system"), handler)
 	return router
 }
@@ -178,6 +190,47 @@ func TestUploadContractRejectsOversizeFile(t *testing.T) {
 	}
 }
 
+func TestUploadContractRejectsOversizedChunkedBodyBeforeService(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	router, _ := newServiceRouter(t, store, nil)
+	contentType, body := multipartBody(t, uploadOption{
+		field: "file", filename: "huge.bin", content: strings.Repeat("x", MaxFileSize+6*1024*1024),
+	})
+	request := httptest.NewRequest(http.MethodPost, "/api/system/file/upload", unknownLengthReader{reader: bytes.NewReader(body)})
+	request.ContentLength = -1
+	request.Header.Set("Content-Type", contentType)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(request))
+
+	status, payload := decodeEnvelope(t, response)
+	if status != http.StatusRequestEntityTooLarge || payload["code"].(float64) != platformhttp.CodeRequestEntityTooLarge {
+		t.Fatalf("status=%d payload=%v", status, payload)
+	}
+	if len(store.records) != 0 || len(store.events) != 0 {
+		t.Fatalf("oversized request reached business writes: records=%v events=%v", store.records, store.events)
+	}
+}
+
+func TestUploadContractRejectsOversizedFilename(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	router, _ := newServiceRouter(t, store, nil)
+	contentType, body := multipartBody(t, uploadOption{
+		field: "file", filename: strings.Repeat("a", MaxFilenameBytes+1), content: "x",
+	})
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload", contentType, body)))
+
+	status, payload := decodeEnvelope(t, response)
+	if status != http.StatusRequestEntityTooLarge || payload["code"].(float64) != platformhttp.CodeRequestEntityTooLarge {
+		t.Fatalf("status=%d payload=%v", status, payload)
+	}
+	if len(store.records) != 0 || len(store.events) != 0 {
+		t.Fatalf("oversized filename reached business writes: records=%v events=%v", store.records, store.events)
+	}
+}
+
 func TestUploadContractValidatesMetadata(t *testing.T) {
 	t.Parallel()
 	router, _ := newServiceRouter(t, new(memoryStore), nil)
@@ -227,6 +280,100 @@ func TestUploadBatchContractRejectsEmptyFiles(t *testing.T) {
 	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload-batch", "multipart/form-data; boundary=only", nil)))
 	wantValidationError(t, response, "files")
 }
+
+func TestUploadBatchContractRejectsTooManyFilesWithoutWrites(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	router, _ := newServiceRouter(t, store, nil)
+	options := make([]uploadOption, MaxBatchFiles+1)
+	for i := range options {
+		options[i] = uploadOption{field: "files", filename: "file-" + strconv.Itoa(i) + ".txt", content: "x"}
+	}
+	contentType, body := multipartBody(t, options...)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload-batch", contentType, body)))
+
+	status, payload := decodeEnvelope(t, response)
+	if status != http.StatusRequestEntityTooLarge || payload["code"].(float64) != platformhttp.CodeRequestEntityTooLarge {
+		t.Fatalf("status=%d payload=%v", status, payload)
+	}
+	if len(store.records) != 0 || len(store.events) != 0 {
+		t.Fatalf("oversized batch reached business writes: records=%v events=%v", store.records, store.events)
+	}
+}
+
+func TestUploadBatchContractPreservesPartialOversizeResult(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	router, _ := newServiceRouter(t, store, nil)
+	contentType, body := multipartBody(t,
+		uploadOption{field: "files", filename: "huge.bin", content: strings.Repeat("x", MaxFileSize+1)},
+		uploadOption{field: "files", filename: "small.txt", content: "ok"},
+	)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(multipartRequest(t, http.MethodPost, "/api/system/file/upload-batch", contentType, body)))
+	payload := wantEnvelopeOK(t, response)
+	data := payload["data"].(map[string]any)
+	succeeded := data["succeeded"].([]any)
+	failed := data["failed"].([]any)
+	if len(succeeded) != 1 || len(failed) != 1 {
+		t.Fatalf("data=%v", data)
+	}
+	failure := failed[0].(map[string]any)
+	if failure["index"].(float64) != 0 || failure["fileName"] != "huge.bin" {
+		t.Fatalf("failure=%v", failure)
+	}
+	if len(store.records) != 1 || store.records[0].OriginalName != "small.txt" {
+		t.Fatalf("records=%v", store.records)
+	}
+}
+
+func TestUploadBatchContractRejectsAggregateTooLargeWithoutWrites(t *testing.T) {
+	t.Parallel()
+	store := new(memoryStore)
+	router, _ := newServiceRouter(t, store, nil)
+	request := streamingBatchRequest(
+		int64(MaxBatchContentSize/2)+1,
+		int64(MaxBatchContentSize/2)+1,
+	)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(request))
+
+	status, payload := decodeEnvelope(t, response)
+	if status != http.StatusRequestEntityTooLarge || payload["code"].(float64) != platformhttp.CodeRequestEntityTooLarge {
+		t.Fatalf("status=%d payload=%v", status, payload)
+	}
+	if len(store.records) != 0 || len(store.events) != 0 {
+		t.Fatalf("oversized batch reached business writes: records=%v events=%v", store.records, store.events)
+	}
+}
+
+func streamingBatchRequest(sizes ...int64) *http.Request {
+	boundary := "streaming-boundary"
+	readers := make([]io.Reader, 0, len(sizes)*3+1)
+	for index, size := range sizes {
+		readers = append(readers, strings.NewReader(fmt.Sprintf(
+			"--%s\r\nContent-Disposition: form-data; name=\"files\"; filename=\"file-%d.bin\"\r\nContent-Type: application/octet-stream\r\n\r\n",
+			boundary, index,
+		)))
+		readers = append(readers, &zeroReader{remaining: size})
+		if index == len(sizes)-1 {
+			readers = append(readers, strings.NewReader("\r\n--"+boundary+"--\r\n"))
+		} else {
+			readers = append(readers, strings.NewReader("\r\n"))
+		}
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/system/file/upload-batch", io.MultiReader(readers...))
+	request.ContentLength = -1
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	return request
+}
+
+type unknownLengthReader struct{ reader *bytes.Reader }
+
+func (r unknownLengthReader) Read(p []byte) (int, error) { return r.reader.Read(p) }
+
+var _ io.Reader = unknownLengthReader{}
 
 func TestPageContractValidatesPagination(t *testing.T) {
 	t.Parallel()

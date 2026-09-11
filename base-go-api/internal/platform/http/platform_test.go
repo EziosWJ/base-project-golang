@@ -121,6 +121,92 @@ func TestCORSDefaultAndConfiguredOrigins(t *testing.T) {
 	}
 }
 
+func TestMultipartProtectionRejectsOversizedKnownRouteBeforeHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handlerCalled := false
+	router.Use(MultipartProtection(MultipartProtectionConfig{
+		Policies: map[string]MultipartPolicy{"/upload": {MaxBodyBytes: 4}},
+	}))
+	router.POST("/upload", func(c *gin.Context) {
+		handlerCalled = true
+		OK(c, nil)
+	})
+
+	request := httptest.NewRequest(stdhttp.MethodPost, "/upload", strings.NewReader("12345"))
+	request.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusRequestEntityTooLarge || handlerCalled {
+		t.Fatalf("status=%d handlerCalled=%v body=%s", response.Code, handlerCalled, response.Body.String())
+	}
+	assertEnvelope(t, response, CodeRequestEntityTooLarge, "请求体超过大小限制")
+}
+
+func TestMultipartProtectionRejectsUnregisteredRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handlerCalled := false
+	router.Use(MultipartProtection(MultipartProtectionConfig{
+		Policies: map[string]MultipartPolicy{"/registered": {MaxBodyBytes: 10}},
+	}))
+	router.POST("/unregistered", func(c *gin.Context) {
+		handlerCalled = true
+		OK(c, nil)
+	})
+
+	request := httptest.NewRequest(stdhttp.MethodPost, "/unregistered", strings.NewReader("ok"))
+	request.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != stdhttp.StatusUnsupportedMediaType || handlerCalled {
+		t.Fatalf("status=%d handlerCalled=%v body=%s", response.Code, handlerCalled, response.Body.String())
+	}
+	assertEnvelope(t, response, CodeUnsupportedMediaType, "未登记的 multipart 接口")
+}
+
+func TestMultipartProtectionRejectsWhenConcurrentLimitIsFull(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	router := gin.New()
+	router.Use(MultipartProtection(MultipartProtectionConfig{
+		Policies:      map[string]MultipartPolicy{"/upload": {MaxBodyBytes: 10}},
+		MaxConcurrent: 1,
+	}))
+	router.POST("/upload", func(c *gin.Context) {
+		close(started)
+		<-release
+		OK(c, nil)
+	})
+
+	firstDone := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		request := httptest.NewRequest(stdhttp.MethodPost, "/upload", strings.NewReader("ok"))
+		request.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		firstDone <- response
+	}()
+	<-started
+
+	second := httptest.NewRequest(stdhttp.MethodPost, "/upload", strings.NewReader("ok"))
+	second.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+	secondResponse := httptest.NewRecorder()
+	router.ServeHTTP(secondResponse, second)
+	if secondResponse.Code != stdhttp.StatusServiceUnavailable {
+		t.Fatalf("second status=%d body=%s", secondResponse.Code, secondResponse.Body.String())
+	}
+	assertEnvelope(t, secondResponse, CodeServiceUnavailable, "上传服务繁忙，请稍后重试")
+
+	close(release)
+	if first := <-firstDone; first.Code != stdhttp.StatusOK {
+		t.Fatalf("first status=%d body=%s", first.Code, first.Body.String())
+	}
+}
+
 func TestSystemRoutesReadinessAndMetrics(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
