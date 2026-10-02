@@ -4,18 +4,53 @@ on:
   push:
     paths:
       - "base-go-api/**"
+      - "react-admin/**"
       - "Taskfile.yml"
+      - "scripts/prepare-webui.mjs"
       - ".github/workflows/database-compatibility.yml"
   pull_request:
     paths:
       - "base-go-api/**"
+      - "react-admin/**"
       - "Taskfile.yml"
+      - "scripts/prepare-webui.mjs"
       - ".github/workflows/database-compatibility.yml"
 
 permissions:
   contents: read
 
 jobs:
+  embedded-release:
+    name: Embedded frontend release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: base-go-api/go.mod
+          cache-dependency-path: base-go-api/go.sum
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: react-admin/package-lock.json
+      - name: Build frontend
+        working-directory: react-admin
+        run: |
+          npm ci
+          npm run build
+      - name: Prepare embedded frontend
+        run: node scripts/prepare-webui.mjs
+      - name: Verify embedded release
+        working-directory: base-go-api
+        run: |
+          go test -tags=embedweb ./...
+          go vet -tags=embedweb ./...
+          go build -tags=embedweb -trimpath -o ../bin/base-go-api ./cmd/api
+
   backend-check:
     name: Backend unit tests and vet
     runs-on: ubuntu-latest

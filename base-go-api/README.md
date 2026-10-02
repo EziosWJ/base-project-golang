@@ -8,6 +8,22 @@
 - Docker 与 Docker Compose（运行本地 PostgreSQL、Docker Compose 开发模式及集成测试）
 - 使用 VS Code 调试时，安装官方 Go 扩展
 
+## 内嵌前端的发布构建
+
+在仓库根目录执行 `npm --prefix react-admin ci` 和 `task build`，生成 `bin/base-go-api`、`bin/base-go-migrate`、`bin/base-go-backup`。API 使用 `embedweb` Go build tag，将本次 React 生产构建嵌入二进制。构建任务先生成 `react-admin/dist`，复制到 `base-go-api/internal/webui/dist`，随后编译 API；构建产物不提交 Git。手动执行 `go build -tags=embedweb` 前也必须完成资源准备。
+
+发布 API 同时提供 `/` 下的管理页面与既有接口。直接访问和刷新页面回退到 `index.html`；缺失静态资源、未知 `/api/**`、运维路径和关闭的 Swagger 路径仍返回 JSON 404。前端使用同源 API，页面和资源响应设置 `Cache-Control: no-cache`，让浏览器使用前重新验证。
+
+运行时无需前端文件或 Node.js；配置、数据库、上传目录、独立 migration 流程保持既有要求。可在 `base-go-api` 目录执行 `../bin/base-go-api`，或将产物和 `configs/` 部署到同一个工作目录。生产环境设置 `APP_ENV=prod`。`task build:check` 验证发布构建；`task api` 等开发入口仍配合独立 Vite 服务使用。
+
+Docker 构建上下文为仓库根目录：
+
+```bash
+docker build -f base-go-api/Dockerfile --target api -t base-go-api .
+```
+
+API 镜像通过 Node 构建阶段生成前端并嵌入 Go 二进制，最终镜像不包含 Node。`migrate` 和 `backup` target 不执行前端构建。开发 Compose 已同步使用该上下文，并将 API 显式绑定到容器内 `:8080`。
+
 ## 配置说明
 
 应用按以下顺序加载配置，后者覆盖前者：

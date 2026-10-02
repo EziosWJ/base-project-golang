@@ -39,7 +39,7 @@
 
 ### 当前后端 base-go-api（Go，唯一后端）
 
-- 形态: 模块化单体（Modular Monolith），只提供 REST API；不提前拆微服务。
+- 形态: 模块化单体（Modular Monolith），提供 REST API，发布版本可同时提供内嵌管理页面；不提前拆微服务。
 - Web: Gin；数据访问: GORM + Go 标准 `database/sql`；Schema: Goose migration。
 - 长期兼容目标: PostgreSQL、MySQL、SQLite；当前正式支持 PostgreSQL 和 SQLite，PostgreSQL 是默认数据库，MySQL 仍是后续兼容目标。SQLite 仅承诺单 API 实例、本地持久文件和小规模低写并发部署，具体边界见 ADR-0010。
 - 配置: 使用 Koanf v2，覆盖顺序为默认值 → `config.yaml` → `config.{APP_ENV}.yaml` → `APP_` 环境变量；嵌套键使用双下划线（如 `APP_DATABASE__URL`）。数据库配置包含 driver 和 URL；PostgreSQL 继续拆分 URL、用户名和密码，SQLite 使用本地文件路径且禁止凭据；基础配置与环境模板提交，实际环境 YAML 可保存凭据但不得提交 Git，详见 ADR-0005。

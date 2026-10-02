@@ -139,12 +139,27 @@ tasks:
       - frontend:build
 
   build:
-    desc: Build backend and frontend
+    desc: Build release binaries with the production frontend embedded in the API
     deps:
       - frontend:build
     dir: base-go-api
+    vars:
+      GOEXE:
+        sh: go env GOEXE
     cmds:
-      - go build ./cmd/api ./cmd/migrate ./cmd/backup
+      - node ../scripts/prepare-webui.mjs
+      - go build -tags=embedweb -trimpath -o ../bin/base-go-api{{.GOEXE}} ./cmd/api
+      - go build -trimpath -o ../bin/base-go-migrate{{.GOEXE}} ./cmd/migrate
+      - go build -trimpath -o ../bin/base-go-backup{{.GOEXE}} ./cmd/backup
+
+  build:check:
+    desc: Build the release and verify tests and vet with embedded frontend assets
+    deps:
+      - build
+    dir: base-go-api
+    cmds:
+      - go test -tags=embedweb ./...
+      - go vet -tags=embedweb ./...
 
   test:
     desc: Run the default test suite
