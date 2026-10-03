@@ -22,6 +22,21 @@ React 19 · TypeScript · Vite 6 · Tailwind CSS · shadcn/ui · react-router-do
 **后端 `base-go-api/`**
 Go 1.26 · Gin · GORM · PostgreSQL/SQLite · Goose migration · Koanf 配置 · JWT 认证 · Prometheus · Swagger
 
+## 内嵌前端的单二进制发布
+
+在仓库根目录安装前端构建依赖并构建：
+
+```bash
+npm --prefix react-admin ci
+task build
+```
+
+产物为 `bin/base-go-api`、`bin/base-go-migrate` 和 `bin/base-go-backup`（Windows 下使用对应的 `.exe` 后缀）。API 通过 Go `embed` 内嵌 React 生产构建，同时提供管理页面与 REST API；部署时无需 `react-admin/dist`、Node.js 或单独的静态文件服务。
+
+沿用既有配置和显式 migration 流程，在 `base-go-api` 目录执行 `../bin/base-go-migrate up --kind all` 后启动 `../bin/base-go-api`，默认访问 `http://localhost:8099`。直接访问和刷新管理页面均支持，未知 API 和缺失静态文件仍返回 JSON 404。生产环境设置 `APP_ENV=prod`；配置、数据库、可写上传目录仍需提供，migration 工具还需要 `migrations/`，详见 [后端部署说明](base-go-api/README.md)。
+
+`task build:check` 构建发布产物并执行带 `embedweb` 标签的测试和 vet。日常 `task api` 保持 API 开发模式，配合 `task web` 的 Vite 服务使用。Docker Compose 构建的 API 镜像也内嵌前端。
+
 ## 快速开始
 
 ### 使用 Task（推荐）
