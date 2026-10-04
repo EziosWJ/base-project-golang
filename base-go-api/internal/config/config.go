@@ -22,16 +22,23 @@ const (
 // Config contains all process-level configuration. Environment-specific YAML
 // may contain deployment credentials; APP_ environment variables override YAML.
 type Config struct {
-	Environment string         `koanf:"env"`
-	Service     ServiceConfig  `koanf:"service"`
-	HTTP        HTTPConfig     `koanf:"http"`
-	Swagger     SwaggerConfig  `koanf:"swagger"`
-	CORS        CORSConfig     `koanf:"cors"`
-	Database    DatabaseConfig `koanf:"database"`
-	File        FileConfig     `koanf:"file"`
-	JWT         JWTConfig      `koanf:"jwt"`
-	Auth        AuthConfig     `koanf:"auth"`
-	Log         LogConfig      `koanf:"log"`
+	Environment string           `koanf:"env"`
+	Service     ServiceConfig    `koanf:"service"`
+	HTTP        HTTPConfig       `koanf:"http"`
+	Swagger     SwaggerConfig    `koanf:"swagger"`
+	CORS        CORSConfig       `koanf:"cors"`
+	Database    DatabaseConfig   `koanf:"database"`
+	File        FileConfig       `koanf:"file"`
+	JWT         JWTConfig        `koanf:"jwt"`
+	Auth        AuthConfig       `koanf:"auth"`
+	Log         LogConfig        `koanf:"log"`
+	Monitoring  MonitoringConfig `koanf:"monitoring"`
+}
+
+type MonitoringConfig struct {
+	Source     string        `koanf:"source"`
+	SocketPath string        `koanf:"socket_path"`
+	Timeout    time.Duration `koanf:"timeout"`
 }
 
 type ServiceConfig struct {
@@ -107,6 +114,16 @@ type LogConfig struct {
 // created. This keeps configuration errors deterministic and close to startup.
 func (c Config) Validate() error {
 	var errs []error
+
+	if !oneOf(c.Monitoring.Source, "native", "unix") {
+		errs = append(errs, errors.New("monitoring.source must be one of native or unix"))
+	}
+	if c.Monitoring.Source == "unix" && !filepath.IsAbs(c.Monitoring.SocketPath) {
+		errs = append(errs, errors.New("monitoring.socket_path must be absolute when monitoring.source is unix"))
+	}
+	if c.Monitoring.Timeout <= 0 || c.Monitoring.Timeout > 5*time.Second {
+		errs = append(errs, errors.New("monitoring.timeout must be greater than zero and at most 5s"))
+	}
 
 	if !oneOf(c.Environment, EnvironmentDev, EnvironmentTest, EnvironmentProd) {
 		errs = append(errs, fmt.Errorf("env must be one of dev, test, prod"))

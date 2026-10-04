@@ -24,6 +24,7 @@ import { SystemRolesPage } from "@/pages/system/roles";
 import { UsersPage } from "@/pages/system/users";
 import { NotificationsPage } from "@/pages/notifications";
 import { NotificationManagePage } from "@/pages/system/notifications";
+import { ServerMonitoringPage } from "@/pages/monitor/server";
 
 export const router = createBrowserRouter([
   {
@@ -125,6 +126,10 @@ export const router = createBrowserRouter([
       {
         path: "system/notification",
         element: <NotificationManagePage />,
+      },
+      {
+        path: "monitor/server",
+        element: <ServerMonitoringPage />,
       },
       {
         path: "account/profile",

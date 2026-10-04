@@ -253,6 +253,373 @@ definitions:
       message:
         type: string
     type: object
+  monitoring.CPU:
+    properties:
+      load1:
+        type: number
+      load5:
+        type: number
+      load15:
+        type: number
+      logicalCores:
+        type: integer
+      model:
+        type: string
+      perCore:
+        items:
+          type: number
+        type: array
+      physicalCores:
+        type: integer
+      usagePercent:
+        type: number
+    type: object
+  monitoring.Disk:
+    properties:
+      id:
+        type: string
+      message:
+        type: string
+      readBytesPerSecond:
+        type: number
+      readIops:
+        type: number
+      writeBytesPerSecond:
+        type: number
+      writeIops:
+        type: number
+    type: object
+  monitoring.Filesystem:
+    properties:
+      availableBytes:
+        type: integer
+      device:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      mountpoint:
+        type: string
+      totalBytes:
+        type: integer
+      type:
+        type: string
+      usagePercent:
+        type: number
+      usedBytes:
+        type: integer
+    type: object
+  monitoring.GPU:
+    properties:
+      id:
+        type: string
+      memoryTotalBytes:
+        type: integer
+      memoryUsedBytes:
+        type: integer
+      message:
+        type: string
+      name:
+        type: string
+      powerWatts:
+        type: number
+      temperatureCelsius:
+        type: number
+      usagePercent:
+        type: number
+    type: object
+  monitoring.History:
+    properties:
+      device:
+        type: string
+      points:
+        items:
+          $ref: '#/definitions/monitoring.HistoryPoint'
+        type: array
+      resource:
+        type: string
+      windowSeconds:
+        type: integer
+    type: object
+  monitoring.HistoryEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/monitoring.History'
+      message:
+        type: string
+    type: object
+  monitoring.HistoryPoint:
+    properties:
+      collectedAt:
+        type: string
+      values:
+        additionalProperties:
+          type: number
+        type: object
+    type: object
+  monitoring.Host:
+    properties:
+      hostname:
+        type: string
+      kernel:
+        type: string
+      os:
+        type: string
+      uptimeSeconds:
+        type: number
+    type: object
+  monitoring.Memory:
+    properties:
+      availableBytes:
+        type: integer
+      swapTotalBytes:
+        type: integer
+      swapUsagePercent:
+        type: number
+      swapUsedBytes:
+        type: integer
+      totalBytes:
+        type: integer
+      usagePercent:
+        type: number
+      usedBytes:
+        type: integer
+    type: object
+  monitoring.Network:
+    properties:
+      id:
+        type: string
+      loopback:
+        type: boolean
+      message:
+        type: string
+      receiveBytes:
+        type: integer
+      receiveBytesPerSecond:
+        type: number
+      receiveDropped:
+        type: integer
+      receiveErrors:
+        type: integer
+      receiveUsagePercent:
+        type: number
+      speedBitsPerSecond:
+        type: number
+      state:
+        type: string
+      transmitBytes:
+        type: integer
+      transmitBytesPerSecond:
+        type: number
+      transmitDropped:
+        type: integer
+      transmitErrors:
+        type: integer
+      transmitUsagePercent:
+        type: number
+      virtual:
+        type: boolean
+    type: object
+  monitoring.OverviewEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/monitoring.Snapshot'
+      message:
+        type: string
+    type: object
+  monitoring.Process:
+    properties:
+      cpuPercent:
+        type: number
+      memoryBytes:
+        type: integer
+      name:
+        type: string
+      pid:
+        type: integer
+    type: object
+  monitoring.Processes:
+    properties:
+      cpu:
+        items:
+          $ref: '#/definitions/monitoring.Process'
+        type: array
+      memory:
+        items:
+          $ref: '#/definitions/monitoring.Process'
+        type: array
+    type: object
+  monitoring.Region-array_monitoring_Disk:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/monitoring.Disk'
+        type: array
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-array_monitoring_Filesystem:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/monitoring.Filesystem'
+        type: array
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-array_monitoring_GPU:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/monitoring.GPU'
+        type: array
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-array_monitoring_Network:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        items:
+          $ref: '#/definitions/monitoring.Network'
+        type: array
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-monitoring_CPU:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        $ref: '#/definitions/monitoring.CPU'
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-monitoring_Host:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        $ref: '#/definitions/monitoring.Host'
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-monitoring_Memory:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        $ref: '#/definitions/monitoring.Memory'
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Region-monitoring_Processes:
+    properties:
+      collectedAt:
+        type: string
+      data:
+        $ref: '#/definitions/monitoring.Processes'
+      message:
+        type: string
+      partial:
+        type: boolean
+      stale:
+        type: boolean
+      status:
+        type: string
+    type: object
+  monitoring.Snapshot:
+    properties:
+      cpu:
+        $ref: '#/definitions/monitoring.Region-monitoring_CPU'
+      disks:
+        $ref: '#/definitions/monitoring.Region-array_monitoring_Disk'
+      filesystems:
+        $ref: '#/definitions/monitoring.Region-array_monitoring_Filesystem'
+      gpu:
+        $ref: '#/definitions/monitoring.Region-array_monitoring_GPU'
+      host:
+        $ref: '#/definitions/monitoring.Region-monitoring_Host'
+      memory:
+        $ref: '#/definitions/monitoring.Region-monitoring_Memory'
+      network:
+        $ref: '#/definitions/monitoring.Region-array_monitoring_Network'
+      processes:
+        $ref: '#/definitions/monitoring.Region-monitoring_Processes'
+      sampledAt:
+        type: string
+      sourceId:
+        type: string
+      warnings:
+        items:
+          $ref: '#/definitions/monitoring.Warning'
+        type: array
+    type: object
+  monitoring.Warning:
+    properties:
+      device:
+        type: string
+      message:
+        type: string
+      resource:
+        type: string
+      since:
+        type: string
+    type: object
   notification.ApiEnvelope:
     properties:
       code:
@@ -2748,6 +3115,67 @@ paths:
       summary: 用户分页
       tags:
       - 用户管理
+  /api/v1/monitoring/history:
+    get:
+      parameters:
+      - description: 资源
+        enum:
+        - cpu
+        - memory
+        - filesystem
+        - disk
+        - network
+        - gpu
+        in: query
+        name: resource
+        required: true
+        type: string
+      - description: 设备 ID；CPU 逻辑核索引，空值表示总体
+        in: query
+        name: device
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前 API 实例最近 30 分钟资源历史（仅 ADMIN）
+      tags:
+      - 服务器监控
+  /api/v1/monitoring/overview:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Linux 宿主机资源概览（仅 ADMIN）
+      tags:
+      - 服务器监控
 securityDefinitions:
   BearerAuth:
     in: header

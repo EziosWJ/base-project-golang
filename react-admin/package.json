@@ -10,7 +10,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:layout": "node tests/operation-column-layout.mjs",
     "test:route-loading": "node tests/route-loading.mjs",
-    "test:sidebar-scroll": "node tests/sidebar-scroll.mjs"
+    "test:sidebar-scroll": "node tests/sidebar-scroll.mjs",
+    "test:monitoring": "node tests/server-monitoring.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

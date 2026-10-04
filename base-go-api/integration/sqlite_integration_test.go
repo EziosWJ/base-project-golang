@@ -50,8 +50,8 @@ func TestSQLiteMigrationLifecycleAndBackup(t *testing.T) {
 	if err := database.GORM.Table("sys_config").Count(&configs).Error; err != nil {
 		t.Fatalf("count SQLite configs: %v", err)
 	}
-	if users != 1 || menus != 17 || configs != 1 {
-		t.Fatalf("seed counts = users %d, menus %d, configs %d; want 1, 17, 1", users, menus, configs)
+	if users != 1 || menus != 19 || configs != 1 {
+		t.Fatalf("seed counts = users %d, menus %d, configs %d; want 1, 19, 1", users, menus, configs)
 	}
 	if err := database.Close(); err != nil {
 		t.Fatalf("close SQLite database: %v", err)

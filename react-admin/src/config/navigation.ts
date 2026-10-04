@@ -206,6 +206,8 @@ export const staticRouteTitleMap: Record<string, string> = {
   "/system/oper-log": "操作日志",
   "/system/file": "文件管理",
   "/system/notification": "通知管理",
+  "/monitor": "系统监控",
+  "/monitor/server": "服务器监控",
   "/account/profile": "个人中心",
   "/account/change-password": "修改密码",
 };

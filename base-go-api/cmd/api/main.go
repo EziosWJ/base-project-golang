@@ -19,6 +19,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/monitoring"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/notification"
 	platformdatabase "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/database"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
@@ -103,6 +104,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	var collector monitoring.Collector
+	if cfg.Monitoring.Source == "unix" {
+		collector = monitoring.NewUnixCollector(cfg.Monitoring.SocketPath)
+	} else {
+		collector, err = monitoring.NewLinuxCollector()
+		if err != nil {
+			slog.Error("build host resource collector", "error", err)
+			os.Exit(1)
+		}
+	}
+	monitoringService := monitoring.NewService(monitoring.NewRepository(database.GORM), collector, nil, monitoring.WithTimeout(cfg.Monitoring.Timeout))
+
 	application, err := app.New(*cfg, database, app.Dependencies{
 		Auth:         authService,
 		RBAC:         rbacService,
@@ -113,11 +126,19 @@ func main() {
 		File:         fileService,
 		Log:          logService,
 		Notification: notificationService,
+		Monitoring:   monitoringService,
 	})
 	if err != nil {
 		slog.Error("build application", "error", err)
 		os.Exit(1)
 	}
+	monitoringContext, stopMonitoring := context.WithCancel(context.Background())
+	monitoringDone := make(chan struct{})
+	go func() {
+		defer close(monitoringDone)
+		monitoringService.Run(monitoringContext)
+	}()
+	defer stopMonitoring()
 
 	server := &http.Server{
 		Addr:              cfg.HTTP.Address,
@@ -139,6 +160,8 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopMonitoring()
+	<-monitoringDone
 
 	shutdownContext, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()

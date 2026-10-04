@@ -14,6 +14,7 @@ import (
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/dictionary"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/filemgmt"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/logmgmt"
+	"github.com/EziosWJ/base-project-golang/base-go-api/internal/monitoring"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/notification"
 	platformhttp "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/http"
 	"github.com/EziosWJ/base-project-golang/base-go-api/internal/rbac"
@@ -35,6 +36,7 @@ type Dependencies struct {
 	File         *filemgmt.Service
 	Log          *logmgmt.Service
 	Notification *notification.Service
+	Monitoring   *monitoring.Service
 }
 
 // Application is the assembled HTTP application and its process logger.
@@ -139,6 +141,11 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 			return nil, fmt.Errorf("create notification handler: %w", err)
 		}
 		notification.RegisterRoutes(system, notificationHandler)
+	}
+	if deps.Monitoring != nil {
+		versioned := router.Group("/api/v1")
+		versioned.Use(auth.BearerMiddleware(deps.Auth))
+		monitoring.RegisterRoutes(versioned, monitoring.NewHandler(deps.Monitoring))
 	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {

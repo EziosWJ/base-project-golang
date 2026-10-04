@@ -176,5 +176,8 @@ func defaultValues() map[string]interface{} {
 		"log.level":                              "info",
 		"log.format":                             "json",
 		"log.add_source":                         false,
+		"monitoring.source":                      "native",
+		"monitoring.socket_path":                 "/run/base-go-api/host-monitor.sock",
+		"monitoring.timeout":                     "4s",
 	}
 }
