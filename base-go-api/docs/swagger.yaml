@@ -620,6 +620,17 @@ definitions:
       since:
         type: string
     type: object
+  notification.AnnouncementInput:
+    properties:
+      content:
+        type: string
+      expiresAt:
+        type: string
+      scope:
+        type: string
+      title:
+        type: string
+    type: object
   notification.ApiEnvelope:
     properties:
       code:
@@ -633,6 +644,8 @@ definitions:
       allUsers:
         type: boolean
       content:
+        type: string
+      jumpPath:
         type: string
       title:
         type: string
@@ -911,6 +924,191 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
+  /api/public/announcement/{id}:
+    get:
+      parameters:
+      - description: 公告 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      summary: 有效公开公告详情
+      tags:
+      - 公告
+  /api/public/announcement/events:
+    get:
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE ready/announcement/heartbeat
+          schema:
+            type: string
+      summary: 公开公告变化 SSE（无需登录）
+      tags:
+      - 公告
+  /api/public/announcement/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      summary: 有效公开公告分页（无需登录）
+      tags:
+      - 公告
+  /api/system/announcement:
+    post:
+      parameters:
+      - description: 公告草稿
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.AnnouncementInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: ADMIN 保存公告草稿
+      tags:
+      - 公告
+  /api/system/announcement-admin/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: ADMIN 公告管理历史分页
+      tags:
+      - 公告
+  /api/system/announcement/{id}:
+    get:
+      parameters:
+      - description: 公告 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 有效站内公告详情
+      tags:
+      - 公告
+    put:
+      parameters:
+      - description: 公告 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 公告草稿
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.AnnouncementInput'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: ADMIN 修改公告草稿（已发布内容不可修改）
+      tags:
+      - 公告
+  /api/system/announcement/{id}/publish:
+    put:
+      parameters:
+      - description: 公告 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: ADMIN 立即发布公告
+      tags:
+      - 公告
+  /api/system/announcement/{id}/withdraw:
+    put:
+      parameters:
+      - description: 公告 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: ADMIN 撤下公告
+      tags:
+      - 公告
+  /api/system/announcement/page:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/notification.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 有效站内公告分页
+      tags:
+      - 公告
   /api/system/config:
     post:
       parameters:
@@ -2395,6 +2593,20 @@ paths:
       security:
       - BearerAuth: []
       summary: 标记通知已读
+      tags:
+      - 站内通知
+  /api/system/notification/events:
+    get:
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE ready/announcement/notification/read/heartbeat
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: 当前用户公告、通知及已读变化 SSE
       tags:
       - 站内通知
   /api/system/notification/page:

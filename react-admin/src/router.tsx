@@ -25,6 +25,9 @@ import { UsersPage } from "@/pages/system/users";
 import { NotificationsPage } from "@/pages/notifications";
 import { NotificationManagePage } from "@/pages/system/notifications";
 import { ServerMonitoringPage } from "@/pages/monitor/server";
+import { AnnouncementsPage } from "@/pages/announcements";
+import { AnnouncementManagePage } from "@/pages/system/announcements";
+import { RequireMessageAdmin } from "@/components/auth/require-message-admin";
 
 export const router = createBrowserRouter([
   {
@@ -125,8 +128,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "system/notification",
-        element: <NotificationManagePage />,
+        element: <RequireMessageAdmin resource="通知"><NotificationManagePage /></RequireMessageAdmin>,
       },
+      { path: "announcements", element: <AnnouncementsPage /> },
+      { path: "system/announcement", element: <RequireMessageAdmin resource="公告"><AnnouncementManagePage /></RequireMessageAdmin> },
       {
         path: "monitor/server",
         element: <ServerMonitoringPage />,

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { isApiError } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth-store";
 import type { LoginErrors } from "@/types";
+import { MessageConnections } from "@/components/layout/message-connections";
+import { AnnouncementPanel } from "@/components/layout/announcement-panel";
 
 const REMEMBERED_USERNAME_KEY = "react-admin-remembered-username";
 
@@ -177,12 +179,15 @@ export function LoginPage() {
         <div className="w-full max-w-[420px]">
           <div className="w-full rounded-2xl border border-slate-900/[0.06] bg-white/[0.96] p-6 shadow-[0_20px_50px_rgb(15_23_42_/_0.08),0_2px_8px_rgb(15_23_42_/_0.04)] sm:p-8 min-[992px]:px-10 min-[992px]:py-9">
             <MobileBrand />
+            <MessageConnections />
 
             <div className="mb-8">
               <p className="mb-2 text-sm font-medium text-primary">欢迎回来</p>
               <h2 className="text-2xl font-semibold tracking-tight text-text-primary">欢迎登录</h2>
               <p className="mt-2 text-sm text-text-tertiary">请输入账号信息进入系统</p>
             </div>
+
+            <AnnouncementPanel />
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <Field

@@ -32,9 +32,6 @@ func (s *testStore) Publish(_ context.Context, _ int64, in PublishInput, _ strin
 }
 func (s *testStore) AdminPage(context.Context, PageQuery) (Page, error) { return Page{}, nil }
 func (s *testStore) IsAdmin(context.Context, int64) (bool, error)       { return s.admin, nil }
-func (s *testStore) RecordRoleChange(context.Context, *gorm.DB, int64, []string, []string) error {
-	return nil
-}
 
 func TestPublishRequiresAdminAndDeduplicatesRecipients(t *testing.T) {
 	store := &testStore{admin: true}

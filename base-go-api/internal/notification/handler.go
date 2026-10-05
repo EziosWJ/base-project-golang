@@ -9,7 +9,10 @@ import (
 	"strconv"
 )
 
-type Handler struct{ service *Service }
+type Handler struct {
+	service       *Service
+	authenticator auth.Authenticator
+}
 
 // ApiEnvelope is the common response shape used by the existing API.
 type ApiEnvelope struct {
@@ -22,7 +25,7 @@ func NewHandler(service *Service) (*Handler, error) {
 	if service == nil {
 		return nil, errors.New("notification service is required")
 	}
-	return &Handler{service}, nil
+	return &Handler{service: service}, nil
 }
 func RegisterRoutes(router gin.IRouter, h *Handler) {
 	n := router.Group("/notification")
@@ -38,6 +41,7 @@ func RegisterRoutes(router gin.IRouter, h *Handler) {
 type publishRequest struct {
 	Title    string  `json:"title"`
 	Content  string  `json:"content"`
+	JumpPath string  `json:"jumpPath"`
 	UserIDs  []int64 `json:"userIds"`
 	AllUsers bool    `json:"allUsers"`
 }
@@ -172,7 +176,7 @@ func (h *Handler) publish(c *gin.Context) {
 		platformhttp.WriteError(c, http.StatusBadRequest, platformhttp.CodeBadRequest, "参数错误", nil)
 		return
 	}
-	writeMutation(c, h.service.Publish(c.Request.Context(), id, PublishInput{Title: in.Title, Content: in.Content, UserIDs: in.UserIDs, AllUsers: in.AllUsers}))
+	writeMutation(c, h.service.Publish(c.Request.Context(), id, PublishInput{Title: in.Title, Content: in.Content, JumpPath: in.JumpPath, UserIDs: in.UserIDs, AllUsers: in.AllUsers}))
 }
 func pageParams(c *gin.Context) (int, int) {
 	p, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -209,7 +213,7 @@ func writeError(c *gin.Context, e error) {
 		platformhttp.WriteError(c, http.StatusForbidden, platformhttp.CodeForbidden, e.Error(), nil)
 	case errors.Is(e, ErrInvalid):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeBadRequest, e.Error(), nil)
-	case errors.Is(e, ErrNotFound):
+	case errors.Is(e, ErrNotFound), errors.Is(e, ErrAnnouncementNotFound):
 		platformhttp.WriteError(c, http.StatusOK, platformhttp.CodeNotFound, e.Error(), nil)
 	default:
 		platformhttp.WriteError(c, http.StatusInternalServerError, platformhttp.CodeInternalError, "系统错误", nil)

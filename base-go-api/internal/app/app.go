@@ -141,6 +141,8 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 			return nil, fmt.Errorf("create notification handler: %w", err)
 		}
 		notification.RegisterRoutes(system, notificationHandler)
+		notification.RegisterAnnouncementRoutes(router.Group("/api/public"), system, notificationHandler)
+		notification.RegisterRealtimeRoutes(router.Group("/api/public"), system, notificationHandler, deps.Auth)
 	}
 	if deps.Monitoring != nil {
 		versioned := router.Group("/api/v1")

@@ -7,6 +7,7 @@ import {
   defaultNavItems,
   mergeNavItems,
   notificationManageNavItem,
+  announcementManageNavItem,
   type NavItem,
 } from "@/config/navigation";
 import { isApiError } from "@/lib/api-error";
@@ -63,7 +64,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   const sidebarNavItems = useMemo(
     () => {
       const base = user?.roles?.some((role) => role.roleCode === "ADMIN")
-        ? [...defaultNavItems, notificationManageNavItem]
+        ? [...defaultNavItems, notificationManageNavItem, announcementManageNavItem]
         : defaultNavItems;
       return mergeNavItems(base, convertUserMenusToNavItems(menus));
     },

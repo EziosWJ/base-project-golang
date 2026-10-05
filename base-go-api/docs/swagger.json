@@ -140,6 +140,309 @@
                 }
             }
         },
+        "/api/public/announcement/events": {
+            "get": {
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "公开公告变化 SSE（无需登录）",
+                "responses": {
+                    "200": {
+                        "description": "SSE ready/announcement/heartbeat",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/announcement/page": {
+            "get": {
+                "tags": [
+                    "公告"
+                ],
+                "summary": "有效公开公告分页（无需登录）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/announcement/{id}": {
+            "get": {
+                "tags": [
+                    "公告"
+                ],
+                "summary": "有效公开公告详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "公告 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "ADMIN 保存公告草稿",
+                "parameters": [
+                    {
+                        "description": "公告草稿",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.AnnouncementInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement-admin/page": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "ADMIN 公告管理历史分页",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement/page": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "有效站内公告分页",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "有效站内公告详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "公告 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "ADMIN 修改公告草稿（已发布内容不可修改）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "公告 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "公告草稿",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.AnnouncementInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement/{id}/publish": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "ADMIN 立即发布公告",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "公告 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/announcement/{id}/withdraw": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "公告"
+                ],
+                "summary": "ADMIN 撤下公告",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "公告 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notification.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system/config": {
             "post": {
                 "security": [
@@ -2477,6 +2780,30 @@
                 }
             }
         },
+        "/api/system/notification/events": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "站内通知"
+                ],
+                "summary": "当前用户公告、通知及已读变化 SSE",
+                "responses": {
+                    "200": {
+                        "description": "SSE ready/announcement/notification/read/heartbeat",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/system/notification/page": {
             "get": {
                 "security": [
@@ -4743,6 +5070,23 @@
                 }
             }
         },
+        "notification.AnnouncementInput": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "notification.ApiEnvelope": {
             "type": "object",
             "properties": {
@@ -4762,6 +5106,9 @@
                     "type": "boolean"
                 },
                 "content": {
+                    "type": "string"
+                },
+                "jumpPath": {
                     "type": "string"
                 },
                 "title": {

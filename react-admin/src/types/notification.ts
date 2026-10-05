@@ -2,6 +2,7 @@ export type NotificationRecord = {
   id: number;
   title: string;
   content: string;
+  jumpPath?: string;
   sourceType: "MANUAL" | "ROLE_CHANGE" | string;
   publisherId?: number | null;
   publishTime: string;
@@ -21,6 +22,7 @@ export type NotificationPageResult = {
 export type NotificationPublishRequest = {
   title: string;
   content: string;
+  jumpPath?: string;
   userIds: number[];
   allUsers?: boolean;
 };

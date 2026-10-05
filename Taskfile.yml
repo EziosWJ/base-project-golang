@@ -111,6 +111,18 @@ tasks:
     cmds:
       - go test ./...
 
+  backend:swagger:
+    desc: Regenerate API documentation from handler contracts
+    dir: base-go-api
+    cmds:
+      - go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g cmd/api/main.go --parseInternal --output docs
+
+  backend:notifications:
+    desc: Run announcement, notification, SSE and capacity integration contracts
+    dir: base-go-api
+    cmds:
+      - go test -tags=integration ./integration -run 'Notification|Announcement' -count=1
+
   backend:integration:
     desc: Run backend PostgreSQL integration tests
     dir: base-go-api
@@ -154,6 +166,12 @@ tasks:
     dir: react-admin
     cmds:
       - npm run build
+
+  frontend:notifications:
+    desc: Run announcement and notification browser verification
+    dir: react-admin
+    cmds:
+      - npm run test:notifications
 
   frontend:monitoring:
     desc: Run server monitoring browser verification

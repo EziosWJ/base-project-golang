@@ -32,6 +32,7 @@ export const defaultNavItems: NavItem[] = [
     path: "/notifications",
     icon: Bell,
   },
+  { label: "公告", path: "/announcements", icon: FileText },
 
   {
     label: "页面示例",
@@ -77,6 +78,7 @@ export const notificationManageNavItem: NavItem = {
   path: "/system/notification",
   icon: Bell,
 };
+export const announcementManageNavItem: NavItem = { label: "公告管理", path: "/system/announcement", icon: FileText };
 
 function collectNavPaths(items: NavItem[]) {
   const paths = new Set<string>();
@@ -187,6 +189,8 @@ export function createUserMenuTitleMap(
 export const staticRouteTitleMap: Record<string, string> = {
   "/dashboard": "工作台",
   "/notifications": "我的通知",
+  "/announcements": "公告",
+  "/system/announcement": "公告管理",
   "/forms/basic": "标准表单 Demo",
   "/examples": "页面示例",
   "/examples/list": "标准列表页 Demo",

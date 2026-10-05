@@ -5,6 +5,8 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { RouteLoadingIndicator } from "@/components/layout/route-loading-indicator";
 import { useRouteNavigationLoading } from "@/components/layout/use-route-navigation-loading";
 import { cn } from "@/lib/utils";
+import { MessageConnections } from "@/components/layout/message-connections";
+import { AnnouncementPanel } from "@/components/layout/announcement-panel";
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
@@ -12,6 +14,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-background" onClickCapture={handleNavigationClickCapture}>
+      <MessageConnections authenticated />
       <RouteLoadingIndicator visible={navigationIntent} />
       <a
         href="#main-content"
@@ -28,6 +31,7 @@ export function AppShell() {
       >
         <AppHeader onToggleSidebar={() => setCollapsed((value) => !value)} />
         <main id="main-content" className="p-4 md:p-6">
+          <AnnouncementPanel authenticated />
           <Outlet />
         </main>
       </div>

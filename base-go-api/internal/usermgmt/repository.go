@@ -9,7 +9,7 @@ import (
 )
 
 type roleChangeNotifier interface {
-	RecordRoleChange(context.Context, *gorm.DB, int64, []string, []string) error
+	RecordRoleChange(context.Context, *gorm.DB, int64, []string, []string) (func(), error)
 }
 
 type Repository struct {
@@ -210,7 +210,8 @@ func (r *Repository) DeleteUsers(ctx context.Context, ids []int64, e AuditEvent)
 	})
 }
 func (r *Repository) AssignRoles(ctx context.Context, id int64, ids []int64, e AuditEvent) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var committed func()
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var before []string
 		if r.notifier != nil {
 			if err := tx.Table("sys_role r").Select("r.role_code").Joins("JOIN sys_user_role ur ON ur.role_id=r.id").Where("ur.user_id=? AND r.deleted=0", id).Pluck("r.role_code", &before).Error; err != nil {
@@ -231,13 +232,19 @@ func (r *Repository) AssignRoles(ctx context.Context, id int64, ids []int64, e A
 				return err
 			}
 			if !sameStrings(before, after) {
-				if err := r.notifier.RecordRoleChange(ctx, tx, id, before, after); err != nil {
+				var err error
+				committed, err = r.notifier.RecordRoleChange(ctx, tx, id, before, after)
+				if err != nil {
 					return err
 				}
 			}
 		}
 		return audit.RecordOn(ctx, tx, e)
 	})
+	if err == nil && committed != nil {
+		committed()
+	}
+	return err
 }
 
 func sameStrings(a, b []string) bool {

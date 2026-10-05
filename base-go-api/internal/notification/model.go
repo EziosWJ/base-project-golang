@@ -2,14 +2,16 @@ package notification
 
 import (
 	"context"
+	"net/url"
+	"strings"
 	"time"
-
-	"gorm.io/gorm"
+	"unicode/utf8"
 )
 
 const (
 	SourceManual     = "MANUAL"
 	SourceRoleChange = "ROLE_CHANGE"
+	SourceBusiness   = "BUSINESS"
 )
 
 var (
@@ -27,6 +29,7 @@ type Notification struct {
 	ID             int64     `gorm:"column:id" json:"id"`
 	Title          string    `gorm:"column:title" json:"title"`
 	Content        string    `gorm:"column:content" json:"content"`
+	JumpPath       string    `gorm:"column:jump_path" json:"jumpPath,omitempty"`
 	SourceType     string    `gorm:"column:source_type" json:"sourceType"`
 	PublisherID    *int64    `gorm:"column:publisher_id" json:"publisherId"`
 	PublishTime    time.Time `gorm:"column:publish_time" json:"publishTime"`
@@ -56,9 +59,9 @@ type Page struct {
 	PageSize int            `json:"pageSize"`
 }
 type PublishInput struct {
-	Title, Content string
-	UserIDs        []int64
-	AllUsers       bool
+	Title, Content, JumpPath string
+	UserIDs                  []int64
+	AllUsers                 bool
 }
 
 type Store interface {
@@ -70,16 +73,24 @@ type Store interface {
 	Publish(context.Context, int64, PublishInput, string) error
 	AdminPage(context.Context, PageQuery) (Page, error)
 	IsAdmin(context.Context, int64) (bool, error)
-	RecordRoleChange(context.Context, *gorm.DB, int64, []string, []string) error
 }
 
-type Service struct{ store Store }
+type Service struct {
+	store         Store
+	announcements announcementStore
+	hub           *Hub
+}
 
 func NewService(store Store) (*Service, error) {
 	if store == nil {
 		return nil, ErrInvalid
 	}
-	return &Service{store: store}, nil
+	s := &Service{store: store, hub: NewHub()}
+	s.announcements, _ = store.(announcementStore)
+	if repository, ok := store.(*Repository); ok {
+		repository.hub = s.hub
+	}
+	return s, nil
 }
 func (s *Service) Page(ctx context.Context, userID int64, q PageQuery) (Page, error) {
 	q.Page, q.PageSize = normalizePage(q.Page, q.PageSize)
@@ -115,11 +126,32 @@ func (s *Service) Publish(ctx context.Context, actor int64, in PublishInput) err
 	} else if !ok {
 		return ErrForbidden
 	}
+	if !in.AllUsers {
+		for _, id := range in.UserIDs {
+			if id <= 0 {
+				return ErrInvalid
+			}
+		}
+	}
 	in.UserIDs = uniqueIDs(in.UserIDs)
-	if len(trim(in.Title)) == 0 || len(trim(in.Content)) == 0 || (!in.AllUsers && len(in.UserIDs) == 0) {
+	if !validMessage(in.Title, in.Content, in.JumpPath) || (!in.AllUsers && len(in.UserIDs) == 0) {
 		return ErrInvalid
 	}
 	return s.store.Publish(ctx, actor, in, SourceManual)
+}
+
+func validMessage(title, content, path string) bool {
+	if strings.TrimSpace(title) == "" || strings.TrimSpace(content) == "" || utf8.RuneCountInString(title) > 200 || len(content) > 100000 {
+		return false
+	}
+	if path == "" {
+		return true
+	}
+	if len(path) > 1000 || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.ContainsAny(path, "\\\r\n") {
+		return false
+	}
+	u, err := url.Parse(path)
+	return err == nil && !u.IsAbs() && u.Host == "" && !strings.HasPrefix(u.Path, "//") && !strings.ContainsAny(u.Path, "\\\r\n")
 }
 func (s *Service) AdminPage(ctx context.Context, actor int64, q PageQuery) (Page, error) {
 	if ok, e := s.store.IsAdmin(ctx, actor); e != nil {

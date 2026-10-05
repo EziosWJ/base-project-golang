@@ -1,5 +1,5 @@
 import { Bell, CheckCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead } from "@/api/notification";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { formatDateTime } from "@/lib/datetime";
 import { toast } from "@/components/common/toast-store";
 import type { NotificationRecord } from "@/types";
+import { useMessageEvents } from "@/lib/message-events";
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -14,27 +15,29 @@ export function NotificationBell() {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const ready = useMessageEvents((state) => state.privateReady || state.status === "reconnecting");
+  const version = useMessageEvents((state) => state.notificationVersion);
 
-  const load = async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const [unread, page] = await Promise.all([
-        getUnreadNotificationCount(),
-        getNotifications({ page: 1, pageSize: 5 }),
+        getUnreadNotificationCount(signal),
+        getNotifications({ page: 1, pageSize: 5 }, signal),
       ]);
+      if (signal?.aborted) return;
       setCount(unread);
       setItems(page.records);
     } catch {
       // 通知中心不应阻塞主页面，完整错误在通知页展示。
     }
-  };
+  }, []);
 
   useEffect(() => {
-    void load();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    if (!ready) return;
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load, ready, version]);
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
