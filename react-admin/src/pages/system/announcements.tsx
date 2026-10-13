@@ -6,6 +6,7 @@ import { Field } from "@/components/common/field";
 import { FormSection } from "@/components/common/form-section";
 import { PageHeader } from "@/components/common/page-header";
 import { Pagination } from "@/components/common/pagination";
+import { TableActions } from "@/components/common/table-actions";
 import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +62,7 @@ export function AnnouncementManagePage() {
     { title: "状态", key: "status", render: (_, item) => item.status === "DRAFT" ? "草稿" : item.status === "WITHDRAWN" ? "已撤下" : item.expiresAt && Date.parse(item.expiresAt) <= Date.now() ? "已到期" : "已发布" },
     { title: "发布时间", key: "time", render: (_, item) => item.publishTime ? formatDateTime(item.publishTime) : "—" },
     { title: "到期时间", key: "expiry", render: (_, item) => item.expiresAt ? formatDateTime(item.expiresAt) : "长期有效" },
-    { title: "操作", key: "actions", nowrap: true, align: "center", render: (_, item) => <div className="flex justify-center gap-1"><Button variant="ghost" size="sm" onClick={() => setDetail(item)}>查看</Button>{item.status === "DRAFT" ? <><Button variant="ghost" size="sm" disabled={busy} onClick={() => edit(item)}>编辑</Button><Button variant="ghost" size="sm" disabled={busy} onClick={() => void transition(item, true)}>发布</Button></> : item.status === "PUBLISHED" ? <Button variant="ghost" size="sm" disabled={busy} onClick={() => void transition(item, false)}>撤下</Button> : null}</div> },
+    { title: "操作", key: "actions", nowrap: true, align: "center", render: (_, item) => <TableActions><Button variant="ghost" size="sm" onClick={() => setDetail(item)}>查看</Button>{item.status === "DRAFT" ? <><Button variant="ghost" size="sm" disabled={busy} onClick={() => edit(item)}>编辑</Button><Button variant="ghost" size="sm" disabled={busy} onClick={() => void transition(item, true)}>发布</Button></> : item.status === "PUBLISHED" ? <Button variant="ghost" size="sm" disabled={busy} onClick={() => void transition(item, false)}>撤下</Button> : null}</TableActions> },
   ];
   return <div className="space-y-6"><PageHeader title="公告管理" description="公开公告无需登录即可查看，发布前请确认内容适合公开" actions={<Button variant="secondary" onClick={() => void load()}>刷新</Button>} />
     <form onSubmit={(event) => void save(event)}><FormSection title={editing ? "编辑公告草稿" : "新建公告草稿"}>

@@ -2,6 +2,7 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/common/data-table";
+import { TableActions } from "@/components/common/table-actions";
 import type { DataTableColumn } from "@/types";
 import "@/styles/globals.css";
 
@@ -16,7 +17,7 @@ const columns: DataTableColumn<FixtureRow>[] = [
     nowrap: true,
     width: 100,
     render: () => (
-      <div className="inline-flex flex-wrap items-center justify-center gap-1">
+      <TableActions>
         <Button size="sm" variant="ghost">
           <Eye className="h-4 w-4" aria-hidden />
           <span data-testid="single-action-label">查看</span>
@@ -29,7 +30,7 @@ const columns: DataTableColumn<FixtureRow>[] = [
           <Trash2 className="h-4 w-4" aria-hidden />
           删除
         </Button>
-      </div>
+      </TableActions>
     ),
   },
 ];

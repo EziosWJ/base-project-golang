@@ -61,6 +61,8 @@ try {
     if (multiActionLines !== 1) throw new Error("multi-action button label wrapped internally");
     const multiActionHeights = await page.locator("td button").evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
     if (multiActionHeights.some((height) => height > 32)) throw new Error(`multi-action button grew vertically: ${JSON.stringify(multiActionHeights)}`);
+    const multiActionRows = await page.locator("td button").evaluateAll((buttons) => new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))).size);
+    if (multiActionRows !== 1) throw new Error(`multi-action buttons wrapped onto ${multiActionRows} lines`);
     console.log("operation-column layout passed", JSON.stringify(result));
   } finally {
     await browser.close();
