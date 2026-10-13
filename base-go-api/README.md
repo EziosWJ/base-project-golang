@@ -41,17 +41,18 @@ API 镜像通过 Node 构建阶段生成前端并嵌入 Go 二进制，最终镜
 实际环境 YAML 一律不提交 Git：
 
 - `configs/config.yaml`：基础配置，不含环境特定凭据；
-- `configs/config.dev.example.yaml`、`configs/config.prod.example.yaml`：环境模板，值为占位符，随仓库提交；
+- `configs/config.dev.example.yaml`、`configs/config.prod.example.yaml`：环境模板，值为占位符，随仓库提交；开发模板由根目录 `task init` 渲染为 `config.dev.yaml`；
 - `configs/config.sqlite.yaml`：SQLite profile 配置，只覆盖数据库类型和本地文件路径，随仓库提交；
 - `configs/config.dev.yaml`、`configs/config.prod.yaml`：实际环境配置，可含真实凭据，已被 `.gitignore` 忽略。
 
-首次本地开发前，从开发模板复制并填写本机值：
+首次本地开发前，在仓库根目录生成配置并填写本机值：
 
 ```zsh
-cd base-go-api
-cp configs/config.dev.example.yaml configs/config.dev.yaml
-# 编辑 configs/config.dev.yaml，至少替换 database.username/password 与 jwt.secret
+task init   # 生成 base-go-api/configs/config.dev.yaml：随机 JWT 与本机上传目录
+# 编辑 base-go-api/configs/config.dev.yaml，至少替换 database.username/password
 ```
+
+`task init` 不覆盖已有配置，也不轮换已有 JWT；需要 SQLite 时加 `-- --database sqlite`。生成后可运行 `task doctor` 检查工具、配置与数据库是否就绪。
 
 数据库与 JWT 可以配置在 YAML 中。本机直接运行或 IDE 调试前，确认 `configs/config.dev.yaml` 中的值正确：
 
@@ -162,9 +163,9 @@ docker volume rm base_go_api_postgres_data
 首次调试前，先创建本机实际开发配置并设置本地数据库密码：
 
 ```zsh
+task init   # 若尚未创建 base-go-api/configs/config.dev.yaml；已有文件不会被覆盖
+# 编辑 base-go-api/configs/config.dev.yaml：替换 database.username/password
 cd base-go-api
-cp configs/config.dev.example.yaml configs/config.dev.yaml   # 若尚未创建
-# 编辑 configs/config.dev.yaml：替换 database.username/password 与 jwt.secret
 cp .env.example .env
 ```
 

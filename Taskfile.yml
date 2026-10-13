@@ -13,6 +13,27 @@ tasks:
       - task --list
     silent: true
 
+  init:
+    desc: Generate local development configuration (optional --database sqlite)
+    preconditions:
+      - sh: node --version
+        msg: '需要 Node.js；安装后重新运行 task init。'
+    cmds:
+      - node scripts/dev-setup.mjs init {{.CLI_ARGS}}
+
+  doctor:
+    desc: Check local tools, configuration and database readiness
+    preconditions:
+      - sh: node --version
+        msg: '需要 Node.js；安装后重新运行 task doctor。'
+    cmds:
+      - node scripts/dev-setup.mjs doctor {{.CLI_ARGS}}
+
+  dev:setup:test:
+    desc: Run development setup bootstrap command tests
+    cmds:
+      - node --test scripts/dev-setup.test.mjs
+
   db:migrate:
     desc: Apply schema and seed migrations
     dir: base-go-api
@@ -182,6 +203,7 @@ tasks:
   check:
     desc: Run backend and frontend checks
     deps:
+      - dev:setup:test
       - backend:check
       - frontend:lint
       - frontend:build

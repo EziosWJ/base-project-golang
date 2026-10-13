@@ -41,15 +41,34 @@ task build
 
 ### 使用 Task（推荐）
 
-项目根目录提供跨平台的 `Taskfile.yml`。首次使用时，复制并填写后端本地配置：
+项目根目录提供跨平台的 `Taskfile.yml`。准备 Go 1.26+、Node.js、npm、Task 和可供 CGO 使用的 C 编译器后，初始化本地开发环境：
 
-```powershell
-Copy-Item base-go-api/configs/config.dev.example.yaml base-go-api/configs/config.dev.yaml
+```bash
+npm --prefix react-admin ci
+task init
+# 编辑 base-go-api/configs/config.dev.yaml：填写 PostgreSQL 地址、用户名与密码
+# 在 PostgreSQL 中准备对应数据库后：
+task doctor
+task dev
 ```
 
-在 `base-go-api/configs/config.dev.yaml` 中配置 `local_project` 数据库、`base_project_golang` schema、PostgreSQL 用户密码和 JWT secret。之后可在项目根目录执行：
+`task init` 默认选择 PostgreSQL，从开发模板生成被 Git 忽略的 `base-go-api/configs/config.dev.yaml`，自动生成随机 JWT 密钥并写入当前项目的绝对上传目录。重复运行时保留已有配置及 JWT。初始化不创建 PostgreSQL 数据库、不启动 Docker、不执行迁移或启动服务；模板中的数据库地址与 `change-me` 凭据需要按本机环境修改。
+
+若希望使用无需外部数据库的 SQLite：
+
+```bash
+task init -- --database sqlite
+task doctor -- --database sqlite
+task dev:sqlite
+```
+
+`task doctor` 检查开发工具、前端依赖、有效开发配置和数据库连接；失败时返回非零退出状态，并给出隐藏凭据的修复提示。检查保留现有 `APP_` 环境变量覆盖；`--database sqlite` 使用与 SQLite 启动任务一致的 profile。SQLite 文件不存在时提示等待显式迁移，不创建文件；已有 SQLite 文件以只读连接检查，不执行 migration。数据库检查不代表 schema 已更新，后续仍使用 `task dev` 或 `task dev:sqlite` 完成迁移。初始化会保留已有 PostgreSQL 配置，切换 SQLite 可直接使用上述 profile 命令。
+
+日常可在项目根目录执行：
 
 ```text
+task init         # 生成本地开发配置，默认 PostgreSQL
+task doctor       # 检查开发工具、配置和数据库
 task db:migrate   # 恢复或更新数据库
 task db:migrate:sqlite # 使用 SQLite profile 迁移数据库
 task api          # 启动 Go API（:8099）
@@ -59,6 +78,7 @@ task dev          # 迁移数据库并同时启动前后端
 task dev:sqlite   # 迁移 SQLite 并同时启动前后端
 task check        # 执行后端检查和前端 lint/build
 task test         # 执行后端测试
+task dev:setup:test # 执行初始化入口的 Node 命令测试（Go 命令测试包含在后端测试中）
 task db:backup -- --source /path/app.db --destination /path/app-backup.db --verify
 task db:check     # 后端检查及 PostgreSQL/SQLite 数据库兼容门禁
 ```
@@ -83,9 +103,9 @@ docker compose -f docker-compose.dev.yml up --build
 **方式二：本机运行 + VS Code 断点调试**
 
 ```zsh
+task init   # 在仓库根目录生成 base-go-api/configs/config.dev.yaml（随机 JWT 与本机上传目录）
+# 编辑 base-go-api/configs/config.dev.yaml：替换 database.username/password
 cd base-go-api
-cp configs/config.dev.example.yaml configs/config.dev.yaml
-# 编辑 configs/config.dev.yaml：替换 database.username/password 与 jwt.secret
 docker compose -f docker-compose.dev.yml up -d --wait postgres
 APP_ENV=dev go run ./cmd/migrate up --kind all
 APP_ENV=dev go run ./cmd/api
@@ -106,5 +126,6 @@ npm run dev   # 默认 http://localhost:5173
 ## 文档
 
 - 后端启动与调试细节：[base-go-api/README.md](base-go-api/README.md)
+- 开发初始化设计与验收：[设计](docs/development-initialization.md)、[Spec](docs/development-initialization-spec.md)、[Issue #72](https://github.com/EziosWJ/base-project-golang/issues/72)
 - 领域术语与架构约定：[CONTEXT.md](CONTEXT.md)
 - 架构决策：[docs/adr/](docs/adr/)
