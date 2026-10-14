@@ -12,6 +12,7 @@ import { Field } from "@/components/common/field";
 import { FormDialog } from "@/components/common/form-dialog";
 import { PageHeader } from "@/components/common/page-header";
 import { StatusTag } from "@/components/common/status-tag";
+import { toast } from "@/components/common/toast-store";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -141,6 +142,10 @@ export function DocumentDialogDemoPage() {
 
     setConfirmOpen(false);
     setStatus("POSTED");
+    toast.success({
+      title: "已模拟过账演示单据",
+      description: "示例页只更新页面内存数据，不请求后端接口。",
+    });
   }
 
   function resetDemo() {
@@ -148,6 +153,7 @@ export function DocumentDialogDemoPage() {
     setPostError("");
     setDetailOpen(false);
     setConfirmOpen(false);
+    toast.info("演示状态已重置为草稿。");
   }
 
   const delivery = (
