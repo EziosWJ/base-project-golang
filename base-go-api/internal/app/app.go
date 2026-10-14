@@ -78,7 +78,7 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	platformhttp.RegisterSystemRoutes(router, platformhttp.SystemRoutes{
 		Readiness: readiness,
 	})
-	authHandler, err := auth.NewHandler(deps.Auth, deps.Auth)
+	authHandler, err := auth.NewHandler(deps.Auth.WithServerMonitoring(cfg.Monitoring.Enabled), deps.Auth)
 	if err != nil {
 		return nil, fmt.Errorf("create authentication handler: %w", err)
 	}
@@ -145,6 +145,9 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 		notification.RegisterRealtimeRoutes(router.Group("/api/public"), system, notificationHandler, deps.Auth)
 	}
 	if deps.Monitoring != nil {
+		if !cfg.Monitoring.Enabled {
+			deps.Monitoring = deps.Monitoring.Disabled()
+		}
 		versioned := router.Group("/api/v1")
 		versioned.Use(auth.BearerMiddleware(deps.Auth))
 		monitoring.RegisterRoutes(versioned, monitoring.NewHandler(deps.Monitoring))

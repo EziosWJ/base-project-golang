@@ -2,6 +2,7 @@
 """Bounded native Linux/socket smoke check; leaves no collector or socket behind."""
 import argparse
 import http.client
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -75,6 +76,12 @@ def main():
             assert repeated["cpu"]["collectedAt"] == second["cpu"]["collectedAt"]
             host_interfaces = set(os.listdir("/sys/class/net"))
             assert {n["id"] for n in second["network"]["data"]} == host_interfaces
+            address_info = json.loads(subprocess.check_output(["ip", "-json", "address", "show"], text=True))
+            expected_addresses = {item["ifname"]: {(address["family"], str(ipaddress.ip_address(address["local"])), address["prefixlen"]) for address in item["addr_info"] if address["family"] in ("inet", "inet6")} for item in address_info}
+            for interface in second["network"]["data"]:
+                assert not interface.get("addressError"), interface.get("addressError")
+                actual = {("inet" if address["family"] == "IPv4" else "inet6", address["ip"], address["prefixLength"]) for address in interface["addresses"]}
+                assert actual == expected_addresses.get(interface["id"], set()), f"IP mismatch for {interface['id']}"
             mountpoints = {line.split()[4] for line in Path("/proc/self/mountinfo").read_text().splitlines()}
             assert all(f["mountpoint"].replace(" ", "\\040") in mountpoints for f in second["filesystems"]["data"])
             stop(process)
@@ -91,7 +98,7 @@ def main():
             assert restarted["cpu"]["data"]["usagePercent"] is None
             assert all(n["receiveBytesPerSecond"] is None for n in restarted["network"]["data"])
             assert all(d["readBytesPerSecond"] is None for d in restarted["disks"]["data"])
-            evidence = {"checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "hostname": second["host"]["data"]["hostname"], "interfaces": sorted(host_interfaces), "filesystemCount": len(second["filesystems"]["data"]), "diskCount": len(second["disks"]["data"]), "gpu": second["gpu"], "cpu": second["cpu"], "memory": second["memory"], "socketPermissions": "0660", "repeatPreservesTime": True, "restartResetsBaselines": True, "nativeHostScope": True}
+            evidence = {"checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "hostname": second["host"]["data"]["hostname"], "interfaces": sorted(host_interfaces), "filesystemCount": len(second["filesystems"]["data"]), "diskCount": len(second["disks"]["data"]), "gpu": second["gpu"], "cpu": second["cpu"], "memory": second["memory"], "socketPermissions": "0660", "repeatPreservesTime": True, "restartResetsBaselines": True, "nativeHostScope": True, "ipAddressesMatchHost": True}
             print(json.dumps(evidence, ensure_ascii=False, indent=2))
             if args.output:
                 Path(args.output).write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")

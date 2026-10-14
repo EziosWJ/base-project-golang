@@ -16,10 +16,11 @@ const dummyPasswordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZd
 // Service contains authentication rules. It only depends on context.Context,
 // Store, and TokenManager; it has no Gin, GORM, or concrete driver dependency.
 type Service struct {
-	store      Store
-	tokens     *TokenManager
-	loginGuard *LoginGuard
-	now        func() time.Time
+	store                   Store
+	tokens                  *TokenManager
+	loginGuard              *LoginGuard
+	now                     func() time.Time
+	serverMonitoringEnabled bool
 }
 
 var _ Authenticator = (*Service)(nil)
@@ -35,7 +36,15 @@ func NewService(store Store, tokens *TokenManager, guards ...*LoginGuard) (*Serv
 	if len(guards) > 0 {
 		loginGuard = guards[0]
 	}
-	return &Service{store: store, tokens: tokens, loginGuard: loginGuard, now: time.Now}, nil
+	return &Service{store: store, tokens: tokens, loginGuard: loginGuard, now: time.Now, serverMonitoringEnabled: true}, nil
+}
+
+// WithServerMonitoring returns an instance-specific navigation policy without
+// changing shared menu records or the original service.
+func (s *Service) WithServerMonitoring(enabled bool) *Service {
+	copy := *s
+	copy.serverMonitoringEnabled = enabled
+	return &copy
 }
 
 func (s *Service) Login(ctx context.Context, input LoginInput, metadata LoginMetadata) (LoginResult, error) {
@@ -158,7 +167,26 @@ func (s *Service) CurrentUserMenus(ctx context.Context, principal Principal) ([]
 	if err != nil {
 		return nil, fmt.Errorf("find current user menus: %w", err)
 	}
-	return buildMenuTree(menus), nil
+	result := buildMenuTree(menus)
+	if !s.serverMonitoringEnabled {
+		result = withoutServerMonitoring(result)
+	}
+	return result, nil
+}
+
+func withoutServerMonitoring(menus []CurrentUserMenu) []CurrentUserMenu {
+	result := make([]CurrentUserMenu, 0, len(menus))
+	for _, menu := range menus {
+		if menu.Path == "/monitor/server" {
+			continue
+		}
+		menu.Children = withoutServerMonitoring(menu.Children)
+		if menu.Path == "/monitor" && menu.MenuType == "DIR" && len(menu.Children) == 0 {
+			continue
+		}
+		result = append(result, menu)
+	}
+	return result
 }
 
 func buildMenuTree(menus []CurrentUserMenu) []CurrentUserMenu {

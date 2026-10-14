@@ -138,6 +138,26 @@ tasks:
     cmds:
       - go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g cmd/api/main.go --parseInternal --output docs
 
+  backend:windows:
+    desc: Cross-build Windows amd64 API, migrations and monitoring tests (PostgreSQL, no CGO)
+    dir: base-go-api
+    env:
+      GOOS: windows
+      GOARCH: amd64
+      CGO_ENABLED: '0'
+    cmds:
+      - go build -trimpath -o ../bin/base-go-api-windows-amd64.exe ./cmd/api
+      - go build -trimpath -o ../bin/base-go-migrate-windows-amd64.exe ./cmd/migrate
+      - go test -c -o ../.task/windows-monitoring.test.exe ./internal/monitoring
+      - go vet ./cmd/api ./internal/monitoring
+
+  monitoring:smoke:windows:
+    desc: Run read-only native monitoring verification on Windows (or WSL with Windows interop)
+    deps:
+      - backend:windows
+    cmds:
+      - '"{{.ROOT_DIR}}/.task/windows-monitoring.test.exe" -test.timeout 30s -test.v -test.run "TestWindows|TestInterfaceAddressesKeepHostIPAndPrefix|TestNetworkAddressesThroughHTTP|TestDisabledMonitoringHTTPAndSampling" -windows-smoke'
+
   backend:notifications:
     desc: Run announcement, notification, SSE and capacity integration contracts
     dir: base-go-api

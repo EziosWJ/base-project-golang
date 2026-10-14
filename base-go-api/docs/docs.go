@@ -4088,6 +4088,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/monitoring.HistoryEnvelope"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
                     }
                 }
             }
@@ -4102,7 +4108,7 @@ const docTemplate = `{
                 "tags": [
                     "服务器监控"
                 ],
-                "summary": "Linux 宿主机资源概览（仅 ADMIN）",
+                "summary": "Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -4118,6 +4124,12 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/monitoring.OverviewEnvelope"
                         }
@@ -4697,6 +4709,20 @@ const docTemplate = `{
                 }
             }
         },
+        "monitoring.IPAddress": {
+            "type": "object",
+            "properties": {
+                "family": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "prefixLength": {
+                    "type": "integer"
+                }
+            }
+        },
         "monitoring.Memory": {
             "type": "object",
             "properties": {
@@ -4705,6 +4731,9 @@ const docTemplate = `{
                 },
                 "swapTotalBytes": {
                     "type": "integer"
+                },
+                "swapUnsupported": {
+                    "type": "boolean"
                 },
                 "swapUsagePercent": {
                     "type": "number"
@@ -4726,6 +4755,15 @@ const docTemplate = `{
         "monitoring.Network": {
             "type": "object",
             "properties": {
+                "addressError": {
+                    "type": "string"
+                },
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/monitoring.IPAddress"
+                    }
+                },
                 "id": {
                     "type": "string"
                 },

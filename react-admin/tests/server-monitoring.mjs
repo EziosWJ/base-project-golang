@@ -17,7 +17,7 @@ const fixture = () => ({
   memory: region({ totalBytes: 30.78 * 1024 ** 3, usedBytes: 10.5 * 1024 ** 3, availableBytes: 20.28 * 1024 ** 3, usagePercent: 34.1, swapTotalBytes: 0, swapUsedBytes: 0, swapUsagePercent: null }),
   filesystems: region([{ id: "root", device: "/dev/sda1", mountpoint: "/", type: "ext4", totalBytes: 100 * 1024 ** 3, usedBytes: 91 * 1024 ** 3, availableBytes: 9 * 1024 ** 3, usagePercent: 91, message: "" }, { id: "root-alias", device: "/dev/sda1", mountpoint: "/opt/data-bind", type: "ext4", totalBytes: 100 * 1024 ** 3, usedBytes: 91 * 1024 ** 3, availableBytes: 9 * 1024 ** 3, usagePercent: 91, message: "" }, { id: "run", device: "tmpfs", mountpoint: "/run", type: "tmpfs", totalBytes: 1024 ** 3, usedBytes: 0, availableBytes: 1024 ** 3, usagePercent: 0, message: "" }, { id: "docker", device: "/dev/sdb", mountpoint: "/mnt/wsl/docker-desktop-bind-mounts/example", type: "ext4", totalBytes: 1024 ** 3, usedBytes: 0, availableBytes: 1024 ** 3, usagePercent: 0, message: "" }, { id: "windows", device: "C:\\", mountpoint: "/mnt/c", type: "9p", totalBytes: 500 * 1024 ** 3, usedBytes: 220 * 1024 ** 3, availableBytes: 280 * 1024 ** 3, usagePercent: 44, message: "" }, { id: "usb", device: "/dev/sdc", mountpoint: "/run/media/user/disk", type: "ext4", totalBytes: 500 * 1024 ** 3, usedBytes: 0, availableBytes: 500 * 1024 ** 3, usagePercent: 0, message: "" }]),
   disks: region([{ id: "sda", readBytesPerSecond: 1024 ** 2, writeBytesPerSecond: 2 * 1024 ** 2, readIops: 3, writeIops: 4, message: "" }]),
-  network: region(["eth0", "eth1", "lo", "veth0"].map((id) => ({ id, loopback: id === "lo", virtual: id === "veth0", state: "up", speedBitsPerSecond: id === "eth0" ? 1e9 : null, receiveBytes: 1024 ** 3, transmitBytes: 2 * 1024 ** 3, receiveBytesPerSecond: 1024 ** 2, transmitBytesPerSecond: 2 * 1024 ** 2, receiveUsagePercent: id === "eth0" ? 0.84 : null, transmitUsagePercent: id === "eth0" ? 1.68 : null, receiveErrors: 1, transmitErrors: 2, receiveDropped: 3, transmitDropped: 4, message: "" }))),
+network: region(["eth0", "eth1", "lo", "veth0"].map((id) => ({ id, addresses: id === "eth0" ? [{ family: "IPv4", ip: "192.168.1.10", prefixLength: 24 }, { family: "IPv4", ip: "10.0.0.5", prefixLength: 8 }, { family: "IPv6", ip: "fe80::1", prefixLength: 64 }] : [], loopback: id === "lo", virtual: id === "veth0", state: "up", speedBitsPerSecond: id === "eth0" ? 1e9 : null, receiveBytes: 1024 ** 3, transmitBytes: 2 * 1024 ** 3, receiveBytesPerSecond: 1024 ** 2, transmitBytesPerSecond: 2 * 1024 ** 2, receiveUsagePercent: id === "eth0" ? 0.84 : null, transmitUsagePercent: id === "eth0" ? 1.68 : null, receiveErrors: 1, transmitErrors: 2, receiveDropped: 3, transmitDropped: 4, message: "" }))),
   gpu: region([{ id: "gpu0", name: "NVIDIA Test", usagePercent: 45, memoryTotalBytes: 8 * 1024 ** 3, memoryUsedBytes: 4 * 1024 ** 3, temperatureCelsius: 50, powerWatts: 100, message: "" }, { id: "gpu1", name: "NVIDIA Other", usagePercent: 10, memoryTotalBytes: null, memoryUsedBytes: null, temperatureCelsius: null, powerWatts: null, message: "部分字段不支持" }]),
   processes: { ...region({ cpu: [{ pid: 123, name: "worker-cpu", cpuPercent: 35, memoryBytes: 1024 ** 3 }], memory: [{ pid: 456, name: "worker-memory", cpuPercent: 1, memoryBytes: 2 * 1024 ** 3 }] }), partial: true, message: "部分进程读取权限不足" },
   warnings: [{ resource: "filesystem", device: "root", since: collectedAt, message: "根文件系统占用超过90%" }, { resource: "cpu", device: "", since: collectedAt, message: "占用持续超过90%" }, { resource: "memory", device: "", since: collectedAt, message: "占用持续超过90%" }],
@@ -45,12 +45,13 @@ try {
     let role = "ADMIN";
     let data = fixture();
     let forbidden = false;
+    let disabled = false;
     let emptyHistory = false;
     let overviewCount = 0;
     const historyRequests = [];
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const browserErrors = [];
-    page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("pageerror", (error) => { browserErrors.push(error.message); console.error(error.message); });
     await page.clock.setFixedTime(new Date(fixedTime));
     await page.addInitScript(() => localStorage.setItem("react-admin-auth", JSON.stringify({ token: "test-token", user: { id: 1, username: "cached-admin", nickname: "缓存管理员", roles: [{ id: 1, roleName: "ADMIN", roleCode: "ADMIN" }] } })));
     await page.route("**/api/**", async (route) => {
@@ -59,14 +60,16 @@ try {
       let result;
       let status = 200;
       if (url.pathname === "/api/auth/me") result = user(role);
-      else if (url.pathname === "/api/auth/menus") result = role === "ADMIN" ? menu : [];
+      else if (url.pathname === "/api/auth/menus") result = role === "ADMIN" && !disabled ? menu : [];
       else if (url.pathname.endsWith("unread-count")) result = 0;
+      else if (url.pathname.endsWith("/announcement/page")) result = { records: [], total: 0 };
       else if (url.pathname.endsWith("/overview")) { overviewCount += 1; result = data; if (forbidden) status = 403; }
       else if (url.pathname.endsWith("/history")) {
         historyRequests.push({ resource: url.searchParams.get("resource"), device: url.searchParams.get("device") });
         result = { resource: url.searchParams.get("resource"), device: url.searchParams.get("device") ?? "", windowSeconds: 1800, points: emptyHistory ? [] : [0, 1, 2, 3].map((index) => ({ collectedAt: new Date(fixedTime - 15000 + index * 5000).toISOString(), values: { usagePercent: index === 1 ? null : 20 + index, memoryUsagePercent: 50, receiveBytesPerSecond: 1024 ** 2, transmitBytesPerSecond: 2 * 1024 ** 2, readBytesPerSecond: 1024 ** 2, writeBytesPerSecond: 2 * 1024 ** 2, readIops: 3, writeIops: 4, temperatureCelsius: 50, powerWatts: 100 } })) };
       } else result = [];
-      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ code: status, message: status === 403 ? "ADMIN role required" : "success", data: result }) });
+      if (disabled && (url.pathname.endsWith("/overview") || url.pathname.endsWith("/history"))) { status = 503; result = { reason: "monitoring_disabled" }; }
+      await route.fulfill({ status, contentType: "application/json", body: JSON.stringify({ code: status, message: status === 503 ? "服务器监控模块未启用" : status === 403 ? "ADMIN role required" : "success", data: result }) });
     });
     await page.goto(`${baseUrl}/monitor/server`, { waitUntil: "networkidle" });
     await page.getByRole("link", { name: "服务器监控" }).waitFor();
@@ -116,6 +119,42 @@ try {
     assert.equal(await network.getByText("veth0", { exact: true }).count(), 0);
     await network.getByRole("checkbox").check();
     await network.getByText("veth0", { exact: true }).waitFor();
+    await page.clock.install({ time: new Date(fixedTime) });
+    const ipDialog = page.getByRole("dialog", { name: "网卡 IP 地址" });
+    const openIp = (id) => network.getByRole("row").filter({ has: page.getByText(id, { exact: true }) }).getByRole("button", { name: "查看 IP" }).click();
+    await openIp("eth0");
+    await ipDialog.getByText("192.168.1.10/24", { exact: true }).waitFor();
+    await ipDialog.getByText("10.0.0.5/8", { exact: true }).waitFor();
+    await ipDialog.getByText("fe80::1/64", { exact: true }).waitFor();
+    await page.screenshot({ path: "/tmp/spec77-network-ip-dialog.png", fullPage: true, animations: "disabled" });
+    data.network.data[0].addresses = [{ family: "IPv4", ip: "10.0.0.7", prefixLength: 16 }];
+    await page.clock.fastForward(5000);
+    await ipDialog.getByText("10.0.0.7/16", { exact: true }).waitFor();
+    assert.equal(await ipDialog.getByText("192.168.1.10/24", { exact: true }).count(), 0);
+    data.network.data[0].addressError = "IP 地址读取失败：权限不足";
+    await page.clock.fastForward(5000);
+    await ipDialog.getByText("IP 地址读取失败：权限不足", { exact: true }).waitFor();
+    assert.equal(await ipDialog.getByText("未分配 IP", { exact: true }).count(), 0);
+    data.network.data = data.network.data.filter((item) => item.id !== "eth0");
+    await page.clock.fastForward(5000);
+    await ipDialog.getByText("接口已不可用", { exact: true }).waitFor();
+    await ipDialog.getByRole("button", { name: "关闭详情弹窗" }).click();
+    await openIp("eth1");
+    await ipDialog.getByText("未分配 IP", { exact: true }).waitFor();
+    await page.keyboard.press("Escape");
+    data.network.data[0].addresses = undefined;
+    await page.clock.fastForward(5000);
+    await openIp("eth1");
+    await ipDialog.getByText("IP 地址不可用：采集端未提供地址信息", { exact: true }).waitFor();
+    await page.keyboard.press("Escape");
+    data = fixture();
+    data.host.data.os = "Microsoft Windows Server 2022";
+    data.cpu.data.load1 = null; data.cpu.data.load5 = null; data.cpu.data.load15 = null;
+    data.memory.data.swapUnsupported = true;
+    await page.clock.fastForward(5000);
+    await page.getByText("Microsoft Windows Server 2022", { exact: true }).waitFor();
+    await page.getByText("系统负载（当前平台不支持）", { exact: true }).waitFor();
+    await page.getByText("当前平台不支持此指标", { exact: true }).waitFor();
     await page.getByLabel("趋势资源").selectOption("network");
     await page.getByLabel("趋势设备").selectOption("eth1");
     await eventually(() => historyRequests.some((request) => request.resource === "network" && request.device === "eth1"));
@@ -123,7 +162,7 @@ try {
     await page.getByLabel("趋势设备").selectOption("gpu1");
     await eventually(() => historyRequests.some((request) => request.resource === "gpu" && request.device === "gpu1"));
     assert.equal(await page.getByRole("img", { name: "最近30分钟资源趋势，采集缺口不连接" }).count(), 3);
-    await page.clock.install({ time: new Date(fixedTime + 16000) });
+    await page.clock.setSystemTime(new Date(fixedTime + 16000));
     await page.clock.runFor(1000);
     await eventually(() => page.getByText(/超过15秒无有效新样本/).count().then((count) => count > 0));
     data = fixture(); data.gpu = region(null, "unsupported", "当前平台不支持 NVIDIA"); data.disks = region(null, "no_device"); data.network = region(data.network.data, "error", "网卡采集失败，保留旧值");
@@ -148,7 +187,20 @@ try {
     await page.getByText("无权访问服务器监控", { exact: true }).waitFor();
     assert.equal(overviewCount, countBeforeOrdinary, "cached ADMIN must not override fresh ordinary role");
     assert.equal(await page.getByRole("link", { name: "服务器监控" }).count(), 0);
-    role = "ADMIN"; data = fixture(); data.cpu = region({ ...data.cpu.data, usagePercent: null, perCore: [null, 20] }, "collecting", "首样本正在建立基线"); data.disks = region([{ ...data.disks.data[0], readBytesPerSecond: null, writeBytesPerSecond: null, readIops: null, writeIops: null, message: "建立速率基线" }], "collecting"); emptyHistory = true;
+    role = "ADMIN"; forbidden = false; data = fixture();
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByText("spec64-host", { exact: true }).waitFor();
+    disabled = true;
+    await page.clock.fastForward(5000);
+    await page.getByText("服务器监控模块未启用", { exact: true }).waitFor();
+    assert.equal(await page.getByText("spec64-host", { exact: true }).count(), 0, "disabled state must clear old host details");
+    const beforeDisabledWait = overviewCount;
+    await page.clock.fastForward(15000);
+    assert.equal(overviewCount, beforeDisabledWait, "disabled module must stop polling");
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByText("服务器监控模块未启用", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("link", { name: "服务器监控" }).count(), 0, "disabled menu must stay hidden on direct route access");
+    role = "ADMIN"; disabled = false; data = fixture(); data.cpu = region({ ...data.cpu.data, usagePercent: null, perCore: [null, 20] }, "collecting", "首样本正在建立基线"); data.disks = region([{ ...data.disks.data[0], readBytesPerSecond: null, writeBytesPerSecond: null, readIops: null, writeIops: null, message: "建立速率基线" }], "collecting"); emptyHistory = true;
     await page.reload({ waitUntil: "networkidle" });
     await page.getByText("首样本正在建立基线", { exact: true }).waitFor();
     await page.getByText("逻辑核 0", { exact: true }).locator("..").getByText("采集中", { exact: true }).waitFor();

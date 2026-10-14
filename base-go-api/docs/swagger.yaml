@@ -371,12 +371,23 @@ definitions:
       uptimeSeconds:
         type: number
     type: object
+  monitoring.IPAddress:
+    properties:
+      family:
+        type: string
+      ip:
+        type: string
+      prefixLength:
+        type: integer
+    type: object
   monitoring.Memory:
     properties:
       availableBytes:
         type: integer
       swapTotalBytes:
         type: integer
+      swapUnsupported:
+        type: boolean
       swapUsagePercent:
         type: number
       swapUsedBytes:
@@ -390,6 +401,12 @@ definitions:
     type: object
   monitoring.Network:
     properties:
+      addressError:
+        type: string
+      addresses:
+        items:
+          $ref: '#/definitions/monitoring.IPAddress'
+        type: array
       id:
         type: string
       loopback:
@@ -3363,6 +3380,10 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
       security:
       - BearerAuth: []
       summary: 当前 API 实例最近 30 分钟资源历史（仅 ADMIN）
@@ -3383,9 +3404,13 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
       security:
       - BearerAuth: []
-      summary: Linux 宿主机资源概览（仅 ADMIN）
+      summary: Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）
       tags:
       - 服务器监控
 securityDefinitions:

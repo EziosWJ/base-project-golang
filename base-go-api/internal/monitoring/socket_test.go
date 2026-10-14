@@ -19,7 +19,8 @@ func TestUnixSocketPreservesOriginalSampleAndCleansUp(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	host := Host{Hostname: "real-host-fixture"}
-	sample := Snapshot{SourceID: "host-process-1", SampledAt: at, Host: Region[Host]{Status: StatusOK, CollectedAt: &at, Data: &host}}
+	interfaces := []Network{{ID: "host-eth0", Addresses: []IPAddress{{"IPv4", "10.0.0.5", 24}, {"IPv6", "fe80::5", 64}}}}
+	sample := Snapshot{SourceID: "host-process-1", SampledAt: at, Host: Region[Host]{Status: StatusOK, CollectedAt: &at, Data: &host}, Network: collected(interfaces, at)}
 	done := make(chan error, 1)
 	go func() { done <- ServeUnixCollector(ctx, path, socketFixtureCollector{sample}) }()
 	client := NewUnixCollector(path)
@@ -34,6 +35,9 @@ func TestUnixSocketPreservesOriginalSampleAndCleansUp(t *testing.T) {
 	}
 	if received.Host.Data == nil || received.Host.Data.Hostname != "real-host-fixture" || !received.Host.CollectedAt.Equal(at) || received.SourceID != sample.SourceID {
 		t.Fatalf("socket roundtrip: %+v", received)
+	}
+	if received.Network.Data == nil || len(*received.Network.Data) != 1 || len((*received.Network.Data)[0].Addresses) != 2 || (*received.Network.Data)[0].Addresses[0].IP != "10.0.0.5" || !received.Network.CollectedAt.Equal(at) {
+		t.Fatalf("host socket lost IP information: %+v", received.Network)
 	}
 	second, err := client.Collect(ctx)
 	if err != nil || !second.Host.CollectedAt.Equal(at) || !second.SampledAt.Equal(at) {

@@ -1,10 +1,12 @@
-# Linux 宿主机监控部署
+# 宿主机监控部署
 
-本模块只正式支持单台 Linux 宿主机。直接运行 API 时选择 `native`；Docker 中的 API 必须选择 `unix` 并连接运行在同一宿主机上的采集进程。不能用容器内 `/proc`、`/sys` 或容器挂载点代替宿主机资源。采集失败不会自动切换来源。
+服务器监控默认关闭，配置 `monitoring.enabled: true` 或 `APP_MONITORING__ENABLED=true` 后重启 API 才开始采集。关闭时不初始化采集器、不启动监控任务、不维护历史，导航隐藏服务器监控；已授权 ADMIN 直接请求概览或历史得到 HTTP 503，响应 `data.reason` 为 `monitoring_disabled`。401/403 授权语义、`/health`、`/ready` 和应用 `/metrics` 不变。升级已有部署时请显式开启需要保留的资源监控。
+
+监控范围是 API 所在的单台宿主机。Linux 和 Windows 原生 API 使用 `native`；Linux Docker API 使用 `unix` 并连接同宿主机采集进程。Windows Server 2019/2022 为本次原生部署目标，Windows Docker/WSL 监控外部 Windows 宿主机不在支持范围。不能用容器内 `/proc`、`/sys` 或容器挂载点代替宿主机资源，采集失败不会自动切换来源。
 
 ## 采集依赖和权限
 
-CPU、内存、负载、进程和网卡累计计数使用项目已有的 `prometheus/procfs`，块设备使用同库的 `blockdevice`，文件系统容量使用 `x/sys/unix.Statfs`。采集依赖仅位于 monitoring 的 Linux 边界，无新增 Go 依赖。NVIDIA 通过宿主机驱动自带的 `nvidia-smi` 只读查询，命令有超时；不安装驱动、不改变 GPU 配置。字段返回 `N/A` 时保留为空并说明不支持，GPU 身份使用 UUID。
+Linux 的 CPU、内存、负载、进程和网卡累计计数继续使用 `prometheus/procfs`，块设备使用同库的 `blockdevice`，文件系统容量使用 `x/sys/unix.Statfs`。Windows 的 CPU、内存与网络计数使用 `gopsutil/v4`，主机及进程信息使用只读 WMI，卷容量、磁盘 I/O、网卡链路使用 Win32 查询。新增依赖仅在 Windows 采集边界使用；不导入会自动修改磁盘计数注册表或启用调试权限的采集包。NVIDIA 使用驱动自带的 `nvidia-smi` 只读查询，命令有超时；不安装驱动、不改变 GPU 配置。字段返回 `N/A` 时保留为空并说明不支持，GPU 身份使用 UUID。
 
 使用专用用户 `base-monitor`，无需给予 API 容器 root、host 网络或特权权限。普通 Linux `/proc` 通常允许读取基础进程统计；启用 `hidepid`、安全策略或挂载访问限制时，页面会显示覆盖不完整或失败。按主机已有的 proc 读取组策略授权专用用户，避免为方便采集授予任意 sudo。NVIDIA 权限遵循宿主机驱动设备的现有访问组策略。
 
@@ -59,19 +61,21 @@ timeout 5 sudo -u base-monitor curl --fail --unix-socket /run/base-go-api/host-m
 
 ```yaml
 monitoring:
+  enabled: true
   source: unix
   socket_path: /run/base-go-api/host-monitor.sock
   timeout: 4s
 ```
 
-环境变量覆盖名称沿用现有双下划线嵌套规则：`APP_MONITORING__SOURCE`、`APP_MONITORING__SOCKET_PATH`、`APP_MONITORING__TIMEOUT`。原生 API 设置 `source: native`；API 内部采集无需启动额外进程。
+环境变量覆盖名称沿用现有双下划线嵌套规则：`APP_MONITORING__ENABLED`、`APP_MONITORING__SOURCE`、`APP_MONITORING__SOCKET_PATH`、`APP_MONITORING__TIMEOUT`。原生 API 设置 `enabled: true` 和 `source: native`，无需启动额外进程。采样周期仍为 5 秒，历史仍保存在当前 API 实例的内存中，窗口为 30 分钟。
 
-现有 `base-go-api/docker-compose.dev.yml` 已接入目录映射及访问组。启动 Compose 前将 `HOST_MONITOR_SOCKET_DIR=/run/base-go-api` 与 `HOST_MONITOR_GID` 写入部署环境；后者为 `getent group base-monitor` 显示的数值 GID。等价的 API 服务配置如下：
+现有 `base-go-api/docker-compose.dev.yml` 已接入目录映射及访问组，但默认关闭监控。需要监控时，在 Compose 环境中显式设置 `APP_MONITORING__ENABLED=true`，并将 `HOST_MONITOR_SOCKET_DIR=/run/base-go-api` 与 `HOST_MONITOR_GID` 写入部署环境；后者为 `getent group base-monitor` 显示的数值 GID。启用后的等价 API 服务配置如下：
 
 ```yaml
 services:
   api:
     environment:
+      APP_MONITORING__ENABLED: "true"
       APP_MONITORING__SOURCE: unix
       APP_MONITORING__SOCKET_PATH: /run/base-go-api/host-monitor.sock
     volumes:
@@ -83,6 +87,29 @@ services:
 挂载目录而不是单个 socket 文件，可让采集进程重启后新建的 socket 继续被容器看到。API 容器用户需要该目录的执行权限与 socket 的组读写权限；Unix socket 只允许获授权的本机用户访问，不暴露 TCP 端口。
 
 ## 升级和范围验收
+
+### Windows 原生部署
+
+目标为 Windows Server 2019/2022 amd64 原生运行 API。使用现有配置文件和数据库/JWT 配置机制，启用：
+
+```yaml
+monitoring:
+  enabled: true
+  source: native
+  timeout: 4s
+```
+
+也可在当前 PowerShell 会话设置 `$env:APP_MONITORING__ENABLED = "true"`、`$env:APP_MONITORING__SOURCE = "native"` 后启动 API。无需独立采集进程或 Unix socket。使用专用运行账号，按现有 Windows/WMI 权限策略授权；读取不完整时明确展示失败或权限不足，不自动提权、不启用调试权限、不修改性能计数器设置。NVIDIA 需要驱动提供的 `nvidia-smi.exe` 可从 API 进程 PATH 找到。
+
+Windows CPU 与进程 CPU 按整机总算力归一化；物理内存已用为总量减可用量。Linux 1/5/15 分钟系统负载返回 `null` 并说明不支持；Swap 标记 `swapUnsupported`，不把 Windows 分页文件伪装成 Linux Swap。卷容量使用 Win32 提供的总量、实际空闲和调用账号可用量；存在账号配额时按系统返回口径读取并提示。磁盘性能计数器未启用或不支持时明确显示原因，首次速率样本重新建立计数基线。
+
+Linux 与 Windows 网卡均返回 `addresses`（`family`、`ip`、`prefixLength`）和可选 `addressError`。在网卡表格点击“查看 IP”，弹窗随每 5 秒快照更新全部 IPv4/IPv6 CIDR 地址。空集合显示“未分配 IP”；地址读取失败或旧采集端未提供字段时显示不可用原因；接口消失时显示已不可用。Docker 场景的地址来自宿主机采集进程，不能由 API 容器替代。
+
+执行 `task backend:windows` 生成 Windows amd64 API、迁移程序与监控测试二进制，采用 `CGO_ENABLED=0`，适用于 PostgreSQL。现有 SQLite 驱动仍需要 `CGO_ENABLED=1` 和目标平台 C 编译器；无 CGO 的 SQLite 运行及备份不受支持，不因 PostgreSQL 构建通过而宣称已验证 SQLite 的 Windows 部署。该任务仅构建 API，不包含内嵌前端资源；完整发布仍使用项目既有前端与发布流程。
+
+在 Windows 或启用 Windows 互操作的 WSL 中执行 `task monitoring:smoke:windows`，运行 Windows 专属计数测试及只读真机采集。对照系统工具验收 CPU、内存、卷容量、磁盘、网卡/IP 和进程，并记录账号权限及 NVIDIA 支持字段。Windows 11 上的验证只作为额外证据，不能替代 Server 2019/2022 验收。
+
+### Linux 升级与验收
 
 重新构建二进制，使用 `install` 替换 `/usr/local/bin/base-go-host-collector`，再执行 `sudo systemctl restart base-go-host-collector`。不要删除 API 历史：采集进程重启仅重新建立 CPU、块设备、网络和进程基线，API 的已有历史保留，中断会形成缺口。API 重启才清空其自身的 30 分钟内存历史。
 

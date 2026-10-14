@@ -102,6 +102,7 @@ def main():
             shutil.copyfile(ROOT / "base-go-api/configs/config.yaml", work / "configs/config.yaml")
             (work / "migrations").symlink_to(ROOT / "base-go-api/migrations", target_is_directory=True)
             env = {key: value for key, value in os.environ.items() if not key.startswith("APP_")}
+            env["APP_MONITORING__ENABLED"] = "true"
             env.update({"APP_ENV": "test", "APP_DATABASE__DRIVER": "sqlite", "APP_DATABASE__URL": str(work / "monitor.db"), "APP_DATABASE__USERNAME": "", "APP_DATABASE__PASSWORD": "", "APP_JWT__SECRET": "spec64-temporary-acceptance-secret-32-bytes", "APP_FILE__STORAGE_ROOT": str(work / "uploads")})
             run([str(binaries["base-go-migrate"]), "up", "--kind", "all"], cwd=work, env=env)
             port = free_port()

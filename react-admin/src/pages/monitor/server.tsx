@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/api/auth";
 import { getMonitorHistory, getMonitorSnapshot } from "@/api/monitoring";
 import { ContentCard } from "@/components/common/content-card";
 import { DetailItem } from "@/components/common/detail-item";
+import { DetailDialog } from "@/components/common/detail-dialog";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const bytes = (value: number | null | undefined) => {
   return `${(value / (unit === "GiB" ? 1024 ** 3 : 1024 ** 2)).toFixed(2)} ${unit}`;
 };
 const rate = (value: number | null) => value == null ? "采集中 / 不可用" : `${(value / 1024 ** 2).toFixed(2)} MiB/s`;
+const monitoringDisabled = (reason: unknown) => isApiError(reason) && reason.status === 503 && typeof reason.data === "object" && reason.data !== null && "reason" in reason.data && reason.data.reason === "monitoring_disabled";
 const resources: { value: MonitorResource; label: string }[] = [{ value: "cpu", label: "CPU" }, { value: "memory", label: "内存" }, { value: "filesystem", label: "文件系统" }, { value: "disk", label: "块设备 I/O" }, { value: "network", label: "网卡" }, { value: "gpu", label: "GPU" }];
 const detailTabs = [
   { value: "filesystems", label: "文件系统", icon: HardDrive },
@@ -65,7 +67,7 @@ function UsageBar({ label, value, compact = false, className = "" }: { label: st
 }
 
 export function ServerMonitoringPage() {
-  const [access, setAccess] = useState<"checking" | "allowed" | "denied" | "error">("checking");
+  const [access, setAccess] = useState<"checking" | "allowed" | "denied" | "disabled" | "error">("checking");
   const [snapshot, setSnapshot] = useState<MonitorSnapshot | null>(null);
   const [error, setError] = useState("");
   const [resource, setResource] = useState<MonitorResource>("cpu");
@@ -76,6 +78,7 @@ export function ServerMonitoringPage() {
   const [history, setHistory] = useState<{ key: string; data: MonitorHistory | null; error: string } | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [ipInterface, setIpInterface] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -102,6 +105,7 @@ export function ServerMonitoringPage() {
       } catch (reason) {
         if (controller.signal.aborted) return;
         if (isApiError(reason) && reason.type === "forbidden") { setAccess("denied"); setSnapshot(null); }
+        else if (monitoringDisabled(reason)) { setAccess("disabled"); setSnapshot(null); setHistory(null); setIpInterface(null); }
         else setError(getErrorMessage(reason, "监控加载失败"));
       } finally { pending = false; }
     };
@@ -137,6 +141,7 @@ export function ServerMonitoringPage() {
       } catch (reason) {
         if (controller.signal.aborted) return;
         if (isApiError(reason) && reason.type === "forbidden") { setAccess("denied"); setSnapshot(null); }
+        else if (monitoringDisabled(reason)) { setAccess("disabled"); setSnapshot(null); setHistory(null); setIpInterface(null); }
         else setHistory((previous) => ({ key: historyKey, data: previous?.key === historyKey ? previous.data : null, error: getErrorMessage(reason, "趋势加载失败") }));
       } finally { pending = false; }
     };
@@ -157,9 +162,11 @@ export function ServerMonitoringPage() {
   const cpu = snapshot?.cpu.data;
   const memory = snapshot?.memory.data;
   const host = snapshot?.host.data;
-  const header = <PageHeader title="服务器监控" description="Linux 宿主机资源 · 每5秒刷新 · 最近30分钟历史" actions={<Button variant="secondary" size="sm" onClick={() => setRefresh((value) => value + 1)}><RefreshCw className="h-4 w-4" />刷新</Button>} />;
+  const selectedInterface = snapshot?.network.data?.find((item) => item.id === ipInterface);
+  const header = <PageHeader title="服务器监控" description={`${host?.os || "宿主机资源"} · 每5秒刷新 · 最近30分钟历史`} actions={<Button variant="secondary" size="sm" onClick={() => setRefresh((value) => value + 1)}><RefreshCw className="h-4 w-4" />刷新</Button>} />;
   if (access === "checking") return <div>{header}<p role="status">正在检查 ADMIN 权限…</p></div>;
   if (access === "denied") return <div>{header}<EmptyState title="无权访问服务器监控" description="仅启用的 ADMIN 管理员可以查看宿主机和进程信息。" /></div>;
+  if (access === "disabled") return <div>{header}<EmptyState title="服务器监控模块未启用" description="当前服务器未开启资源监控。" /></div>;
   if (access === "error") return <div>{header}<EmptyState title="权限检查失败" description={error} actionText="重试" onAction={() => setRefresh((value) => value + 1)} /></div>;
   return <div className="space-y-6">{header}
     {error && <p role="alert" className="rounded-admin border border-warning-border bg-warning-background p-4 text-sm text-warning">{error}；保留已有数据，各区域鲜度按有效采集时间判断。</p>}
@@ -176,7 +183,7 @@ export function ServerMonitoringPage() {
                 <p className="mt-1 text-xs text-text-tertiary">整机总算力为100%</p>
               </div>
               <div className="border-l border-border pl-4">
-                <p className="mb-2 text-xs text-text-secondary">系统负载</p>
+                <p className="mb-2 text-xs text-text-secondary">系统负载{cpu.load1 == null ? "（当前平台不支持）" : ""}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[{ label: "1 分钟", value: cpu.load1 }, { label: "5 分钟", value: cpu.load5 }, { label: "15 分钟", value: cpu.load15 }].map((item) => <div key={item.label}><p className="text-lg font-semibold tabular-nums">{number(item.value)}</p><p className="mt-1 whitespace-nowrap text-xs text-text-tertiary">{item.label}</p></div>)}
                 </div>
@@ -184,8 +191,8 @@ export function ServerMonitoringPage() {
             </div>
             <UsageBar label="总体 CPU 利用率" value={cpu.usagePercent} className="mt-4" />
             <div className="mt-5 border-t border-border pt-4">
-              <p className="break-words text-sm font-medium text-text-secondary">{cpu.model}</p>
-              <p className="mt-1 text-xs text-text-tertiary">{cpu.physicalCores} 物理核 / {cpu.logicalCores} 逻辑核</p>
+              <p className="break-words text-sm font-medium text-text-secondary">{cpu.model || "CPU 型号不可用"}</p>
+              <p className="mt-1 text-xs text-text-tertiary">{cpu.physicalCores > 0 ? `${cpu.physicalCores} 物理核` : "物理核数不可用"} / {cpu.logicalCores} 逻辑核</p>
             </div>
             <div className="my-4 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
               {(cpu.perCore ?? []).map((value, index) => <div key={index} className="min-w-0">
@@ -207,7 +214,7 @@ export function ServerMonitoringPage() {
               {[{ label: "内存总量", value: memory.totalBytes }, { label: "已用内存", value: memory.usedBytes }, { label: "可用内存", value: memory.availableBytes }].map((item, index) => <div key={item.label} className={index === 0 ? "pr-2" : "px-2 sm:px-3"}><dt className="text-xs text-text-tertiary">{item.label}</dt><dd className="mt-2 whitespace-nowrap text-sm font-semibold tabular-nums text-text-primary">{bytes(item.value)}</dd></div>)}
             </dl>
             <div className="my-5">
-              <div className="mb-3 flex items-baseline justify-between gap-3"><h3 className="text-sm font-medium text-text-secondary">Swap</h3><span className="text-sm font-semibold tabular-nums">{memory.swapTotalBytes === 0 ? "未配置 Swap" : percent(memory.swapUsagePercent)}</span></div>
+              <div className="mb-3 flex items-baseline justify-between gap-3"><h3 className="text-sm font-medium text-text-secondary">Swap</h3><span className="text-sm font-semibold tabular-nums">{memory.swapUnsupported ? "当前平台不支持此指标" : memory.swapTotalBytes === 0 ? "未配置 Swap" : percent(memory.swapUsagePercent)}</span></div>
               {memory.swapTotalBytes > 0 && <><UsageBar label="Swap 占用率" value={memory.swapUsagePercent} /><div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-text-tertiary"><span>已用 <span className="tabular-nums text-text-secondary">{bytes(memory.swapUsedBytes)}</span></span><span>总量 <span className="tabular-nums text-text-secondary">{bytes(memory.swapTotalBytes)}</span></span></div></>}
             </div>
             <p className="mt-auto border-t border-border pt-3 text-xs leading-5 text-text-tertiary">内存已用 = 总量 − 可用量；占用率 = 已用 ÷ 总量。</p>
@@ -249,7 +256,7 @@ export function ServerMonitoringPage() {
           <ResourceSection title="块设备 I/O" state={snapshot.disks} now={now} className="rounded-none border-0"><ResourceTable headers={["设备", "读取", "写入", "读取 IOPS", "写入 IOPS", "说明"]} rows={(snapshot.disks.data ?? []).map((item) => [item.id, rate(item.readBytesPerSecond), rate(item.writeBytesPerSecond), number(item.readIops), number(item.writeIops), item.message || "—"])} /><p className="mt-3 text-xs text-text-tertiary">新设备、首样本与计数重置会重新建立速率基线；速率不可用时不会填零。</p></ResourceSection>
         </div>
         <div role="tabpanel" id="monitor-panel-network" aria-labelledby="monitor-tab-network" hidden={detailTab !== "network"} tabIndex={0} className="outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
-          <ResourceSection title="逐网卡流量" state={snapshot.network} now={now} className="rounded-none border-0"><label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={showAll} onChange={(event) => setShowAll(event.target.checked)} />显示全部接口（默认隐藏回环和 veth）</label><ResourceTable headers={["网卡", "链路", "链路速率", "接收 / 发送", "累计接收 / 发送", "收 / 发带宽占用率", "收 / 发错误", "收 / 发丢包", "说明"]} rows={interfaces.map((item) => [item.id, item.state, number(item.speedBitsPerSecond == null ? null : item.speedBitsPerSecond / 1e6, " Mbit/s"), `${rate(item.receiveBytesPerSecond)} / ${rate(item.transmitBytesPerSecond)}`, `${bytes(item.receiveBytes)} / ${bytes(item.transmitBytes)}`, `${percent(item.receiveUsagePercent)} / ${percent(item.transmitUsagePercent)}`, `${item.receiveErrors} / ${item.transmitErrors}`, `${item.receiveDropped} / ${item.transmitDropped}`, item.message || "—"])} /><p className="mt-3 text-xs text-text-tertiary">1 MiB = 1,048,576 字节；收发分别按 bit/s 与链路速率计算占用率。链路速率未知时占用率不可用。</p></ResourceSection>
+          <ResourceSection title="逐网卡流量" state={snapshot.network} now={now} className="rounded-none border-0"><label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={showAll} onChange={(event) => setShowAll(event.target.checked)} />显示全部接口（默认隐藏回环和 veth）</label><ResourceTable headers={["网卡", "链路", "链路速率", "接收 / 发送", "累计接收 / 发送", "收 / 发带宽占用率", "收 / 发错误", "收 / 发丢包", "说明", "操作"]} rows={interfaces.map((item) => [item.id, item.state, number(item.speedBitsPerSecond == null ? null : item.speedBitsPerSecond / 1e6, " Mbit/s"), `${rate(item.receiveBytesPerSecond)} / ${rate(item.transmitBytesPerSecond)}`, `${bytes(item.receiveBytes)} / ${bytes(item.transmitBytes)}`, `${percent(item.receiveUsagePercent)} / ${percent(item.transmitUsagePercent)}`, `${item.receiveErrors} / ${item.transmitErrors}`, `${item.receiveDropped} / ${item.transmitDropped}`, item.message || "—", <Button key={item.id} variant="ghost" size="sm" onClick={() => setIpInterface(item.id)}>查看 IP</Button>])} /><p className="mt-3 text-xs text-text-tertiary">1 MiB = 1,048,576 字节；收发分别按 bit/s 与链路速率计算占用率。链路速率未知时占用率不可用。</p></ResourceSection>
         </div>
         <div role="tabpanel" id="monitor-panel-gpu" aria-labelledby="monitor-tab-gpu" hidden={detailTab !== "gpu"} tabIndex={0} className="outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
           <ResourceSection title="NVIDIA GPU" state={snapshot.gpu} now={now} className="rounded-none border-0"><ResourceTable headers={["GPU", "型号", "利用率", "显存已用 / 总量", "温度", "功耗", "说明"]} rows={(snapshot.gpu.data ?? []).map((item) => [item.id, item.name, percent(item.usagePercent), `${bytes(item.memoryUsedBytes)} / ${bytes(item.memoryTotalBytes)}`, number(item.temperatureCelsius, " °C"), number(item.powerWatts, " W"), item.message || "—"])} /><p className="mt-3 text-xs text-text-tertiary">字段不可用表示设备不支持或当前无法读取，请参照采集说明。</p></ResourceSection>
@@ -260,5 +267,13 @@ export function ServerMonitoringPage() {
       </section>
       <ContentCard title="固定异常规则" className="shadow-none"><p className="text-sm leading-7 text-text-secondary">CPU、内存 ≥90% 持续60秒后提示，&lt;85% 持续30秒后恢复。文件系统 ≥90% 立即提示，&lt;85% 恢复。采样中断中止持续时间判断，恢复后重新计时。GPU 和网络展示状态与错误，高利用率或高流量本身不判为异常。</p></ContentCard>
     </>}
+    <DetailDialog open={ipInterface !== null} title="网卡 IP 地址" description={ipInterface} onCancel={() => setIpInterface(null)} trapFocus contentClassName="max-w-xl">
+      {!selectedInterface ? <p role="status">接口已不可用</p> : snapshot && <ResourceSection title="地址信息" state={snapshot.network} now={now}>
+        {selectedInterface.addressError ? <p role="alert" className="text-sm text-warning">{selectedInterface.addressError}</p>
+          : selectedInterface.addresses == null ? <p role="status">IP 地址不可用：采集端未提供地址信息</p>
+          : selectedInterface.addresses.length === 0 ? <p role="status">未分配 IP</p>
+          : <ul className="space-y-3">{selectedInterface.addresses.map((address) => <li key={`${address.family}:${address.ip}/${address.prefixLength}`} className="flex flex-wrap gap-3 text-sm"><span className="text-text-secondary">{address.family}</span><span className="break-all font-mono">{address.ip}/{address.prefixLength}</span></li>)}</ul>}
+      </ResourceSection>}
+    </DetailDialog>
   </div>;
 }

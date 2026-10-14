@@ -294,6 +294,27 @@ func TestPrincipalContext(t *testing.T) {
 	}
 }
 
+func TestMonitoringMenuUsesInstanceConfiguration(t *testing.T) {
+	store := newMemoryStore(User{ID: 10, Username: "user", Status: UserStatusEnabled})
+	store.menus = []CurrentUserMenu{{ID: 1, MenuType: "DIR", Path: "/monitor"}, {ID: 2, ParentID: 1, MenuType: "MENU", Path: "/monitor/server"}, {ID: 3, MenuType: "MENU", Path: "/system/users"}}
+	service, _ := testService(t, store)
+	principal := Principal{UserID: 10}
+	disabled := service.WithServerMonitoring(false)
+	menus, err := disabled.CurrentUserMenus(context.Background(), principal)
+	if err != nil || len(menus) != 1 || menus[0].Path != "/system/users" {
+		t.Fatalf("disabled menus=%+v err=%v", menus, err)
+	}
+	menus, err = service.CurrentUserMenus(context.Background(), principal)
+	if err != nil || len(menus) != 2 {
+		t.Fatalf("another instance's menu policy changed: %+v %v", menus, err)
+	}
+	store.menus = append(store.menus, CurrentUserMenu{ID: 4, ParentID: 1, MenuType: "MENU", Path: "/monitor/other"})
+	menus, err = disabled.CurrentUserMenus(context.Background(), principal)
+	if err != nil || len(menus) != 2 || len(menus[0].Children) != 1 || menus[0].Children[0].Path != "/monitor/other" {
+		t.Fatalf("other monitoring menu was hidden: %+v %v", menus, err)
+	}
+}
+
 func TestModelTableNames(t *testing.T) {
 	if (User{}).TableName() != "sys_user" || (AuthSession{}).TableName() != "auth_session" || (LoginLog{}).TableName() != "sys_login_log" {
 		t.Fatal("authentication model table mapping changed")

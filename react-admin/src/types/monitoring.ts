@@ -1,10 +1,11 @@
 export type Region<T> = { status: "ok" | "collecting" | "no_device" | "unsupported" | "error" | "stale"; collectedAt: string | null; message: string; partial: boolean; stale: boolean; data: T | null };
 export type HostMetrics = { hostname: string; os: string; kernel: string; uptimeSeconds: number };
-export type CPUMetrics = { model: string; logicalCores: number; physicalCores: number; usagePercent: number | null; perCore: (number | null)[]; load1: number; load5: number; load15: number };
-export type MemoryMetrics = { totalBytes: number; usedBytes: number; availableBytes: number; usagePercent: number; swapTotalBytes: number; swapUsedBytes: number; swapUsagePercent: number | null };
+export type CPUMetrics = { model: string; logicalCores: number; physicalCores: number; usagePercent: number | null; perCore: (number | null)[]; load1: number | null; load5: number | null; load15: number | null };
+export type MemoryMetrics = { totalBytes: number; usedBytes: number; availableBytes: number; usagePercent: number; swapTotalBytes: number; swapUsedBytes: number; swapUsagePercent: number | null; swapUnsupported?: boolean };
 export type FilesystemMetrics = { id: string; device: string; mountpoint: string; type: string; totalBytes: number; usedBytes: number; availableBytes: number; usagePercent: number | null; message: string };
 export type DiskMetrics = { id: string; readBytesPerSecond: number | null; writeBytesPerSecond: number | null; readIops: number | null; writeIops: number | null; message: string };
-export type NetworkMetrics = { id: string; loopback: boolean; virtual: boolean; state: string; speedBitsPerSecond: number | null; receiveBytes: number; transmitBytes: number; receiveBytesPerSecond: number | null; transmitBytesPerSecond: number | null; receiveUsagePercent: number | null; transmitUsagePercent: number | null; receiveErrors: number; transmitErrors: number; receiveDropped: number; transmitDropped: number; message: string };
+export type IPAddress = { family: "IPv4" | "IPv6"; ip: string; prefixLength: number };
+export type NetworkMetrics = { id: string; addresses?: IPAddress[] | null; addressError?: string; loopback: boolean; virtual: boolean; state: string; speedBitsPerSecond: number | null; receiveBytes: number; transmitBytes: number; receiveBytesPerSecond: number | null; transmitBytesPerSecond: number | null; receiveUsagePercent: number | null; transmitUsagePercent: number | null; receiveErrors: number; transmitErrors: number; receiveDropped: number; transmitDropped: number; message: string };
 export type GPUMetrics = { id: string; name: string; usagePercent: number | null; memoryTotalBytes: number | null; memoryUsedBytes: number | null; temperatureCelsius: number | null; powerWatts: number | null; message: string };
 export type ProcessMetrics = { pid: number; name: string; cpuPercent: number | null; memoryBytes: number };
 export type MonitorResource = "cpu" | "memory" | "filesystem" | "disk" | "network" | "gpu";

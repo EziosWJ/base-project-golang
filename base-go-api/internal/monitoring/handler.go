@@ -26,12 +26,13 @@ func principalID(c *gin.Context) (int64, bool) {
 }
 
 // overview godoc
-// @Summary Linux 宿主机资源概览（仅 ADMIN）
+// @Summary Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）
 // @Tags 服务器监控
 // @Security BearerAuth
 // @Success 200 {object} OverviewEnvelope
 // @Failure 401 {object} OverviewEnvelope
 // @Failure 403 {object} OverviewEnvelope
+// @Failure 503 {object} OverviewEnvelope
 // @Router /api/v1/monitoring/overview [get]
 func (h *Handler) overview(c *gin.Context) {
 	id, ok := principalID(c)
@@ -52,6 +53,7 @@ func (h *Handler) overview(c *gin.Context) {
 // @Failure 400 {object} HistoryEnvelope
 // @Failure 401 {object} HistoryEnvelope
 // @Failure 403 {object} HistoryEnvelope
+// @Failure 503 {object} HistoryEnvelope
 // @Router /api/v1/monitoring/history [get]
 func (h *Handler) history(c *gin.Context) {
 	id, ok := principalID(c)
@@ -77,6 +79,8 @@ func write(c *gin.Context, value any, err error) {
 	switch {
 	case err == nil:
 		platformhttp.OK(c, value)
+	case errors.Is(err, ErrDisabled):
+		platformhttp.WriteError(c, http.StatusServiceUnavailable, platformhttp.CodeServiceUnavailable, err.Error(), gin.H{"reason": "monitoring_disabled"})
 	case platformhttp.IsTemporaryUnavailable(err):
 		platformhttp.TemporaryUnavailable(c)
 	case errors.Is(err, ErrForbidden):

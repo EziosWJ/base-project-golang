@@ -41,11 +41,12 @@ type CPU struct {
 	PhysicalCores int        `json:"physicalCores"`
 	UsagePercent  *float64   `json:"usagePercent"`
 	PerCore       []*float64 `json:"perCore"`
-	Load1         float64    `json:"load1"`
-	Load5         float64    `json:"load5"`
-	Load15        float64    `json:"load15"`
+	Load1         *float64   `json:"load1"`
+	Load5         *float64   `json:"load5"`
+	Load15        *float64   `json:"load15"`
 }
 type Memory struct {
+	SwapUnsupported  bool     `json:"swapUnsupported,omitempty"`
 	TotalBytes       uint64   `json:"totalBytes"`
 	UsedBytes        uint64   `json:"usedBytes"`
 	AvailableBytes   uint64   `json:"availableBytes"`
@@ -73,23 +74,31 @@ type Disk struct {
 	WriteIOPS           *float64 `json:"writeIops"`
 	Message             string   `json:"message"`
 }
+type IPAddress struct {
+	Family       string `json:"family"`
+	IP           string `json:"ip"`
+	PrefixLength int    `json:"prefixLength"`
+}
+
 type Network struct {
-	ID                     string   `json:"id"`
-	Loopback               bool     `json:"loopback"`
-	Virtual                bool     `json:"virtual"`
-	State                  string   `json:"state"`
-	SpeedBitsPerSecond     *float64 `json:"speedBitsPerSecond"`
-	ReceiveBytes           uint64   `json:"receiveBytes"`
-	TransmitBytes          uint64   `json:"transmitBytes"`
-	ReceiveBytesPerSecond  *float64 `json:"receiveBytesPerSecond"`
-	TransmitBytesPerSecond *float64 `json:"transmitBytesPerSecond"`
-	ReceiveUsagePercent    *float64 `json:"receiveUsagePercent"`
-	TransmitUsagePercent   *float64 `json:"transmitUsagePercent"`
-	ReceiveErrors          uint64   `json:"receiveErrors"`
-	TransmitErrors         uint64   `json:"transmitErrors"`
-	ReceiveDropped         uint64   `json:"receiveDropped"`
-	TransmitDropped        uint64   `json:"transmitDropped"`
-	Message                string   `json:"message"`
+	Addresses              []IPAddress `json:"addresses"`
+	AddressError           string      `json:"addressError,omitempty"`
+	ID                     string      `json:"id"`
+	Loopback               bool        `json:"loopback"`
+	Virtual                bool        `json:"virtual"`
+	State                  string      `json:"state"`
+	SpeedBitsPerSecond     *float64    `json:"speedBitsPerSecond"`
+	ReceiveBytes           uint64      `json:"receiveBytes"`
+	TransmitBytes          uint64      `json:"transmitBytes"`
+	ReceiveBytesPerSecond  *float64    `json:"receiveBytesPerSecond"`
+	TransmitBytesPerSecond *float64    `json:"transmitBytesPerSecond"`
+	ReceiveUsagePercent    *float64    `json:"receiveUsagePercent"`
+	TransmitUsagePercent   *float64    `json:"transmitUsagePercent"`
+	ReceiveErrors          uint64      `json:"receiveErrors"`
+	TransmitErrors         uint64      `json:"transmitErrors"`
+	ReceiveDropped         uint64      `json:"receiveDropped"`
+	TransmitDropped        uint64      `json:"transmitDropped"`
+	Message                string      `json:"message"`
 }
 type GPU struct {
 	ID                 string   `json:"id"`

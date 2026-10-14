@@ -5,10 +5,9 @@ package monitoring
 import (
 	"context"
 	"crypto/rand"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"math"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,15 +21,6 @@ import (
 	"github.com/prometheus/procfs/blockdevice"
 	"golang.org/x/sys/unix"
 )
-
-type timedCounter[T any] struct {
-	at    time.Time
-	value T
-}
-type processCounter struct {
-	started uint64
-	seconds float64
-}
 
 // LinuxCollector runs only in the host namespaces. Each region has an independent
 // lock, so a slow filesystem or driver cannot overlap itself or block other areas.
@@ -79,28 +69,7 @@ func NewLinuxCollector() (Collector, error) {
 	return &LinuxCollector{fs: fs, blocks: blocks, sourceID: fmt.Sprintf("%x", id), diskBaseline: map[string]timedCounter[blockdevice.Diskstats]{}, netBaseline: map[string]timedCounter[procfs.NetDevLine]{}, netIdentity: map[string]string{}, processBaseline: map[int]processCounter{}}, nil
 }
 
-func collected[T any](data T, now time.Time) Region[T] {
-	return Region[T]{Status: StatusOK, CollectedAt: &now, Data: &data}
-}
-func failed[T any](err error) Region[T] { return Region[T]{Status: StatusError, Message: err.Error()} }
-
-func collectRegion[T any](ctx context.Context, lock *sync.Mutex, collect func(context.Context) Region[T], dest *Region[T], wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if !lock.TryLock() {
-			*dest = failed[T](errors.New("previous collection still running"))
-			return
-		}
-		result := make(chan Region[T], 1)
-		go func() { defer lock.Unlock(); result <- collect(ctx) }()
-		select {
-		case *dest = <-result:
-		case <-ctx.Done():
-			*dest = failed[T](ctx.Err())
-		}
-	}()
-}
+func NewNativeCollector() (Collector, error) { return NewLinuxCollector() }
 
 func (c *LinuxCollector) Collect(ctx context.Context) (Snapshot, error) {
 	budget := 3500 * time.Millisecond
@@ -196,7 +165,7 @@ func (c *LinuxCollector) cpu(ctx context.Context) Region[CPU] {
 		c.cpuBaseline = nil
 		return failed[CPU](err)
 	}
-	data := CPU{LogicalCores: len(stat.CPU), Load1: load.Load1, Load5: load.Load5, Load15: load.Load15}
+	data := CPU{LogicalCores: len(stat.CPU), Load1: &load.Load1, Load5: &load.Load5, Load15: &load.Load15}
 	physical := map[string]bool{}
 	for _, i := range info {
 		if data.Model == "" {
@@ -240,20 +209,6 @@ func (c *LinuxCollector) cpu(ctx context.Context) Region[CPU] {
 		region.Message = "建立 CPU 计数基线"
 	}
 	return region
-}
-
-func memoryValues(total, available, swapTotal, swapFree uint64) Memory {
-	available = min(total, available)
-	swapFree = min(swapTotal, swapFree)
-	data := Memory{TotalBytes: total, AvailableBytes: available, UsedBytes: total - available, SwapTotalBytes: swapTotal, SwapUsedBytes: swapTotal - swapFree}
-	if total > 0 {
-		data.UsagePercent = 100 * float64(data.UsedBytes) / float64(total)
-	}
-	if swapTotal > 0 {
-		value := 100 * float64(data.SwapUsedBytes) / float64(swapTotal)
-		data.SwapUsagePercent = &value
-	}
-	return data
 }
 
 func (c *LinuxCollector) memory(ctx context.Context) Region[Memory] {
@@ -429,14 +384,6 @@ func parseHostMounts(contents string) ([]*procfs.MountInfo, error) {
 	return data, nil
 }
 
-func counterRate(previous, current uint64, elapsed time.Duration) *float64 {
-	if elapsed <= 0 || current < previous {
-		return nil
-	}
-	value := float64(current-previous) / elapsed.Seconds()
-	return &value
-}
-
 func (c *LinuxCollector) disks(ctx context.Context) Region[[]Disk] {
 	stats, err := c.blocks.ProcDiskstats()
 	if err != nil {
@@ -502,6 +449,13 @@ func (c *LinuxCollector) network(ctx context.Context) Region[[]Network] {
 		identities[id] = identity
 		flags, _ := strconv.ParseUint(readSys(filepath.Join(root, "flags")), 0, 32)
 		item := Network{ID: id, Loopback: id == "lo" || flags&unix.IFF_LOOPBACK != 0, Virtual: strings.HasPrefix(id, "veth"), State: readSys(filepath.Join(root, "operstate")), ReceiveBytes: stat.RxBytes, TransmitBytes: stat.TxBytes, ReceiveErrors: stat.RxErrors, TransmitErrors: stat.TxErrors, ReceiveDropped: stat.RxDropped, TransmitDropped: stat.TxDropped, Message: "建立网卡计数基线"}
+		iface, addressErr := net.InterfaceByName(id)
+		if addressErr == nil {
+			item.Addresses, addressErr = interfaceAddresses(*iface)
+		}
+		if addressErr != nil {
+			item.AddressError = "IP 地址读取失败：" + addressErr.Error()
+		}
 		if speed, err := strconv.ParseFloat(readSys(filepath.Join(root, "speed")), 64); err == nil && speed > 0 {
 			speed *= 1e6
 			item.SpeedBitsPerSecond = &speed
@@ -540,6 +494,11 @@ func (c *LinuxCollector) network(ctx context.Context) Region[[]Network] {
 	c.netBaseline = next
 	c.netIdentity = identities
 	region := collected(data, now)
+	for _, item := range data {
+		if item.AddressError != "" {
+			region.Partial = true
+		}
+	}
 	if len(data) == 0 {
 		region.Status = StatusNoDevice
 	}
@@ -590,80 +549,13 @@ func (c *LinuxCollector) processes(ctx context.Context) Region[Processes] {
 	c.processBaseline = next
 	c.processTotal = total
 	c.processAt = now
-	data := Processes{CPU: append([]Process{}, items...), Memory: append([]Process{}, items...)}
-	sort.Slice(data.CPU, func(i, j int) bool {
-		a, b := data.CPU[i], data.CPU[j]
-		if a.CPUPercent == nil {
-			return b.CPUPercent == nil && a.PID < b.PID
-		}
-		if b.CPUPercent == nil {
-			return true
-		}
-		if *a.CPUPercent == *b.CPUPercent {
-			return a.PID < b.PID
-		}
-		return *a.CPUPercent > *b.CPUPercent
-	})
-	sort.Slice(data.Memory, func(i, j int) bool {
-		if data.Memory[i].MemoryBytes == data.Memory[j].MemoryBytes {
-			return data.Memory[i].PID < data.Memory[j].PID
-		}
-		return data.Memory[i].MemoryBytes > data.Memory[j].MemoryBytes
-	})
-	data.CPU = data.CPU[:min(10, len(data.CPU))]
-	data.Memory = data.Memory[:min(10, len(data.Memory))]
+	data := topProcesses(items)
 	region := collected(data, now)
 	if failures > 0 {
 		region.Partial = true
 		region.Message = fmt.Sprintf("覆盖不完整：%d 个进程读取失败", failures)
 	}
 	return region
-}
-
-func gpuNumber(value string) *float64 {
-	number, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
-	if err != nil || number < 0 || math.IsNaN(number) || math.IsInf(number, 0) {
-		return nil
-	}
-	return &number
-}
-func gpuMemory(value string) *uint64 {
-	number := gpuNumber(value)
-	if number == nil {
-		return nil
-	}
-	bytes := uint64(*number * 1048576)
-	return &bytes
-}
-func parseGPUCSV(output string) ([]GPU, bool, error) {
-	reader := csv.NewReader(strings.NewReader(output))
-	reader.TrimLeadingSpace = true
-	reader.FieldsPerRecord = -1
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, false, err
-	}
-	data := []GPU{}
-	partial := false
-	for _, row := range rows {
-		if len(row) != 8 {
-			partial = true
-			continue
-		}
-		if strings.TrimSpace(row[0]) == "" || strings.Contains(row[0], "[Not Supported]") {
-			partial = true
-			continue
-		}
-		item := GPU{ID: strings.TrimSpace(row[0]), Name: strings.TrimSpace(row[1]), UsagePercent: gpuNumber(row[2]), MemoryTotalBytes: gpuMemory(row[3]), MemoryUsedBytes: gpuMemory(row[4]), TemperatureCelsius: gpuNumber(row[5]), PowerWatts: gpuNumber(row[6])}
-		// The final field is driver version, retained as support context.
-		item.Message = "driver " + strings.TrimSpace(row[7])
-		if item.UsagePercent == nil || item.MemoryTotalBytes == nil || item.MemoryUsedBytes == nil || item.TemperatureCelsius == nil || item.PowerWatts == nil {
-			partial = true
-			item.Message += "; 部分字段不支持或不可读取"
-		}
-		data = append(data, item)
-	}
-	return data, partial, nil
 }
 
 func (c *LinuxCollector) gpu(ctx context.Context) Region[[]GPU] {

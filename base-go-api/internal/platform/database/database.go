@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	platformerrors "github.com/EziosWJ/base-project-golang/base-go-api/internal/platform/errors"
-	"github.com/mattn/go-sqlite3"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -268,20 +266,6 @@ func Rebind(driver, query string) (string, error) {
 		builder.WriteRune(character)
 	}
 	return builder.String(), nil
-}
-
-// NormalizeError hides SQLite's busy/locked implementation errors behind the
-// transport-independent temporary-unavailability contract. Other errors are
-// returned unchanged so callers can preserve their existing domain mapping.
-func NormalizeError(err error) error {
-	if err == nil {
-		return nil
-	}
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) && (sqliteErr.Code == sqlite3.ErrBusy || sqliteErr.Code == sqlite3.ErrLocked) {
-		return platformerrors.ErrTemporarilyUnavailable
-	}
-	return err
 }
 
 func registerSQLiteErrorNormalizer(db *gorm.DB) error {

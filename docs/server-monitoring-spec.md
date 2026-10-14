@@ -4,6 +4,8 @@
 
 已发布：[Spec #64](https://github.com/EziosWJ/base-project-golang/issues/64)。实现工作项与阻塞依赖见 [ticket 索引](server-monitoring-tickets.md)。
 
+本文件保留首版 Linux 契约。2026-10-14 的[增量 Spec #77](server-monitoring-extension-spec.md) 将平台目标扩展至 Windows Server 2019/2022 原生 API 部署，增加 IPv4/IPv6 网卡 IP 弹窗，并将模块改为默认关闭；开关关闭时不执行本文件描述的持续采集和历史维护。涉及平台范围、默认启用及网卡地址时，以增量规格为准。
+
 ## Problem Statement
 
 管理员需要在现有后台判断本项目所在服务器是否存在 CPU、内存、磁盘或网络瓶颈，并定位主要占用进程。现有应用存活、数据库就绪与 Prometheus 应用指标不能提供完整的宿主机资源面板。Docker 部署还存在将容器指标误认为整机指标的风险，多网卡、多磁盘与 GPU 的支持情况也需要明确展示。

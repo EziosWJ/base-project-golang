@@ -86,7 +86,9 @@ func testMonitoringMenuAndAuthorization(t *testing.T, database *platformdatabase
 		Memory: monitoring.Region[monitoring.Memory]{Status: monitoring.StatusOK, CollectedAt: &now, Data: &monitoring.Memory{TotalBytes: 1000, UsedBytes: 500, AvailableBytes: 500, UsagePercent: 50}},
 	})
 	deps.Monitoring = service
-	router, err := app.Build(testAPIConfig(), database, deps)
+	cfg := testAPIConfig()
+	cfg.Monitoring.Enabled = true
+	router, err := app.Build(cfg, database, deps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,6 +122,27 @@ func testMonitoringMenuAndAuthorization(t *testing.T, database *platformdatabase
 	}
 	for _, path := range paths {
 		assertMonitoringForbidden(t, router, path, viewerToken)
+	}
+	// Disabled instances share menu records without changing enabled instances.
+	cfg.Monitoring.Enabled = false
+	disabledRouter, err := app.Build(cfg, database, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disabledMenus := serveJSON(disabledRouter, http.MethodGet, "/api/auth/menus", "", adminToken)
+	if disabledMenus.Code != http.StatusOK || strings.Contains(disabledMenus.Body.String(), `"path":"/monitor/server"`) || strings.Contains(disabledMenus.Body.String(), `"path":"/monitor"`) {
+		t.Fatalf("disabled menus: %d %s", disabledMenus.Code, disabledMenus.Body.String())
+	}
+	for _, path := range paths {
+		result := serveJSON(disabledRouter, http.MethodGet, path, "", adminToken)
+		if result.Code != http.StatusServiceUnavailable || !strings.Contains(result.Body.String(), `"reason":"monitoring_disabled"`) {
+			t.Fatalf("disabled route: %d %s", result.Code, result.Body.String())
+		}
+		assertMonitoringForbidden(t, disabledRouter, path, viewerToken)
+		assertUnauthenticated(t, serveJSON(disabledRouter, http.MethodGet, path, "", ""))
+	}
+	if result := serveJSON(router, http.MethodGet, paths[0], "", adminToken); result.Code != http.StatusOK {
+		t.Fatal("disabled instance changed the enabled instance")
 	}
 	// Modify current role state without revoking the valid login session; the
 	// monitoring authorization must observe each change on the next request.

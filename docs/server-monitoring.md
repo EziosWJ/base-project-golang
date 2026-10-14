@@ -2,6 +2,8 @@
 
 状态：已确认。用户通过四轮需求访谈接受 Q1–Q19 推荐，以下内容为首版范围与验收依据。本文定稿时尚未开始功能实现。
 
+后续增量：[Spec #77](server-monitoring-extension-spec.md) 已确认 Windows Server 2019/2022 原生采集、网卡 IPv4/IPv6 地址弹窗和资源监控默认关闭。下文保留首版决策历史，当前平台及启用边界遵循增量规格。
+
 正式规格与实现切片见 [Spec](server-monitoring-spec.md) 和 [ticket 拆分](server-monitoring-tickets.md)。
 
 ## 已确认的目标与范围

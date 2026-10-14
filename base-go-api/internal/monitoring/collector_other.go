@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !windows
 
 package monitoring
 
@@ -13,8 +13,10 @@ func NewLinuxCollector() (Collector, error) {
 	return unsupportedCollector{}, nil
 }
 
+func NewNativeCollector() (Collector, error) { return unsupportedCollector{}, nil }
+
 func unsupportedRegion[T any](at time.Time) Region[T] {
-	return Region[T]{Status: StatusUnsupported, CollectedAt: &at, Message: "正式硬件采集仅支持 Linux 宿主机"}
+	return Region[T]{Status: StatusUnsupported, CollectedAt: &at, Message: "正式硬件采集仅支持 Linux / Windows Server 宿主机"}
 }
 
 func (unsupportedCollector) Collect(context.Context) (Snapshot, error) {

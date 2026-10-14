@@ -105,16 +105,16 @@ func main() {
 	}
 
 	var collector monitoring.Collector
-	if cfg.Monitoring.Source == "unix" {
+	if cfg.Monitoring.Enabled && cfg.Monitoring.Source == "unix" {
 		collector = monitoring.NewUnixCollector(cfg.Monitoring.SocketPath)
-	} else {
-		collector, err = monitoring.NewLinuxCollector()
+	} else if cfg.Monitoring.Enabled {
+		collector, err = monitoring.NewNativeCollector()
 		if err != nil {
 			slog.Error("build host resource collector", "error", err)
 			os.Exit(1)
 		}
 	}
-	monitoringService := monitoring.NewService(monitoring.NewRepository(database.GORM), collector, nil, monitoring.WithTimeout(cfg.Monitoring.Timeout))
+	monitoringService := monitoring.NewService(monitoring.NewRepository(database.GORM), collector, nil, monitoring.WithTimeout(cfg.Monitoring.Timeout), monitoring.WithEnabled(cfg.Monitoring.Enabled))
 
 	application, err := app.New(*cfg, database, app.Dependencies{
 		Auth:         authService,
@@ -134,10 +134,14 @@ func main() {
 	}
 	monitoringContext, stopMonitoring := context.WithCancel(context.Background())
 	monitoringDone := make(chan struct{})
-	go func() {
-		defer close(monitoringDone)
-		monitoringService.Run(monitoringContext)
-	}()
+	if cfg.Monitoring.Enabled {
+		go func() {
+			defer close(monitoringDone)
+			monitoringService.Run(monitoringContext)
+		}()
+	} else {
+		close(monitoringDone)
+	}
 	defer stopMonitoring()
 
 	server := &http.Server{

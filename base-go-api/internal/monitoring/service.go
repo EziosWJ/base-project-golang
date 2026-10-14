@@ -13,6 +13,7 @@ import (
 var (
 	ErrForbidden = errors.New("仅 ADMIN 可访问服务器监控")
 	ErrInvalid   = errors.New("无效的监控资源或设备")
+	ErrDisabled  = errors.New("服务器监控模块未启用")
 )
 
 type historyFrame struct {
@@ -29,6 +30,7 @@ type warningState struct {
 // Service owns the current API instance's bounded, non-persistent history.
 // The collector supplies immutable snapshots with original measurement times.
 type Service struct {
+	enabled    bool
 	mu         sync.RWMutex
 	authorizer Authorizer
 	collector  Collector
@@ -43,15 +45,26 @@ type Service struct {
 type Option func(*Service)
 
 func WithTimeout(timeout time.Duration) Option { return func(s *Service) { s.timeout = timeout } }
+func WithEnabled(enabled bool) Option          { return func(s *Service) { s.enabled = enabled } }
+
+// Disabled preserves authorization while dropping the collector and history.
+func (s *Service) Disabled() *Service {
+	return NewService(s.authorizer, nil, s.now, WithEnabled(false))
+}
 
 func NewService(authorizer Authorizer, collector Collector, now func() time.Time, options ...Option) *Service {
 	if now == nil {
 		now = time.Now
 	}
-	s := &Service{authorizer: authorizer, collector: collector, now: now, timeout: 4 * time.Second, interval: SampleInterval, alerts: map[string]*warningState{}}
+	s := &Service{enabled: true, authorizer: authorizer, collector: collector, now: now, timeout: 4 * time.Second, interval: SampleInterval}
 	for _, option := range options {
 		option(s)
 	}
+	if !s.enabled {
+		s.collector = nil
+		return s
+	}
+	s.alerts = map[string]*warningState{}
 	s.latest.Host.Status = StatusCollecting
 	s.latest.CPU.Status = StatusCollecting
 	s.latest.Memory.Status = StatusCollecting
@@ -73,6 +86,9 @@ func (s *Service) authorize(ctx context.Context, userID int64) error {
 	}
 	if !ok {
 		return ErrForbidden
+	}
+	if !s.enabled {
+		return ErrDisabled
 	}
 	return nil
 }
@@ -147,6 +163,9 @@ func mergeRegion[T any](old, incoming Region[T], now time.Time) (Region[T], bool
 }
 
 func (s *Service) Ingest(in Snapshot) {
+	if !s.enabled {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
@@ -385,7 +404,7 @@ func (s *Service) History(ctx context.Context, userID int64, resource, device st
 // Run performs immediate then periodic sampling. A timed-out task remains the
 // only in-flight task until it exits; ignored cancellation cannot cause overlap.
 func (s *Service) Run(ctx context.Context) {
-	if s.collector == nil {
+	if !s.enabled || s.collector == nil {
 		return
 	}
 	ticker := time.NewTicker(s.interval)

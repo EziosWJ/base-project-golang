@@ -61,6 +61,7 @@ log:
   add_source: false
 
 monitoring:
+  enabled: false
   source: native
   socket_path: /run/base-go-api/host-monitor.sock
   timeout: 4s

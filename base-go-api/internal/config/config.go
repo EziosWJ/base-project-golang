@@ -36,6 +36,7 @@ type Config struct {
 }
 
 type MonitoringConfig struct {
+	Enabled    bool          `koanf:"enabled"`
 	Source     string        `koanf:"source"`
 	SocketPath string        `koanf:"socket_path"`
 	Timeout    time.Duration `koanf:"timeout"`
@@ -115,13 +116,13 @@ type LogConfig struct {
 func (c Config) Validate() error {
 	var errs []error
 
-	if !oneOf(c.Monitoring.Source, "native", "unix") {
+	if c.Monitoring.Enabled && !oneOf(c.Monitoring.Source, "native", "unix") {
 		errs = append(errs, errors.New("monitoring.source must be one of native or unix"))
 	}
-	if c.Monitoring.Source == "unix" && !filepath.IsAbs(c.Monitoring.SocketPath) {
+	if c.Monitoring.Enabled && c.Monitoring.Source == "unix" && !filepath.IsAbs(c.Monitoring.SocketPath) {
 		errs = append(errs, errors.New("monitoring.socket_path must be absolute when monitoring.source is unix"))
 	}
-	if c.Monitoring.Timeout <= 0 || c.Monitoring.Timeout > 5*time.Second {
+	if c.Monitoring.Enabled && (c.Monitoring.Timeout <= 0 || c.Monitoring.Timeout > 5*time.Second) {
 		errs = append(errs, errors.New("monitoring.timeout must be greater than zero and at most 5s"))
 	}
 
