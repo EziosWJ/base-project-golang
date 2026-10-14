@@ -11,6 +11,7 @@
     "test:layout": "node tests/operation-column-layout.mjs",
     "test:menu-order": "node tests/menu-order.mjs",
     "test:route-loading": "node tests/route-loading.mjs",
+    "test:document-dialog": "node tests/document-dialog.mjs",
     "test:sidebar-scroll": "node tests/sidebar-scroll.mjs",
     "test:monitoring": "node tests/server-monitoring.mjs",
     "test:notifications": "node tests/notifications.mjs"

@@ -42,6 +42,8 @@ PageHeader
 
 `src/pages/examples/detail-demo.tsx`，路由 `/examples/detail`。它展示摘要卡片、状态、基础信息和分组信息。
 
+弹窗形态的只读详情与过账确认见 `src/pages/examples/document-dialog-demo.tsx`（路由 `/examples/document-dialog`），规则见 [单据弹窗](../pages/document-dialogs.md)。
+
 ## 10. 对应真实业务页面
 
 当前真实业务主要通过日志、文件等 `DetailDialog` 展示短详情；个人中心属于详情信息与上传区块的组合。若后续出现独立详情路由，应优先参照本 Demo。

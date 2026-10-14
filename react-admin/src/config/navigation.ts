@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   FileSearch,
   FileText,
   ListOrdered,
@@ -78,6 +79,11 @@ export const defaultNavItems: NavItem[] = [
         label: "浏览选择 Demo",
         path: "/examples/browse-picker",
         icon: ListOrdered,
+      },
+      {
+        label: "单据弹窗 Demo",
+        path: "/examples/document-dialog",
+        icon: ClipboardList,
       },
     ],
   },
@@ -218,6 +224,7 @@ export const staticRouteTitleMap: Record<string, string> = {
   "/examples/detail": "详情页 Demo",
   "/examples/file-upload": "文件上传 Demo",
   "/examples/browse-picker": "浏览选择 Demo",
+  "/examples/document-dialog": "单据弹窗 Demo",
   "/settings": "系统设置",
   "/system": "系统管理",
   "/system/user": "用户管理",

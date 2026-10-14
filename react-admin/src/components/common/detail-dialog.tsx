@@ -25,6 +25,9 @@ type DetailDialogProps = {
   trapFocus?: boolean;
   onCancel: () => void;
   children: ReactNode;
+  footer?: ReactNode;
+  fixedFooter?: boolean;
+  documentLayout?: boolean;
 };
 
 export function DetailDialog({
@@ -37,9 +40,12 @@ export function DetailDialog({
   bodyClassName,
   closeOnEscape = true,
   closeOnOverlayClick = true,
-  trapFocus = false,
+  trapFocus,
   onCancel,
   children,
+  footer,
+  documentLayout = false,
+  fixedFooter = documentLayout,
 }: DetailDialogProps) {
   return (
     <Dialog
@@ -49,17 +55,20 @@ export function DetailDialog({
       }}
       closeOnEscape={closeOnEscape}
       closeOnOverlayClick={closeOnOverlayClick}
-      trapFocus={trapFocus}
+      trapFocus={trapFocus ?? documentLayout}
+      restoreFocus={documentLayout}
     >
       <DialogOverlay />
       <DialogContent
         className={cn(
           "max-h-[calc(100vh-48px)] max-w-[860px]",
+          fixedFooter && "flex flex-col",
+          documentLayout && "max-h-[90dvh] max-w-[1100px] max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:rounded-none",
           contentClassName,
         )}
         aria-busy={loading || undefined}
       >
-        <DialogHeader className={headerClassName}>
+        <DialogHeader className={cn(fixedFooter && "shrink-0", headerClassName)}>
           <div className="min-w-0">
             <DialogTitle>{title}</DialogTitle>
             {description !== undefined && description !== null && (
@@ -74,11 +83,16 @@ export function DetailDialog({
         <DialogBody
           className={cn(
             "max-h-[calc(100vh-150px)] px-card py-space-5",
+            fixedFooter && "max-h-none flex-1",
             bodyClassName,
           )}
         >
           {children}
+          {!fixedFooter && footer && <div className="mt-space-4">{footer}</div>}
         </DialogBody>
+        {fixedFooter && footer && (
+          <footer className="shrink-0 border-t border-border bg-surface px-card py-space-4">{footer}</footer>
+        )}
       </DialogContent>
     </Dialog>
   );
