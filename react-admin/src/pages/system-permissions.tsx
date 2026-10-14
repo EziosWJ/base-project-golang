@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { StatusTag } from "@/components/common/status-tag";
+import { TableActions } from "@/components/common/table-actions";
 import { TableToolbar } from "@/components/common/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,14 +121,14 @@ export function SystemPermissionsPage() {
       align: "center",
       width: 220,
       render: () => (
-        <div className="inline-flex flex-wrap items-center gap-2">
+        <TableActions>
           <Button size="sm" variant="ghost">
             编辑
           </Button>
           <Button size="sm" variant="ghost">
             删除
           </Button>
-        </div>
+        </TableActions>
       ),
     },
   ];

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { Pagination } from "@/components/common/pagination";
 import { SearchFilterBar } from "@/components/common/search-filter-bar";
 import { StatusTag } from "@/components/common/status-tag";
+import { TableActions } from "@/components/common/table-actions";
 import { TableToolbar } from "@/components/common/table-toolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +128,7 @@ export function ListDemoPage() {
       align: "center",
       width: 180,
       render: () => (
-        <div className="inline-flex items-center gap-1">
+        <TableActions>
           <Button size="sm" variant="ghost">
             <Eye className="h-4 w-4" aria-hidden />
             查看
@@ -136,7 +137,7 @@ export function ListDemoPage() {
             <Pencil className="h-4 w-4" aria-hidden />
             编辑
           </Button>
-        </div>
+        </TableActions>
       ),
     },
   ];

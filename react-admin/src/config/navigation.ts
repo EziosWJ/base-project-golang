@@ -16,6 +16,7 @@ export type NavItem = {
   label: string;
   path: string;
   icon: LucideIcon;
+  sortOrder?: number;
   externalUrl?: string;
   activePaths?: string[];
   children?: NavItem[];
@@ -26,18 +27,21 @@ export const defaultNavItems: NavItem[] = [
     label: "工作台",
     path: "/dashboard",
     icon: LayoutDashboard,
+    sortOrder: 0,
   },
   {
     label: "我的通知",
     path: "/notifications",
     icon: Bell,
+    sortOrder: 0,
   },
-  { label: "公告", path: "/announcements", icon: FileText },
+  { label: "公告", path: "/announcements", icon: FileText, sortOrder: 0 },
 
   {
     label: "页面示例",
     path: "/examples",
     icon: FileText,
+    sortOrder: 0,
     children: [
       {
         label: "标准表单 Demo",
@@ -77,8 +81,9 @@ export const notificationManageNavItem: NavItem = {
   label: "通知管理",
   path: "/system/notification",
   icon: Bell,
+  sortOrder: 0,
 };
-export const announcementManageNavItem: NavItem = { label: "公告管理", path: "/system/announcement", icon: FileText };
+export const announcementManageNavItem: NavItem = { label: "公告管理", path: "/system/announcement", icon: FileText, sortOrder: 0 };
 
 function collectNavPaths(items: NavItem[]) {
   const paths = new Set<string>();
@@ -145,6 +150,7 @@ function toNavItem(menu: CurrentUserMenu): NavItem | null {
     label: menu.menuName,
     path,
     icon: getMenuIcon(menu.icon),
+    sortOrder: menu.sortOrder,
     externalUrl: externalUrl || undefined,
     children: children.length > 0 ? children : undefined,
   };
@@ -164,7 +170,14 @@ export function mergeNavItems(
   const existingPaths = collectNavPaths(baseItems);
   const dedupedUserItems = filterDuplicateNavItems(userItems, existingPaths);
 
-  return [...baseItems, ...dedupedUserItems];
+  return [...baseItems, ...dedupedUserItems]
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const orderA = a.item.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.item.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      return orderA - orderB || a.index - b.index;
+    })
+    .map(({ item }) => item);
 }
 
 export function createUserMenuTitleMap(
