@@ -51,7 +51,7 @@ function useDialogContext() {
 }
 
 const focusableSelector =
-  'button:not([disabled]):not([tabindex="-1"]), [href], input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]):not([tabindex="-1"]), [href], summary, input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
 
 export function Dialog({
   open,
@@ -123,12 +123,19 @@ export function Dialog({
 
       const focusable = Array.from(
         content.querySelectorAll<HTMLElement>(focusableSelector),
-      );
-      if (focusable.length === 0) return;
+      ).filter(element => element.getClientRects().length > 0);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        content.focus();
+        return;
+      }
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (!content.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -213,6 +220,7 @@ export function DialogContent({
   onKeyDown,
   "aria-labelledby": labelledBy,
   "aria-describedby": describedBy,
+  role = "dialog",
   ...props
 }: DialogContentProps) {
   const { titleId, descriptionId, hasDescription, contentRef } =
@@ -222,7 +230,8 @@ export function DialogContent({
     <section
       {...props}
       ref={contentRef}
-      role="dialog"
+      role={role}
+      tabIndex={-1}
       aria-modal="true"
       aria-labelledby={labelledBy ?? titleId}
       aria-describedby={
