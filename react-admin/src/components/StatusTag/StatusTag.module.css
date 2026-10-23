@@ -1,0 +1,21 @@
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  color: var(--status-color);
+  background: var(--status-bg);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-color);
+  opacity: 0.9;
+}
+:global([data-theme='dark']) .statusTag { background: var(--status-bg-dark); }

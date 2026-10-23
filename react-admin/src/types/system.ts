@@ -1,182 +1,368 @@
-import type { ApiBuiltinFlag, ApiPageRequest, ApiStatus } from "./api";
+import type { ApiStatus, PageQuery } from './api';
 
-export type SystemStatus = "enabled" | "disabled";
+/* ------------------------------- users ------------------------------- */
 
-export type DictTypeLegacyRecord = {
+export type UserGender = 'MALE' | 'FEMALE' | 'UNSPECIFIED';
+
+export interface UserRoleSummary {
   id: number;
-  name: string;
-  code: string;
-  status: SystemStatus;
-  itemCount: number;
-  updatedAt: string;
-};
+  roleName: string;
+  roleCode?: string;
+  status?: ApiStatus;
+}
 
-export type DictItemLegacyRecord = {
+export interface UserRecord {
   id: number;
-  typeCode: string;
-  label: string;
-  value: string;
-  sort: number;
-  status: SystemStatus;
-  updatedAt: string;
-};
+  username: string;
+  nickname: string;
+  phone?: string | null;
+  email?: string | null;
+  avatar?: string | null;
+  gender: UserGender;
+  deptId?: number | null;
+  deptName?: string | null;
+  status: ApiStatus;
+  isBuiltin: ApiStatus;
+  roles?: UserRoleSummary[];
+  lastLoginTime?: string | null;
+  lastLoginIp?: string | null;
+  remark?: string | null;
+  createTime?: string;
+  updateTime?: string;
+}
 
-export type DictTypeRecord = DictTypeLegacyRecord;
+export interface UserListQuery extends PageQuery {
+  username?: string;
+  nickname?: string;
+  phone?: string;
+  email?: string;
+  status?: ApiStatus;
+  deptId?: number;
+}
 
-export type DictItemRecord = DictItemLegacyRecord;
+export interface UserInput {
+  username?: string;
+  nickname: string;
+  phone?: string;
+  email?: string;
+  gender?: UserGender;
+  deptId?: number | null;
+  status: ApiStatus;
+  remark?: string;
+}
 
-export type SystemDictTypeRecord = {
+export interface AssignableRole {
+  id: number;
+  roleName: string;
+  roleCode: string;
+  status: ApiStatus;
+}
+
+/* ------------------------------- roles ------------------------------- */
+
+export interface RoleRecord {
+  id: number;
+  roleName: string;
+  roleCode: string;
+  status: ApiStatus;
+  sortOrder: number;
+  isBuiltin: ApiStatus;
+  remark?: string | null;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface RoleDetailRecord extends RoleRecord {
+  menuIds: number[];
+}
+
+export interface RoleListQuery extends PageQuery {
+  roleName?: string;
+  roleCode?: string;
+  status?: ApiStatus;
+}
+
+export interface RoleInput {
+  roleName: string;
+  roleCode: string;
+  status: ApiStatus;
+  sortOrder: number;
+  remark?: string;
+}
+
+/* ------------------------------- menus ------------------------------- */
+
+export type SystemMenuType = 'DIR' | 'MENU' | 'LINK';
+
+export interface SystemMenuRecord {
+  id: number;
+  parentId: number;
+  menuName: string;
+  menuType: SystemMenuType;
+  path?: string | null;
+  component?: string | null;
+  externalUrl?: string | null;
+  icon?: string | null;
+  permissionCode?: string | null;
+  sortOrder: number;
+  visible: ApiStatus;
+  status: ApiStatus;
+  isBuiltin: ApiStatus;
+  remark?: string | null;
+  createTime?: string;
+  updateTime?: string;
+  children?: SystemMenuRecord[];
+}
+
+export interface SystemMenuListQuery extends PageQuery {
+  menuName?: string;
+  menuType?: SystemMenuType;
+  status?: ApiStatus;
+  visible?: ApiStatus;
+}
+
+export interface SystemMenuInput {
+  parentId: number;
+  menuName: string;
+  menuType: SystemMenuType;
+  path?: string;
+  component?: string;
+  externalUrl?: string;
+  icon?: string;
+  permissionCode?: string;
+  sortOrder: number;
+  visible: ApiStatus;
+  status: ApiStatus;
+  remark?: string;
+}
+
+/* ------------------------------- departments ------------------------------- */
+
+export interface DeptRecord {
+  id: number;
+  parentId: number;
+  deptName: string;
+  deptCode: string;
+  leader?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  sortOrder: number;
+  status: ApiStatus;
+  isBuiltin: ApiStatus;
+  remark?: string | null;
+  createTime?: string;
+  updateTime?: string;
+  children?: DeptRecord[];
+}
+
+export interface DeptOption {
+  id: number;
+  parentId: number;
+  deptName: string;
+  deptCode?: string;
+  disabled?: boolean;
+  children?: DeptOption[];
+}
+
+export interface DeptListQuery extends PageQuery {
+  deptName?: string;
+  deptCode?: string;
+  status?: ApiStatus;
+}
+
+export interface DeptInput {
+  parentId: number;
+  deptName: string;
+  deptCode: string;
+  leader?: string;
+  phone?: string;
+  email?: string;
+  sortOrder: number;
+  status: ApiStatus;
+  remark?: string;
+}
+
+/* ------------------------------- dictionaries ------------------------------- */
+
+export interface DictTypeRecord {
   id: number;
   dictName: string;
   dictCode: string;
   status: ApiStatus;
   sortOrder: number;
-  isBuiltin: ApiBuiltinFlag;
+  isBuiltin: ApiStatus;
   remark?: string | null;
-  createTime?: string | null;
-};
+  createTime?: string;
+  updateTime?: string;
+}
 
-export type SystemDictDataRecord = {
+export interface DictDataRecord {
   id: number;
   dictTypeId: number;
+  dictCode?: string;
   dictLabel: string;
   dictValue: string;
   sortOrder: number;
   remark?: string | null;
-  createTime?: string | null;
-};
+  createTime?: string;
+  updateTime?: string;
+}
 
-export type DictQuery = {
-  keyword?: string;
-  status?: SystemStatus | "all";
-};
-
-export type DictTypeListQuery = Partial<ApiPageRequest> & {
+export interface DictTypeListQuery extends PageQuery {
   dictName?: string;
   dictCode?: string;
   status?: ApiStatus;
-};
+}
 
-export type DictTypeCreateRequest = {
+export interface DictDataListQuery extends PageQuery {
+  dictTypeId?: number;
+  dictLabel?: string;
+  dictValue?: string;
+}
+
+export interface DictTypeInput {
   dictName: string;
   dictCode: string;
   status: ApiStatus;
   sortOrder: number;
   remark?: string;
-};
+}
 
-export type DictTypeUpdateRequest = DictTypeCreateRequest;
-
-export type DictTypeStatusRequest = {
-  status: ApiStatus;
-};
-
-export type DictTypeBatchDeleteRequest = {
-  ids: number[];
-};
-
-export type DictDataListQuery = Partial<ApiPageRequest> & {
-  dictTypeId?: number;
-  dictCode?: string;
-  dictLabel?: string;
-  dictValue?: string;
-};
-
-export type DictDataCreateRequest = {
+export interface DictDataInput {
   dictTypeId: number;
   dictLabel: string;
   dictValue: string;
   sortOrder: number;
   remark?: string;
-};
+}
 
-export type DictDataUpdateRequest = DictDataCreateRequest;
-
-export type DictDataBatchDeleteRequest = {
-  ids: number[];
-};
-
-export type DictOption = {
+export interface DictOption {
   label: string;
   value: string;
   sortOrder: number;
-};
+}
 
-export type ConfigType = "string" | "number" | "boolean" | "json";
+/* ------------------------------- configs ------------------------------- */
 
-export type SystemConfigType = "SYSTEM" | "CUSTOM";
+export type ConfigScope = 'SYSTEM' | 'CUSTOM';
+export type ConfigValueType = 'TEXT' | 'NUMBER' | 'BOOLEAN';
 
-export type SystemConfigValueType = "TEXT" | "NUMBER" | "BOOLEAN";
-
-export type SystemConfigLegacyRecord = {
+export interface ConfigRecord {
   id: number;
-  name: string;
-  key: string;
-  value: string;
-  type: ConfigType;
-  status: SystemStatus;
-  updatedAt: string;
-};
-
-export type ConfigQuery = {
-  keyword?: string;
-  type?: ConfigType | "all";
-  status?: SystemStatus | "all";
-};
-
-export type SystemConfigRecord = {
-  id: number;
-  configName?: string;
-  configKey?: string;
-  configValue?: string | null;
-  configType?: SystemConfigType;
-  valueType?: SystemConfigValueType;
-  status: ApiStatus | SystemStatus;
-  isBuiltin?: ApiBuiltinFlag;
-  remark?: string | null;
-  createTime?: string | null;
-  updateTime?: string | null;
-
-  /**
-   * 兼容旧 mock 数据类型。系统配置页面和真实接口只使用上方后端字段。
-   */
-  name: string;
-  key: string;
-  value: string;
-  type: ConfigType;
-  updatedAt: string;
-};
-
-export type SystemConfigValueRecord = {
-  configKey: string;
-  configValue?: string | null;
-  valueType: SystemConfigValueType;
   configName: string;
-};
+  configKey: string;
+  configValue: string;
+  configType: ConfigScope;
+  valueType: ConfigValueType;
+  status: ApiStatus;
+  isBuiltin: ApiStatus;
+  remark?: string | null;
+  createTime?: string;
+  updateTime?: string;
+}
 
-export type SystemConfigListQuery = Partial<ApiPageRequest> & {
+export interface ConfigListQuery extends PageQuery {
   configName?: string;
   configKey?: string;
-  configType?: SystemConfigType;
+  configType?: ConfigScope;
   status?: ApiStatus;
-};
+}
 
-export type SystemConfigCreateRequest = {
+export interface ConfigInput {
   configName: string;
   configKey: string;
   configValue?: string;
-  configType: SystemConfigType;
-  valueType: SystemConfigValueType;
+  configType: ConfigScope;
+  valueType: ConfigValueType;
   status: ApiStatus;
   remark?: string;
-};
+}
 
-export type SystemConfigUpdateRequest = SystemConfigCreateRequest;
+/* ------------------------------- files ------------------------------- */
 
-export type SystemConfigStatusRequest = {
+export interface FileRecord {
+  id: number;
+  originalName: string;
+  storageName: string;
+  extension: string;
+  mimeType: string;
+  fileSize: number;
+  fileMd5?: string;
+  accessUrl: string;
+  businessModule?: string | null;
+  remark?: string | null;
   status: ApiStatus;
-};
+  createTime: string;
+  updateTime?: string;
+}
 
-export type SystemConfigBatchDeleteRequest = {
-  ids: number[];
-};
+export interface FileListQuery extends PageQuery {
+  originalName?: string;
+  businessModule?: string;
+  mimeType?: string;
+  status?: ApiStatus;
+}
+
+export interface FileUploadOptions {
+  businessModule?: string;
+  remark?: string;
+}
+
+export interface FileUploadFailure {
+  fileName: string;
+  message: string;
+  index: number;
+}
+
+export interface FileUploadBatchResult {
+  succeeded: FileRecord[];
+  failed: FileUploadFailure[];
+}
+
+/* ------------------------------- logs ------------------------------- */
+
+export interface LoginLogRecord {
+  id: number;
+  username: string;
+  loginStatus: string;
+  loginIp: string;
+  loginLocation?: string;
+  browser: string;
+  os: string;
+  userAgent?: string;
+  message: string;
+  loginTime: string;
+  createTime?: string;
+}
+
+export interface LoginLogListQuery extends PageQuery {
+  username?: string;
+  loginIp?: string;
+  loginStatus?: string;
+}
+
+export interface OperLogRecord {
+  id: number;
+  moduleName: string;
+  operationType: string;
+  requestMethod: string;
+  requestUrl: string;
+  operatorName: string;
+  operatorIp: string;
+  operationStatus: string;
+  costTime: number;
+  operationTime: string;
+}
+
+export interface OperLogDetail extends OperLogRecord {
+  requestParams?: string;
+  responseResult?: string;
+  errorMessage?: string;
+}
+
+export interface OperLogListQuery extends PageQuery {
+  moduleName?: string;
+  operatorName?: string;
+  operationType?: string;
+  operationStatus?: string;
+}

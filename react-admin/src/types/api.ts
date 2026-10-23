@@ -1,33 +1,39 @@
-export type ApiResponse<T> = {
+/** Unified envelope returned by every Go API endpoint. */
+export interface ApiEnvelope<T> {
   code: number;
   message: string;
   data: T;
-};
+}
 
-export type ApiPageRequest = {
-  page: number;
-  pageSize: number;
-};
-
-export type ApiPageResult<T> = {
+/** Raw server pagination shape; converted once at the API boundary. */
+export interface ApiPageRaw<T> {
   records: T[];
   total: number;
   page: number;
   pageSize: number;
-};
+}
 
-export type ApiFieldErrors = Record<string, string>;
+/** Frontend pagination shape consumed by list pages. */
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export type ApiStatus = 0 | 1;
 
-export type ApiBuiltinFlag = 0 | 1;
+export type ApiFieldErrors = Record<string, string>;
 
-export type ApiQueryValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | Array<string | number | boolean>;
+export interface PageQuery {
+  page: number;
+  pageSize: number;
+}
 
-export type ApiQueryParams = Record<string, ApiQueryValue>;
+export type SortOrder = 'asc' | 'desc';
+
+/** Sort keys are only added when the endpoint supports them. */
+export interface ListQuery extends PageQuery {
+  sortBy?: string;
+  sortOrder?: SortOrder;
+}

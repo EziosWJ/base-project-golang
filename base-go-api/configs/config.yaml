@@ -2,7 +2,7 @@ service:
   name: base-go-api
 
 http:
-  address: ":8099"
+  address: ":8150"
   trusted_proxies: []
   read_header_timeout: 10s
   read_timeout: 5m

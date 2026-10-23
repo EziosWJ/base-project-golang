@@ -13,6 +13,12 @@ tasks:
       - task --list
     silent: true
 
+  deps:
+    desc: Install frontend dependencies with the frozen pnpm lockfile
+    dir: react-admin
+    cmds:
+      - pnpm install --frozen-lockfile
+
   init:
     desc: Generate local development configuration (optional --database sqlite)
     preconditions:
@@ -81,10 +87,10 @@ tasks:
       - go run ./cmd/api
 
   web:
-    desc: Start the React development server
+    desc: Start the React development server (extra flags via CLI_ARGS, e.g. --port 5174)
     dir: react-admin
     cmds:
-      - npm run dev
+      - pnpm dev {{.CLI_ARGS}}
 
   host:collector:
     desc: Start the Linux host resource collector; pass flags through CLI_ARGS
@@ -200,25 +206,31 @@ tasks:
     desc: Run frontend lint
     dir: react-admin
     cmds:
-      - npm run lint
+      - pnpm lint
+
+  frontend:typecheck:
+    desc: Run frontend TypeScript project checks
+    dir: react-admin
+    cmds:
+      - pnpm typecheck
+
+  frontend:test:
+    desc: Run frontend unit and integration tests
+    dir: react-admin
+    cmds:
+      - pnpm test
+
+  frontend:coverage:
+    desc: Run frontend tests with a coverage report
+    dir: react-admin
+    cmds:
+      - pnpm test:coverage
 
   frontend:build:
     desc: Build the frontend
     dir: react-admin
     cmds:
-      - npm run build
-
-  frontend:notifications:
-    desc: Run announcement and notification browser verification
-    dir: react-admin
-    cmds:
-      - npm run test:notifications
-
-  frontend:monitoring:
-    desc: Run server monitoring browser verification
-    dir: react-admin
-    cmds:
-      - npm run test:monitoring
+      - pnpm build
 
   check:
     desc: Run backend and frontend checks
@@ -226,6 +238,8 @@ tasks:
       - dev:setup:test
       - backend:check
       - frontend:lint
+      - frontend:typecheck
+      - frontend:test
       - frontend:build
 
   build:

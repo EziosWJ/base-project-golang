@@ -28,14 +28,17 @@
 
 ## 技术栈与演进状态
 
-### 前端 react-admin
-- 框架: React 19 + TypeScript + Vite 6
-- 路由: react-router-dom v7
-- 状态管理: Zustand
-- 表单: react-hook-form + zod（@hookform/resolvers）
-- 样式: Tailwind CSS + class-variance-authority + tailwind-merge
-- 图标: lucide-react
-- Lint: ESLint + typescript-eslint
+### 前端 react-admin（template/topnav 分支）
+- 框架: React 19 + TypeScript + Vite 7 + pnpm（冻结锁文件）
+- UI: Ant Design 6 + CSS Modules + Design Token，不使用 Tailwind/shadcn
+- 路由: react-router-dom Data Router（`createBrowserRouter`），页面懒加载
+- 服务端状态: TanStack Query 5；HTTP: Axios；客户端状态: Zustand
+- 图标: lucide-react；图表: Ant Design Charts；日期: Day.js
+- Lint/测试: ESLint + typescript-eslint + Vitest + React Testing Library
+- MSW 仅用于测试，真实系统默认不启用浏览器 mock
+- 布局: 顶部导航 + 二级下拉 + 窄屏 Drawer，不设应用内页面标签栏
+- 接入: 通过 `/api/v1` 使用真实登录、当前用户与菜单；本地路由在 `src/config/routes.tsx` 注册，按 `permissionCode`（其次 `path`）映射后端菜单，未注册菜单自动隐藏
+- 说明: 纯前端来源模板 `html/template/react-topnav-template` 保持独立；本分支的接入规则见 `docs/topnav-template.md`
 
 ### 当前后端 base-go-api（Go，唯一后端）
 

@@ -3,10 +3,10 @@
 FROM node:24-alpine AS frontend
 
 WORKDIR /web
-COPY react-admin/package.json react-admin/package-lock.json ./
-RUN npm ci
+COPY react-admin/package.json react-admin/pnpm-lock.yaml ./
+RUN npm install -g pnpm@10.18.3 && pnpm install --frozen-lockfile
 COPY react-admin/ ./
-RUN npm run build
+RUN pnpm build
 
 FROM golang:1.26.5-alpine AS build
 

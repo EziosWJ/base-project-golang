@@ -8,13 +8,13 @@ const backend = join(root, "base-go-api");
 const [mode, ...args] = process.argv.slice(2);
 
 function command(name, args) {
-  // npm/Task on Windows may be command shims; no user arguments reach a shell.
+  // pnpm/Task on Windows may be command shims; no user arguments reach a shell.
   return spawnSync(name, args, {
     cwd: backend,
     encoding: "utf8",
     timeout: 10000,
     windowsHide: true,
-    shell: process.platform === "win32" && name === "npm",
+    shell: process.platform === "win32" && (name === "npm" || name === "pnpm"),
   });
 }
 
@@ -55,11 +55,12 @@ function run() {
   }
 
   if (mode === "doctor") {
-    check(true, "Node.js");
-    check(command("npm", ["--version"]).status === 0, "npm", "安装 npm 并加入 PATH");
+    check(command("node", ["--version"]).status === 0, "Node.js", "安装 Node.js 22.12 或更高版本，并加入 PATH");
+    check(command("pnpm", ["--version"]).status === 0, "pnpm", "安装 pnpm 10 或更高版本，并加入 PATH");
     check(command("task", ["--version"]).status === 0, "Task", "安装 Task 并加入 PATH");
+    check(existsSync(join(root, "react-admin", "pnpm-lock.yaml")), "前端锁文件", "确认 react-admin/pnpm-lock.yaml 存在");
     check(existsSync(join(root, "react-admin", "node_modules", "vite", "package.json")),
-      "前端依赖", "在项目根目录执行 npm --prefix react-admin ci");
+      "前端依赖", "在项目根目录执行 task deps（或 pnpm --dir react-admin install --frozen-lockfile）");
   }
 
   if (canCompile) {

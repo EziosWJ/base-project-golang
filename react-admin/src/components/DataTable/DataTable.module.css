@@ -1,0 +1,41 @@
+.wrapper { display: grid; gap: 12px; min-width: 0; }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.toolbarLeft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ant-color-text-secondary, #666);
+  font-size: 13px;
+}
+/* Density and column controls share the button height so the toolbar reads as one row. */
+.toolbarControls { flex-wrap: nowrap; }
+.toolbarControls :global(.ant-segmented) { background: transparent; }
+.columnPanel { display: grid; gap: 6px; min-width: 190px; max-height: 320px; overflow: auto; }
+.batchBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--ant-color-primary-border, #d3cffc);
+  border-radius: 8px;
+  background: var(--ant-color-primary-bg, #f1efff);
+}
+.tableRegion { min-width: 0; overflow: hidden; }
+.tableRegion :global(.ant-table-wrapper) { min-width: 0; }
+.tableRegion :global(.ant-table) { background: transparent; }
+/* Remove the default outer border; the card already frames the table. */
+.tableRegion :global(.ant-table-container table > thead > tr:first-child > *) { border-start-start-radius: 0 !important; border-start-end-radius: 0 !important; }
+@media (max-width: 575px) {
+  .toolbar { align-items: flex-start; }
+  .toolbar > :global(.ant-space) { width: 100%; justify-content: space-between; }
+}

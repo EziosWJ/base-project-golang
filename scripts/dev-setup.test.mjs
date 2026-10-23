@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-function fixture(t, { tools = ["go", "gcc", "task", "npm"], cgo = "1", helperStatus = 0, dependencies = true } = {}) {
+function fixture(t, { tools = ["go", "gcc", "task", "node", "pnpm"], cgo = "1", helperStatus = 0, dependencies = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), "dev-setup-test-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const dir of ["scripts", "base-go-api", "tools"]) mkdirSync(join(root, dir));
@@ -13,6 +13,9 @@ function fixture(t, { tools = ["go", "gcc", "task", "npm"], cgo = "1", helperSta
   if (dependencies) {
     mkdirSync(join(root, "react-admin", "node_modules", "vite"), { recursive: true });
     writeFileSync(join(root, "react-admin", "node_modules", "vite", "package.json"), "{}");
+  }
+  if (dependencies) {
+    writeFileSync(join(root, "react-admin", "pnpm-lock.yaml"), "lockfileVersion: 9.0\n");
   }
   for (const tool of tools) {
     const body = tool === "go"
@@ -34,12 +37,12 @@ test("doctor reports missing Go before compiling and diagnoses other tools", uni
   const run = fixture(t, { tools: [], dependencies: false });
   const result = run("doctor");
   assert.equal(result.status, 1);
-  for (const tool of ["Go", "npm", "Task", "前端依赖"]) assert.match(result.stdout, new RegExp(`\\[失败\\] ${tool}`));
+  for (const tool of ["Go", "Node.js", "pnpm", "Task", "前端锁文件", "前端依赖"]) assert.match(result.stdout, new RegExp(`\\[失败\\] ${tool}`));
   assert.doesNotMatch(result.stdout, /helper invoked/);
 });
 
 test("doctor detects disabled CGO and a missing C compiler", unixOnly, (t) => {
-  const result = fixture(t, { tools: ["go", "task", "npm"], cgo: "0" })("doctor");
+  const result = fixture(t, { tools: ["go", "task", "node", "pnpm"], cgo: "0" })("doctor");
   assert.equal(result.status, 1);
   assert.match(result.stdout, /\[失败\] CGO/);
   assert.match(result.stdout, /\[失败\] C 编译器/);
@@ -49,7 +52,7 @@ test("doctor detects disabled CGO and a missing C compiler", unixOnly, (t) => {
 test("doctor checks configuration even if frontend dependencies are missing", unixOnly, (t) => {
   const result = fixture(t, { dependencies: false })("doctor");
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /npm --prefix react-admin ci/);
+  assert.match(result.stdout, /task deps/);
   assert.match(result.stdout, /helper invoked/);
 });
 

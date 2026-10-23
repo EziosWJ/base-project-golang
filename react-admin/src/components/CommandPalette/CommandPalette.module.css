@@ -1,0 +1,52 @@
+.modal :global(.ant-modal-body) { min-height: 280px; }
+.results { display: grid; gap: 12px; max-height: 380px; margin-top: 12px; overflow-y: auto; padding-right: 4px; }
+.group { display: grid; gap: 2px; }
+.groupTitle {
+  padding: 4px 10px;
+  color: var(--ant-color-text-tertiary, #999);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.option, .optionActive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.option:hover { background: var(--ant-color-fill-tertiary, #f5f5f5); }
+.optionActive, .optionActive:hover {
+  color: var(--ant-color-link, #635bdb);
+  background: var(--ant-color-primary-bg, #f1efff);
+}
+.optionLabel { font-weight: 500; }
+.optionHint { margin-left: auto; color: var(--ant-color-text-tertiary, #999); font-size: 12px; }
+.empty { display: block; padding: 36px 0; text-align: center; }
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  color: var(--ant-color-text-tertiary, #999);
+  font-size: 11px;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

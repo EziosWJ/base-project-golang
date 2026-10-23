@@ -6,9 +6,12 @@
 
 ```
 project/
-├── react-admin/   # 前端项目（React），直接在此开发
+├── react-admin/   # 前端项目（React + Ant Design），直接在此开发
 ├── base-go-api/   # 后端项目（Go），直接在此开发
 ```
+
+当前分支为 `template/topnav`：前端采用顶部导航布局并已接入真实 Go 后端。纯前端来源模板
+`html/template/react-topnav-template` 保持原定位，修改只发生在目标分支内。
 
 ## 上下文管理规则
 
@@ -32,18 +35,30 @@ project/
 
 - 后端本地配置使用 `base-go-api/configs/config.dev.yaml`；数据库和 JWT 配置放在该文件中，不另建根目录 `.env.local` 作为后端运行配置。
 - `task db:migrate`：执行全部 Goose schema 和 seed migration；首次启动、数据库重建或修改 migration 后执行。
-- `task api`：启动 Go API，默认监听 `:8099`。
-- `task web`：启动 React 开发服务器，默认监听 `:5173`。
+- `task api`：启动 Go API，默认监听 `:8150`。
+- `task deps`：使用 `pnpm-lock.yaml` 冻结安装前端依赖。
+- `task web`：启动 React 开发服务器，默认监听 `:5173`；额外参数通过 `task web -- --port 5174` 传入。
 - `task dev`：先执行数据库 migration，再并行启动 API 和前端；适合全新环境或需要确保数据库已更新时使用。
 - `task backend:test`：执行后端单元测试。
 - `task backend:check`：执行后端测试和 `go vet`。
 - `task backend:integration`：执行 PostgreSQL 集成测试，需要 Docker。
 - `task frontend:lint`：执行前端 ESLint。
+- `task frontend:typecheck`：执行前端 TypeScript 检查。
+- `task frontend:test`：执行前端 Vitest 测试。
 - `task frontend:build`：执行前端 TypeScript/Vite 构建。
-- `task check`：执行后端检查、前端 lint 和前端构建。
+- `task check`：执行后端检查、前端 lint、typecheck、test 和构建。
 - `task test`：执行默认后端测试集。
 
-推荐的 Agent 验证顺序：后端改动执行 `task backend:check`，前端改动执行 `task frontend:lint` 和 `task frontend:build`，涉及数据库结构时先执行 `task db:migrate`，需要联调时再启动 `task api` 或 `task dev`。长时间运行的任务必须配合健康检查或明确的超时与清理；API 使用 `/health` 检查存活、`/ready` 检查数据库就绪。
+推荐的 Agent 验证顺序：后端改动执行 `task backend:check`，前端改动执行 `task frontend:lint`、`task frontend:typecheck`、`task frontend:test` 和 `task frontend:build`，涉及数据库结构时先执行 `task db:migrate`，需要联调时再启动 `task api` 或 `task dev`。长时间运行的任务必须配合健康检查或明确的超时与清理；API 使用 `/health` 检查存活、`/ready` 检查数据库就绪。
+
+### 并行模板开发
+
+- `template/topnav` 与 `template/sidebar` 可能并行开发，使用独立 worktree，不互相合并或依赖未完成的工作。
+- 联调建议使用前端 `5174`、后端 `8100`：`APP_HTTP__ADDRESS=:8100 task api:sqlite` 与 `VITE_API_PROXY_TARGET=http://127.0.0.1:8100 pnpm --dir react-admin dev --port 5174`。
+- 使用 SQLite 时保留本 worktree 自己的数据库、配置和上传目录；Taskfile 默认值不为并行联调而修改。
+- 两个模板分支保持相同 Go module 路径和后端契约；不得为布局差异修改后端接口。
+- 前端真实系统默认不启用浏览器 MSW；MSW 只用于测试。
+- 前端菜单按后端 `permissionCode`（其次 `path`）映射到 `src/config/routes.tsx`；未注册页面必须从导航隐藏。
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 

@@ -1,0 +1,31 @@
+.page { display: grid; gap: 18px; }
+.kpiLink { display: block; height: 100%; color: inherit; text-decoration: none; }
+.kpiCard { height: 100%; border-radius: 14px; }
+.kpiCard:hover { border-color: var(--ant-color-primary-border, #cbc5ff); }
+.kpiTop { display: flex; align-items: center; gap: 10px; }
+.kpiIcon {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+}
+.kpiValue {
+  margin: 14px 0 8px;
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.kpiHint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ant-color-link, #635bdb);
+  font-size: 12px;
+}
+.recentCard { border-radius: 14px; }
+@media (max-width: 575px) {
+  .kpiValue { font-size: 28px; }
+  .page { gap: 14px; }
+}
