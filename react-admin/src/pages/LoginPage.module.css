@@ -1,0 +1,90 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
+  background: var(--ant-color-bg-layout, #f5f7fb);
+}
+.brandPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 56px 64px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(140deg, #0b2f6b 0%, #1657b8 48%, #2b7be4 100%);
+}
+.brandPanel::after {
+  position: absolute;
+  right: -160px;
+  bottom: -180px;
+  width: 460px;
+  height: 460px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  content: '';
+}
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.brandLogo {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 16px;
+  font-weight: 700;
+}
+.brandBody { max-width: 520px; }
+.brandEyebrow {
+  margin: 0 0 18px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+.brandTitle {
+  margin: 0;
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.brandDesc {
+  margin: 20px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+  line-height: 1.8;
+}
+.brandFoot {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+.formPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+}
+.formCard { width: 100%; max-width: 400px; }
+.formTitle { margin: 0 0 6px; font-size: 26px; font-weight: 600; }
+.formSubtitle { margin: 0 0 28px; color: var(--ant-color-text-secondary, #6b7280); font-size: 14px; }
+.submit { width: 100%; }
+.footerHint { margin-top: 24px; text-align: center; color: var(--ant-color-text-tertiary, #8a94a6); font-size: 12px; }
+.themeToggle { position: absolute; top: 20px; right: 24px; }
+@media (max-width: 900px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .brandPanel { display: none; }
+  .formPanel { min-height: 100vh; padding: 32px 20px; }
+}

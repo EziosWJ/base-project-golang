@@ -8,13 +8,13 @@ const backend = join(root, "base-go-api");
 const [mode, ...args] = process.argv.slice(2);
 
 function command(name, args) {
-  // npm/Task on Windows may be command shims; no user arguments reach a shell.
+  // pnpm/Task on Windows may be command shims; no user arguments reach a shell.
   return spawnSync(name, args, {
     cwd: backend,
     encoding: "utf8",
     timeout: 10000,
     windowsHide: true,
-    shell: process.platform === "win32" && name === "npm",
+    shell: process.platform === "win32" && (name === "pnpm" || name === "npm"),
   });
 }
 
@@ -56,10 +56,10 @@ function run() {
 
   if (mode === "doctor") {
     check(true, "Node.js");
-    check(command("npm", ["--version"]).status === 0, "npm", "安装 npm 并加入 PATH");
+    check(command("pnpm", ["--version"]).status === 0, "pnpm", "安装 pnpm 并加入 PATH");
     check(command("task", ["--version"]).status === 0, "Task", "安装 Task 并加入 PATH");
     check(existsSync(join(root, "react-admin", "node_modules", "vite", "package.json")),
-      "前端依赖", "在项目根目录执行 npm --prefix react-admin ci");
+      "前端依赖", "在项目根目录执行 task frontend:install");
   }
 
   if (canCompile) {

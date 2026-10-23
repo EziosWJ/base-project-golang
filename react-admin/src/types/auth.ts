@@ -1,26 +1,27 @@
-export type LoginRequest = {
+export interface LoginRequest {
   username: string;
   password: string;
-};
+}
 
-export type LoginResponse = {
+export interface LoginResponse {
   tokenName: string;
   tokenValue: string;
   expiresIn: number;
-};
+}
 
-export type CurrentUserDept = {
-  id: number;
-  deptName: string;
-};
-
-export type CurrentUserRole = {
+export interface CurrentUserRole {
   id: number;
   roleName: string;
   roleCode: string;
-};
+}
 
-export type CurrentUser = {
+export interface CurrentUserDept {
+  id: number;
+  deptName: string;
+  deptCode?: string;
+}
+
+export interface CurrentUser {
   id: number;
   username: string;
   nickname: string;
@@ -31,13 +32,15 @@ export type CurrentUser = {
   roles: CurrentUserRole[];
   lastLoginTime?: string | null;
   lastLoginIp?: string | null;
-};
+}
 
-export type CurrentUserMenu = {
+export type MenuType = 'DIR' | 'MENU' | 'LINK';
+
+export interface CurrentUserMenu {
   id: number;
   parentId: number;
   menuName: string;
-  menuType: "DIR" | "MENU" | "LINK";
+  menuType: MenuType;
   path: string;
   component: string | null;
   externalUrl?: string | null;
@@ -46,29 +49,6 @@ export type CurrentUserMenu = {
   sortOrder: number;
   visible: 0 | 1;
   children: CurrentUserMenu[];
-};
+}
 
-export type AuthUser = {
-  username: string;
-  displayName: string;
-};
-
-export type AuthState = {
-  token: string | null;
-  user: CurrentUser | null;
-  menus: CurrentUserMenu[];
-  isAuthenticated: boolean;
-  isLoadingUser: boolean;
-  isLoadingMenus: boolean;
-  login: (username: string, password: string) => Promise<CurrentUser>;
-  fetchCurrentUser: () => Promise<CurrentUser | null>;
-  fetchCurrentUserMenus: (force?: boolean) => Promise<CurrentUserMenu[]>;
-  logout: () => Promise<void>;
-  clearAuth: () => void;
-};
-
-export type LoginErrors = {
-  username?: string;
-  password?: string;
-  account?: string;
-};
+export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'anonymous';

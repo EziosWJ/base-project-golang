@@ -1,0 +1,80 @@
+.card {
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--ant-color-border-secondary, #eef1f6);
+}
+.toolbarTitle { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.title {
+  overflow: hidden;
+  color: var(--ant-color-text, #1e293b);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.total {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--ant-color-text-secondary, #64748b);
+  background: var(--ant-color-fill-quaternary, #f1f5f9);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.toolbarActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.toolbarDivider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--ant-color-border-secondary, #eef1f6);
+}
+.iconButton { border-radius: 8px; color: var(--ant-color-text-secondary, #64748b); }
+.iconButton:hover {
+  color: var(--ant-color-primary, #1677ff) !important;
+  background: var(--ant-color-fill-quaternary, #f1f5f9) !important;
+}
+.selectionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--ant-color-primary-border, #91caff);
+  border-radius: 10px;
+  background: var(--ant-color-primary-bg, #e6f4ff);
+}
+.batchDivider { width: 1px; height: 18px; background: var(--ant-color-primary-border, #91caff); }
+.columnPanel { display: grid; width: 220px; max-height: 320px; gap: 10px; overflow: auto; padding: 2px; }
+.columnPanel :global(.ant-checkbox-wrapper) { font-size: 13px; }
+.card :global(.ant-table) { border-radius: 0 0 16px 16px; }
+.card :global(.ant-table-thead > tr > th) {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.card :global(.ant-table-thead > tr > th:first-child),
+.card :global(.ant-table-tbody > tr > td:first-child) { padding-inline-start: 20px; }
+.card :global(.ant-table-thead > tr > th:last-child),
+.card :global(.ant-table-tbody > tr > td:last-child) { padding-inline-end: 20px; }
+.card :global(.ant-table-tbody > tr > td) { font-size: 13.5px; }
+.card :global(.ant-table-pagination.ant-pagination) {
+  margin: 0 !important;
+  padding: 12px 20px;
+  border-top: 1px solid var(--ant-color-border-secondary, #eef2f7);
+}
+.card :global(.ant-table-placeholder .ant-empty) { padding: 28px 0; }

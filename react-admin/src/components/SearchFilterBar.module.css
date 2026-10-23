@@ -1,0 +1,72 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--ant-color-border-secondary, #e9eef6);
+  border-radius: 16px;
+  background: var(--ant-color-bg-container, #fff);
+}
+.fields {
+  display: flex;
+  flex: 1 1 640px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.fields > :global(.ant-input-affix-wrapper) {
+  flex: 1 1 280px;
+  min-width: 220px;
+  max-width: 340px;
+}
+.fields > :global(.ant-select) {
+  flex: 0 1 168px;
+  min-width: 140px;
+}
+.fields > :global(.ant-picker) {
+  flex: 0 1 260px;
+  min-width: 230px;
+}
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-left: auto;
+}
+.dirtyHint {
+  color: var(--ant-color-text-tertiary, #94a3b8);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.buttons { flex: 0 0 auto; }
+@media (max-width: 991px) {
+  .fields { flex-basis: 100%; }
+  .actions { width: 100%; justify-content: flex-end; }
+}
+@media (max-width: 767px) {
+  .bar { padding: 12px; border-radius: 14px; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .fields > :global(.ant-input-affix-wrapper),
+  .fields > :global(.ant-picker) {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .fields > :global(.ant-select) {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .actions { justify-content: stretch; }
+  .dirtyHint { width: 100%; white-space: normal; }
+  .buttons { display: flex; width: 100%; }
+  .buttons > :first-child { flex: 1; }
+  .buttons > :last-child { flex: 0 0 auto; }
+}

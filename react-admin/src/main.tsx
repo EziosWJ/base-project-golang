@@ -1,14 +1,14 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
-import { ToastProvider } from "@/components/common/toast";
-import { router } from "@/router";
-import "@/styles/globals.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import 'antd/dist/reset.css';
+import './styles/global.css';
+import { AppProviders } from './app/AppProviders';
+import { AppRouter } from './app/router';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ToastProvider>
-      <RouterProvider router={router} />
-    </ToastProvider>
+    <AppProviders>
+      <AppRouter />
+    </AppProviders>
   </React.StrictMode>,
 );

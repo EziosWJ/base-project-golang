@@ -18,6 +18,8 @@ tasks:
     preconditions:
       - sh: node --version
         msg: '需要 Node.js；安装后重新运行 task init。'
+      - sh: pnpm --version
+        msg: '需要 pnpm 10；安装后重新运行 task init。'
     cmds:
       - node scripts/dev-setup.mjs init {{.CLI_ARGS}}
 
@@ -26,6 +28,8 @@ tasks:
     preconditions:
       - sh: node --version
         msg: '需要 Node.js；安装后重新运行 task doctor。'
+      - sh: pnpm --version
+        msg: '需要 pnpm 10；安装后重新运行 task doctor。'
     cmds:
       - node scripts/dev-setup.mjs doctor {{.CLI_ARGS}}
 
@@ -84,7 +88,7 @@ tasks:
     desc: Start the React development server
     dir: react-admin
     cmds:
-      - npm run dev
+      - pnpm run dev
 
   host:collector:
     desc: Start the Linux host resource collector; pass flags through CLI_ARGS
@@ -196,29 +200,35 @@ tasks:
       - go test ./...
       - go vet ./...
 
+  frontend:install:
+    desc: Install frontend dependencies from the frozen pnpm lockfile
+    dir: react-admin
+    cmds:
+      - pnpm install --frozen-lockfile
+
   frontend:lint:
     desc: Run frontend lint
     dir: react-admin
     cmds:
-      - npm run lint
+      - pnpm run lint
+
+  frontend:typecheck:
+    desc: Run frontend TypeScript checks
+    dir: react-admin
+    cmds:
+      - pnpm run typecheck
+
+  frontend:test:
+    desc: Run frontend unit tests
+    dir: react-admin
+    cmds:
+      - pnpm run test
 
   frontend:build:
-    desc: Build the frontend
+    desc: Type-check and build the frontend
     dir: react-admin
     cmds:
-      - npm run build
-
-  frontend:notifications:
-    desc: Run announcement and notification browser verification
-    dir: react-admin
-    cmds:
-      - npm run test:notifications
-
-  frontend:monitoring:
-    desc: Run server monitoring browser verification
-    dir: react-admin
-    cmds:
-      - npm run test:monitoring
+      - pnpm run build
 
   check:
     desc: Run backend and frontend checks
@@ -226,6 +236,8 @@ tasks:
       - dev:setup:test
       - backend:check
       - frontend:lint
+      - frontend:typecheck
+      - frontend:test
       - frontend:build
 
   build:

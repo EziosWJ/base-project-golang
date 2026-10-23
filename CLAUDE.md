@@ -6,9 +6,17 @@
 
 ```
 project/
-├── react-admin/   # 前端项目（React），直接在此开发
+├── react-admin/   # 前端项目（React + Ant Design 侧边栏），直接在此开发
 ├── base-go-api/   # 后端项目（Go），直接在此开发
 ```
+
+## 前端技术基线（template/sidebar）
+
+- React 19、TypeScript、Vite 7、Ant Design 6、CSS Modules、React Router 7、TanStack Query、Axios、Zustand、pnpm 10。
+- 前端通过 `/api/v1` 接入真实 Go 后端；响应包、业务码、401 和分页转换集中在 `react-admin/src/lib/api/`。
+- 侧边栏由后端 `/auth/menus` 驱动，后端 `component` 与 `react-admin/src/config/routes.tsx` 的 `menuComponent` 一一映射；未注册菜单不展示，无菜单权限的直接访问显示 403。
+- 不引入 Tailwind、shadcn 或第二套图标/样式/HTTP 体系；真实开发与生产默认不启用 MSW。
+- 前端依赖统一使用 pnpm 与 `pnpm-lock.yaml`；任务入口为 `task frontend:install|lint|typecheck|test|build`。
 
 ## 上下文管理规则
 
@@ -32,7 +40,7 @@ project/
 
 - 后端本地配置使用 `base-go-api/configs/config.dev.yaml`；数据库和 JWT 配置放在该文件中，不另建根目录 `.env.local` 作为后端运行配置。
 - `task db:migrate`：执行全部 Goose schema 和 seed migration；首次启动、数据库重建或修改 migration 后执行。
-- `task api`：启动 Go API，默认监听 `:8099`。
+- `task api`：启动 Go API，默认监听 `:8100`。
 - `task web`：启动 React 开发服务器，默认监听 `:5173`。
 - `task dev`：先执行数据库 migration，再并行启动 API 和前端；适合全新环境或需要确保数据库已更新时使用。
 - `task backend:test`：执行后端单元测试。

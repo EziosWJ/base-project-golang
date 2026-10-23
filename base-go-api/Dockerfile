@@ -2,11 +2,12 @@
 
 FROM node:24-alpine AS frontend
 
+RUN corepack enable && corepack prepare pnpm@10.18.3 --activate
 WORKDIR /web
-COPY react-admin/package.json react-admin/package-lock.json ./
-RUN npm ci
+COPY react-admin/package.json react-admin/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY react-admin/ ./
-RUN npm run build
+RUN pnpm run build
 
 FROM golang:1.26.5-alpine AS build
 

@@ -10,7 +10,7 @@
 
 ## 内嵌前端的发布构建
 
-在仓库根目录执行 `npm --prefix react-admin ci` 和 `task build`，生成 `bin/base-go-api`、`bin/base-go-migrate`、`bin/base-go-backup`。API 使用 `embedweb` Go build tag，将本次 React 生产构建嵌入二进制。构建任务先生成 `react-admin/dist`，复制到 `base-go-api/internal/webui/dist`，随后编译 API；构建产物不提交 Git。手动执行 `go build -tags=embedweb` 前也必须完成资源准备。
+在仓库根目录执行 `pnpm --dir react-admin install --frozen-lockfile` 和 `task build`，生成 `bin/base-go-api`、`bin/base-go-migrate`、`bin/base-go-backup`。API 使用 `embedweb` Go build tag，将本次 React 生产构建嵌入二进制。构建任务先生成 `react-admin/dist`，复制到 `base-go-api/internal/webui/dist`，随后编译 API；构建产物不提交 Git。手动执行 `go build -tags=embedweb` 前也必须完成资源准备。
 
 发布 API 同时提供 `/` 下的管理页面与既有接口。直接访问和刷新页面回退到 `index.html`；缺失静态资源、未知 `/api/**`、运维路径和关闭的 Swagger 路径仍返回 JSON 404。前端使用同源 API，页面和资源响应设置 `Cache-Control: no-cache`，让浏览器使用前重新验证。
 

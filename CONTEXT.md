@@ -29,13 +29,16 @@
 ## 技术栈与演进状态
 
 ### 前端 react-admin
-- 框架: React 19 + TypeScript + Vite 6
-- 路由: react-router-dom v7
-- 状态管理: Zustand
-- 表单: react-hook-form + zod（@hookform/resolvers）
-- 样式: Tailwind CSS + class-variance-authority + tailwind-merge
+- 框架: React 19 + TypeScript + Vite 7 + Ant Design 6
+- 路由: react-router-dom v7 Data Router；页面按本地路由注册懒加载
+- 服务端数据: TanStack Query；HTTP: Axios
+- 状态管理: Zustand（登录态、页面标签）
+- 样式: CSS Modules + Ant Design Design Token；不使用 Tailwind/shadcn
 - 图标: lucide-react
-- Lint: ESLint + typescript-eslint
+- 包管理: pnpm 10（冻结锁文件）
+- 认证: 通过 `/api/v1/auth/*` 接入真实 Go 后端，Bearer Token 保存在本地，刷新后恢复
+- 菜单: 后端 `/auth/menus` 驱动侧边栏，`component` 与本地 `menuComponent` 映射；未注册组件不展示
+- MSW: 仅保留测试能力，真实系统默认关闭
 
 ### 当前后端 base-go-api（Go，唯一后端）
 
@@ -141,6 +144,10 @@ base-go-api/
 
 **菜单搜索**：供当前用户查找其侧栏导航中可跳转页面入口的功能，包含站内页面与外链；目录用于区分页面所属层级，检索对象不包含用户、文件等业务数据。
 _Avoid_：全局搜索（容易被理解为包含业务数据的检索）
+
+**菜单组件标识**：后端菜单 `component` 字段与前端本地页面注册（`menuComponent`）之间的稳定标识；只有两者匹配的菜单才会出现在侧边栏并可被直接访问。
+
+**页面访问守卫**：前端根据当前账号的后端菜单集合判断页面是否可打开，用于直接访问、刷新和标签恢复的 403 展示；它不替代服务端授权。
 
 **单文件上限**：单次上传中，一个文件内容允许占用的最大字节数；当前上限为 50 MiB（52,428,800 字节），现有 API 文案中的“50 MB”指该二进制阈值。该限制属于文件业务边界，不替代 HTTP 请求体限制。
 

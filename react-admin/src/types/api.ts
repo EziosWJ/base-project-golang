@@ -1,33 +1,37 @@
-export type ApiResponse<T> = {
+export type SortOrder = 'asc' | 'desc';
+
+/** 后端统一响应包。业务失败也可能是 HTTP 200，因此必须检查 code。 */
+export interface ApiEnvelope<T> {
   code: number;
   message: string;
   data: T;
-};
+}
 
-export type ApiPageRequest = {
-  page: number;
-  pageSize: number;
-};
-
-export type ApiPageResult<T> = {
+/** 后端分页响应；数据访问层会转换为 items。 */
+export interface BackendPage<T> {
   records: T[];
   total: number;
   page: number;
   pageSize: number;
-};
+}
 
-export type ApiFieldErrors = Record<string, string>;
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
-export type ApiStatus = 0 | 1;
+export interface BaseListQuery {
+  page: number;
+  pageSize: number;
+}
 
-export type ApiBuiltinFlag = 0 | 1;
+export type StatusValue = 0 | 1;
+export type BuiltinFlag = 0 | 1;
 
-export type ApiQueryValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | Array<string | number | boolean>;
-
-export type ApiQueryParams = Record<string, ApiQueryValue>;
+export interface ApiErrorBody {
+  code?: number;
+  message?: string;
+  data?: unknown;
+}

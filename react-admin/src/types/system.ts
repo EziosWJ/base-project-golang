@@ -1,182 +1,258 @@
-import type { ApiBuiltinFlag, ApiPageRequest, ApiStatus } from "./api";
+import type { BaseListQuery, BuiltinFlag, StatusValue } from './api';
 
-export type SystemStatus = "enabled" | "disabled";
+export type Gender = 'MALE' | 'FEMALE' | 'UNKNOWN';
 
-export type DictTypeLegacyRecord = {
+export interface RoleBrief {
   id: number;
-  name: string;
-  code: string;
-  status: SystemStatus;
-  itemCount: number;
-  updatedAt: string;
-};
+  roleName: string;
+  roleCode: string;
+  status?: StatusValue;
+}
 
-export type DictItemLegacyRecord = {
+export interface UserRecord {
   id: number;
-  typeCode: string;
-  label: string;
-  value: string;
-  sort: number;
-  status: SystemStatus;
-  updatedAt: string;
-};
+  username: string;
+  nickname: string;
+  phone?: string | null;
+  email?: string | null;
+  avatar?: string | null;
+  gender?: Gender | null;
+  deptId?: number | null;
+  status: StatusValue;
+  isBuiltin: BuiltinFlag;
+  lastLoginTime?: string | null;
+  lastLoginIp?: string | null;
+  remark?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+  deptName?: string | null;
+  roles?: RoleBrief[];
+}
 
-export type DictTypeRecord = DictTypeLegacyRecord;
+export interface UserListQuery extends BaseListQuery {
+  keyword?: string;
+  username?: string;
+  nickname?: string;
+  phone?: string;
+  email?: string;
+  status?: StatusValue;
+  deptId?: number;
+}
 
-export type DictItemRecord = DictItemLegacyRecord;
+export interface UserInput {
+  username?: string;
+  nickname: string;
+  phone?: string;
+  email?: string;
+  avatar?: string;
+  gender?: Gender;
+  deptId?: number;
+  status: StatusValue;
+  remark?: string;
+}
 
-export type SystemDictTypeRecord = {
+export interface RoleRecord {
+  id: number;
+  roleName: string;
+  roleCode: string;
+  status: StatusValue;
+  sortOrder: number;
+  isBuiltin: BuiltinFlag;
+  remark?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+}
+
+export interface RoleDetail extends RoleRecord {
+  menuIds: number[];
+}
+
+export interface RoleListQuery extends BaseListQuery {
+  roleName?: string;
+  roleCode?: string;
+  status?: StatusValue;
+}
+
+export interface RoleInput {
+  roleName: string;
+  roleCode: string;
+  status: StatusValue;
+  sortOrder: number;
+  remark?: string;
+}
+
+export interface MenuRecord {
+  id: number;
+  parentId: number;
+  menuName: string;
+  menuType: 'DIR' | 'MENU' | 'LINK';
+  path: string | null;
+  component: string | null;
+  externalUrl?: string | null;
+  icon: string | null;
+  permissionCode: string | null;
+  sortOrder: number;
+  visible: StatusValue;
+  status: StatusValue;
+  isBuiltin?: BuiltinFlag;
+  remark?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+  children?: MenuRecord[];
+}
+
+export interface MenuListQuery extends BaseListQuery {
+  menuName?: string;
+  menuType?: MenuRecord['menuType'];
+  status?: StatusValue;
+  visible?: StatusValue;
+}
+
+export interface MenuInput {
+  parentId: number;
+  menuName: string;
+  menuType: MenuRecord['menuType'];
+  path?: string;
+  component?: string;
+  externalUrl?: string;
+  icon?: string;
+  permissionCode?: string;
+  sortOrder: number;
+  visible: StatusValue;
+  status: StatusValue;
+  remark?: string;
+}
+
+export interface DeptRecord {
+  id: number;
+  parentId: number;
+  deptName: string;
+  deptCode: string;
+  leader?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  sortOrder: number;
+  status: StatusValue;
+  isBuiltin: BuiltinFlag;
+  remark?: string | null;
+  createTime?: string | null;
+  updateTime?: string | null;
+  children?: DeptRecord[];
+}
+
+export interface DeptOption {
+  id: number;
+  parentId: number;
+  deptName: string;
+  deptCode?: string;
+  disabled?: boolean;
+  children?: DeptOption[];
+}
+
+export interface DeptListQuery extends BaseListQuery {
+  deptName?: string;
+  deptCode?: string;
+  status?: StatusValue;
+}
+
+export interface DeptInput {
+  parentId: number;
+  deptName: string;
+  deptCode: string;
+  leader?: string;
+  phone?: string;
+  email?: string;
+  sortOrder: number;
+  status: StatusValue;
+  remark?: string;
+}
+
+export interface DictTypeRecord {
   id: number;
   dictName: string;
   dictCode: string;
-  status: ApiStatus;
+  status: StatusValue;
   sortOrder: number;
-  isBuiltin: ApiBuiltinFlag;
+  isBuiltin: BuiltinFlag;
   remark?: string | null;
   createTime?: string | null;
-};
+  updateTime?: string | null;
+}
 
-export type SystemDictDataRecord = {
+export interface DictTypeListQuery extends BaseListQuery {
+  dictName?: string;
+  dictCode?: string;
+  status?: StatusValue;
+}
+
+export interface DictTypeInput {
+  dictName: string;
+  dictCode: string;
+  status: StatusValue;
+  sortOrder: number;
+  remark?: string;
+}
+
+export interface DictDataRecord {
   id: number;
   dictTypeId: number;
+  dictCode?: string;
   dictLabel: string;
   dictValue: string;
   sortOrder: number;
   remark?: string | null;
   createTime?: string | null;
-};
+  updateTime?: string | null;
+}
 
-export type DictQuery = {
-  keyword?: string;
-  status?: SystemStatus | "all";
-};
-
-export type DictTypeListQuery = Partial<ApiPageRequest> & {
-  dictName?: string;
-  dictCode?: string;
-  status?: ApiStatus;
-};
-
-export type DictTypeCreateRequest = {
-  dictName: string;
-  dictCode: string;
-  status: ApiStatus;
-  sortOrder: number;
-  remark?: string;
-};
-
-export type DictTypeUpdateRequest = DictTypeCreateRequest;
-
-export type DictTypeStatusRequest = {
-  status: ApiStatus;
-};
-
-export type DictTypeBatchDeleteRequest = {
-  ids: number[];
-};
-
-export type DictDataListQuery = Partial<ApiPageRequest> & {
+export interface DictDataListQuery extends BaseListQuery {
   dictTypeId?: number;
   dictCode?: string;
   dictLabel?: string;
   dictValue?: string;
-};
+}
 
-export type DictDataCreateRequest = {
+export interface DictDataInput {
   dictTypeId: number;
   dictLabel: string;
   dictValue: string;
   sortOrder: number;
   remark?: string;
-};
+}
 
-export type DictDataUpdateRequest = DictDataCreateRequest;
-
-export type DictDataBatchDeleteRequest = {
-  ids: number[];
-};
-
-export type DictOption = {
+export interface DictOption {
   label: string;
   value: string;
   sortOrder: number;
-};
+}
 
-export type ConfigType = "string" | "number" | "boolean" | "json";
-
-export type SystemConfigType = "SYSTEM" | "CUSTOM";
-
-export type SystemConfigValueType = "TEXT" | "NUMBER" | "BOOLEAN";
-
-export type SystemConfigLegacyRecord = {
+export interface ConfigRecord {
   id: number;
-  name: string;
-  key: string;
-  value: string;
-  type: ConfigType;
-  status: SystemStatus;
-  updatedAt: string;
-};
-
-export type ConfigQuery = {
-  keyword?: string;
-  type?: ConfigType | "all";
-  status?: SystemStatus | "all";
-};
-
-export type SystemConfigRecord = {
-  id: number;
-  configName?: string;
-  configKey?: string;
+  configName: string;
+  configKey: string;
   configValue?: string | null;
-  configType?: SystemConfigType;
-  valueType?: SystemConfigValueType;
-  status: ApiStatus | SystemStatus;
-  isBuiltin?: ApiBuiltinFlag;
+  configType: 'SYSTEM' | 'CUSTOM';
+  valueType: 'TEXT' | 'NUMBER' | 'BOOLEAN';
+  status: StatusValue;
+  isBuiltin: BuiltinFlag;
   remark?: string | null;
   createTime?: string | null;
   updateTime?: string | null;
+}
 
-  /**
-   * 兼容旧 mock 数据类型。系统配置页面和真实接口只使用上方后端字段。
-   */
-  name: string;
-  key: string;
-  value: string;
-  type: ConfigType;
-  updatedAt: string;
-};
-
-export type SystemConfigValueRecord = {
-  configKey: string;
-  configValue?: string | null;
-  valueType: SystemConfigValueType;
-  configName: string;
-};
-
-export type SystemConfigListQuery = Partial<ApiPageRequest> & {
+export interface ConfigListQuery extends BaseListQuery {
   configName?: string;
   configKey?: string;
-  configType?: SystemConfigType;
-  status?: ApiStatus;
-};
+  configType?: ConfigRecord['configType'];
+  status?: StatusValue;
+}
 
-export type SystemConfigCreateRequest = {
+export interface ConfigInput {
   configName: string;
   configKey: string;
   configValue?: string;
-  configType: SystemConfigType;
-  valueType: SystemConfigValueType;
-  status: ApiStatus;
+  configType: ConfigRecord['configType'];
+  valueType: ConfigRecord['valueType'];
+  status: StatusValue;
   remark?: string;
-};
-
-export type SystemConfigUpdateRequest = SystemConfigCreateRequest;
-
-export type SystemConfigStatusRequest = {
-  status: ApiStatus;
-};
-
-export type SystemConfigBatchDeleteRequest = {
-  ids: number[];
-};
+}

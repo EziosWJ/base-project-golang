@@ -18,7 +18,7 @@
 6. As a new project developer, I want SQLite configuration without PostgreSQL credentials, so that the existing configuration validation passes.
 7. As a returning developer, I want initialization to preserve my existing configuration and JWT, so that rerunning it does not disrupt my environment or sessions.
 8. As a developer, I want an independent environment check, so that I can diagnose failures without regenerating configuration.
-9. As a developer, I want missing Go, Node.js, npm, Task and C compilation tools identified, so that I know which prerequisites to install.
+9. As a developer, I want missing Go, Node.js, pnpm, Task and C compilation tools identified, so that I know which prerequisites to install.
 10. As a developer, I want missing frontend dependencies identified, so that I install them before starting the frontend.
 11. As a developer, I want configuration checked using the application's existing rules, so that doctor and startup agree about valid configuration.
 12. As a PostgreSQL user, I want connection checks to have a deadline, so that an unavailable database does not hang environment diagnosis.
