@@ -54,6 +54,11 @@ func TestSchemaAndSeedResponsibilitiesStaySeparate(t *testing.T) {
 			if filepath.Base(name) == "00009_business_notification_source.sql" {
 				continue
 			}
+			// This schema evolution rewrites the service-generated file access
+			// URL prefix; it does not insert seed data.
+			if filepath.Base(name) == "00010_file_access_url_v1.sql" {
+				continue
+			}
 			if schemaDML.Match(contents) {
 				t.Errorf("schema migration %s contains seed-data DML", name)
 			}

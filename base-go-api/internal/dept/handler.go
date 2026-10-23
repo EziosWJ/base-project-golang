@@ -79,7 +79,7 @@ type statusReq struct {
 // @Tags 部门管理
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/dept/tree [get]
+// @Router /api/v1/system/dept/tree [get]
 func (h *Handler) tree(c *gin.Context) { v, e := h.s.Tree(c); out(c, v, e) }
 
 // options godoc
@@ -87,7 +87,7 @@ func (h *Handler) tree(c *gin.Context) { v, e := h.s.Tree(c); out(c, v, e) }
 // @Tags 部门管理
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/dept/options [get]
+// @Router /api/v1/system/dept/options [get]
 func (h *Handler) options(c *gin.Context) { v, e := h.s.Options(c); out(c, v, e) }
 
 // page godoc
@@ -101,7 +101,7 @@ func (h *Handler) options(c *gin.Context) { v, e := h.s.Options(c); out(c, v, e)
 // @Param status query int false "状态：0 或 1"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept/page [get]
+// @Router /api/v1/system/dept/page [get]
 func (h *Handler) page(c *gin.Context) {
 	q := Query{Page: qi(c, "page", 1), PageSize: qi(c, "pageSize", 10), DeptName: c.Query("deptName"), DeptCode: c.Query("deptCode")}
 	if x, ok := qs(c, "status"); ok {
@@ -125,7 +125,7 @@ func (h *Handler) page(c *gin.Context) {
 // @Param id path int true "部门 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept/{id} [get]
+// @Router /api/v1/system/dept/{id} [get]
 func (h *Handler) detail(c *gin.Context) {
 	id, ok := id(c)
 	if !ok {
@@ -142,7 +142,7 @@ func (h *Handler) detail(c *gin.Context) {
 // @Param request body request true "部门"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept [post]
+// @Router /api/v1/system/dept [post]
 func (h *Handler) create(c *gin.Context) {
 	var r request
 	if c.ShouldBindJSON(&r) != nil {
@@ -171,7 +171,7 @@ func (h *Handler) create(c *gin.Context) {
 // @Param request body request true "部门"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept/{id} [put]
+// @Router /api/v1/system/dept/{id} [put]
 func (h *Handler) update(c *gin.Context) {
 	id, ok := id(c)
 	if !ok {
@@ -201,7 +201,7 @@ func (h *Handler) update(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "部门 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/dept/{id} [delete]
+// @Router /api/v1/system/dept/{id} [delete]
 func (h *Handler) delete(c *gin.Context) {
 	id, ok := id(c)
 	if ok {
@@ -216,7 +216,7 @@ func (h *Handler) delete(c *gin.Context) {
 // @Param request body ids true "部门 ID 列表"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept/batch-delete [post]
+// @Router /api/v1/system/dept/batch-delete [post]
 func (h *Handler) batch(c *gin.Context) {
 	var r ids
 	if c.ShouldBindJSON(&r) != nil || len(r.IDs) == 0 {
@@ -234,7 +234,7 @@ func (h *Handler) batch(c *gin.Context) {
 // @Param request body statusReq true "状态"
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
-// @Router /api/system/dept/{id}/status [patch]
+// @Router /api/v1/system/dept/{id}/status [patch]
 func (h *Handler) status(c *gin.Context) {
 	id, ok := id(c)
 	if !ok {

@@ -342,7 +342,7 @@ func (h *Handler) Register(r gin.IRouter) {
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/page [get]
+// @Router /api/v1/system/config/page [get]
 func (h *Handler) page(c *gin.Context) {
 	q := Query{Page: queryInt(c, "page", 1), PageSize: queryInt(c, "pageSize", 10), ConfigName: c.Query("configName"), ConfigKey: c.Query("configKey"), ConfigType: c.Query("configType")}
 	if x, ok := queryStatus(c, "status"); ok {
@@ -372,7 +372,7 @@ func (h *Handler) page(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "配置 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/{id} [get]
+// @Router /api/v1/system/config/{id} [get]
 func (h *Handler) detail(c *gin.Context) {
 	id, ok := configID(c)
 	if !ok {
@@ -387,7 +387,7 @@ func (h *Handler) detail(c *gin.Context) {
 // @Security BearerAuth
 // @Param key path string true "配置键"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/key/{key} [get]
+// @Router /api/v1/system/config/key/{key} [get]
 func (h *Handler) key(c *gin.Context) {
 	v, e := h.svc.GetByKey(c.Request.Context(), c.Param("key"))
 	if e != nil {
@@ -418,7 +418,7 @@ type statusRequest struct {
 // @Security BearerAuth
 // @Param request body configRequest true "配置"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config [post]
+// @Router /api/v1/system/config [post]
 func (h *Handler) create(c *gin.Context) {
 	var x configRequest
 	if c.ShouldBindJSON(&x) != nil {
@@ -434,7 +434,7 @@ func (h *Handler) create(c *gin.Context) {
 // @Param id path int true "配置 ID"
 // @Param request body configRequest true "配置"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/{id} [put]
+// @Router /api/v1/system/config/{id} [put]
 func (h *Handler) update(c *gin.Context) {
 	id, ok := configID(c)
 	if !ok {
@@ -453,7 +453,7 @@ func (h *Handler) update(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "配置 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/{id} [delete]
+// @Router /api/v1/system/config/{id} [delete]
 func (h *Handler) delete(c *gin.Context) {
 	id, ok := configID(c)
 	if ok {
@@ -466,7 +466,7 @@ func (h *Handler) delete(c *gin.Context) {
 // @Security BearerAuth
 // @Param request body idsRequest true "配置 ID 列表"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/batch-delete [post]
+// @Router /api/v1/system/config/batch-delete [post]
 func (h *Handler) batch(c *gin.Context) {
 	var x idsRequest
 	if c.ShouldBindJSON(&x) != nil || len(x.IDs) == 0 {
@@ -482,7 +482,7 @@ func (h *Handler) batch(c *gin.Context) {
 // @Param id path int true "配置 ID"
 // @Param request body statusRequest true "状态"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/config/{id}/status [patch]
+// @Router /api/v1/system/config/{id}/status [patch]
 func (h *Handler) status(c *gin.Context) {
 	id, ok := configID(c)
 	if !ok {

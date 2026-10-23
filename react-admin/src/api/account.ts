@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type {
   ChangePasswordRequest,
   UpdateAvatarRequest,
@@ -6,13 +6,13 @@ import type {
 import type { CurrentUser } from "@/types/auth";
 
 export async function getAccountProfile(): Promise<CurrentUser> {
-  return http.get<CurrentUser>("/api/auth/me");
+  return http.get<CurrentUser>(`${API_PREFIX}/auth/me`);
 }
 
 export function changeCurrentUserPassword(data: ChangePasswordRequest) {
-  return http.put<void>("/api/system/user/me/password", data);
+  return http.put<void>(`${API_PREFIX}/system/user/me/password`, data);
 }
 
 export function updateCurrentUserAvatar(data: UpdateAvatarRequest) {
-  return http.put<void>("/api/system/user/me/avatar", data);
+  return http.put<void>(`${API_PREFIX}/system/user/me/avatar`, data);
 }

@@ -117,7 +117,7 @@ type menusRequest struct {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/page [get]
+// @Router /api/v1/system/role/page [get]
 func (h *Handler) rolePage(c *gin.Context) {
 	status, validStatus := queryOptionalStatus(c, "status")
 	q := RolePageQuery{Page: queryInt(c, "page", 1), PageSize: queryInt(c, "pageSize", 10), RoleName: c.Query("roleName"), RoleCode: c.Query("roleCode"), Status: status}
@@ -135,7 +135,7 @@ func (h *Handler) rolePage(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/options [get]
+// @Router /api/v1/system/role/options [get]
 func (h *Handler) roleOptions(c *gin.Context) { v, e := h.service.RoleOptions(c); writeResult(c, v, e) }
 
 // roleDetail godoc
@@ -146,7 +146,7 @@ func (h *Handler) roleOptions(c *gin.Context) { v, e := h.service.RoleOptions(c)
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/{id} [get]
+// @Router /api/v1/system/role/{id} [get]
 func (h *Handler) roleDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -164,7 +164,7 @@ func (h *Handler) roleDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role [post]
+// @Router /api/v1/system/role [post]
 func (h *Handler) createRole(c *gin.Context) {
 	var r roleRequest
 	if !bindJSON(c, &r) {
@@ -188,7 +188,7 @@ func (h *Handler) createRole(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/{id} [put]
+// @Router /api/v1/system/role/{id} [put]
 func (h *Handler) updateRole(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -214,7 +214,7 @@ func (h *Handler) updateRole(c *gin.Context) {
 // @Param id path int true "角色 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/{id} [delete]
+// @Router /api/v1/system/role/{id} [delete]
 func (h *Handler) deleteRole(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -231,7 +231,7 @@ func (h *Handler) deleteRole(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/batch-delete [post]
+// @Router /api/v1/system/role/batch-delete [post]
 func (h *Handler) deleteRoles(c *gin.Context) {
 	var r batchRequest
 	if !bindJSON(c, &r) {
@@ -253,7 +253,7 @@ func (h *Handler) deleteRoles(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/{id}/status [patch]
+// @Router /api/v1/system/role/{id}/status [patch]
 func (h *Handler) roleStatus(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -278,7 +278,7 @@ func (h *Handler) roleStatus(c *gin.Context) {
 // @Param request body menusRequest true "菜单 ID 列表"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/role/{id}/menus [put]
+// @Router /api/v1/system/role/{id}/menus [put]
 func (h *Handler) roleMenus(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -297,7 +297,7 @@ func (h *Handler) roleMenus(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/tree [get]
+// @Router /api/v1/system/menu/tree [get]
 func (h *Handler) menuTree(c *gin.Context) { v, e := h.service.MenuTree(c); writeResult(c, v, e) }
 
 // menuPage godoc
@@ -313,7 +313,7 @@ func (h *Handler) menuTree(c *gin.Context) { v, e := h.service.MenuTree(c); writ
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/page [get]
+// @Router /api/v1/system/menu/page [get]
 func (h *Handler) menuPage(c *gin.Context) {
 	status, validStatus := queryOptionalStatus(c, "status")
 	visible, validVisible := queryOptionalStatus(c, "visible")
@@ -333,7 +333,7 @@ func (h *Handler) menuPage(c *gin.Context) {
 // @Param id path int true "菜单 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/{id} [get]
+// @Router /api/v1/system/menu/{id} [get]
 func (h *Handler) menuDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -351,7 +351,7 @@ func (h *Handler) menuDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu [post]
+// @Router /api/v1/system/menu [post]
 func (h *Handler) createMenu(c *gin.Context) {
 	var r menuRequest
 	if !bindJSON(c, &r) {
@@ -375,7 +375,7 @@ func (h *Handler) createMenu(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/{id} [put]
+// @Router /api/v1/system/menu/{id} [put]
 func (h *Handler) updateMenu(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -401,7 +401,7 @@ func (h *Handler) updateMenu(c *gin.Context) {
 // @Param id path int true "菜单 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/{id} [delete]
+// @Router /api/v1/system/menu/{id} [delete]
 func (h *Handler) deleteMenu(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -418,7 +418,7 @@ func (h *Handler) deleteMenu(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/batch-delete [post]
+// @Router /api/v1/system/menu/batch-delete [post]
 func (h *Handler) deleteMenus(c *gin.Context) {
 	var r batchRequest
 	if !bindJSON(c, &r) {
@@ -440,7 +440,7 @@ func (h *Handler) deleteMenus(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/menu/{id}/status [patch]
+// @Router /api/v1/system/menu/{id}/status [patch]
 func (h *Handler) menuStatus(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {

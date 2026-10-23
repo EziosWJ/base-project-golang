@@ -54,8 +54,8 @@ func NewHandler(service HandlerService) (*Handler, error) {
 	return &Handler{service: service}, nil
 }
 
-// RegisterRoutes registers the Java-compatible user routes on an already
-// authenticated /api/system router group.
+// RegisterRoutes registers the user routes on an already authenticated
+// /api/v1/system router group.
 func RegisterRoutes(router gin.IRouter, handler *Handler) {
 	users := router.Group("/user")
 	users.GET("/page", handler.userPage)
@@ -130,7 +130,7 @@ type avatarRequest struct {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/page [get]
+// @Router /api/v1/system/user/page [get]
 func (h *Handler) userPage(c *gin.Context) {
 	page, pageOK := queryInt(c, "page", 1)
 	pageSize, pageSizeOK := queryInt(c, "pageSize", 10)
@@ -171,7 +171,7 @@ func (h *Handler) userPage(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id} [get]
+// @Router /api/v1/system/user/{id} [get]
 func (h *Handler) userDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -189,7 +189,7 @@ func (h *Handler) userDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user [post]
+// @Router /api/v1/system/user [post]
 func (h *Handler) createUser(c *gin.Context) {
 	var request userCreateRequest
 	if !bindJSON(c, &request) {
@@ -212,7 +212,7 @@ func (h *Handler) createUser(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id} [put]
+// @Router /api/v1/system/user/{id} [put]
 func (h *Handler) updateUser(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -238,7 +238,7 @@ func (h *Handler) updateUser(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id} [delete]
+// @Router /api/v1/system/user/{id} [delete]
 func (h *Handler) deleteUser(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -255,7 +255,7 @@ func (h *Handler) deleteUser(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/batch-delete [post]
+// @Router /api/v1/system/user/batch-delete [post]
 func (h *Handler) deleteUsers(c *gin.Context) {
 	var request batchRequest
 	if !bindJSON(c, &request) {
@@ -277,7 +277,7 @@ func (h *Handler) deleteUsers(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id}/status [patch]
+// @Router /api/v1/system/user/{id}/status [patch]
 func (h *Handler) userStatus(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -303,7 +303,7 @@ func (h *Handler) userStatus(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id}/roles [put]
+// @Router /api/v1/system/user/{id}/roles [put]
 func (h *Handler) userRoles(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -328,7 +328,7 @@ func (h *Handler) userRoles(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/{id}/reset-password [put]
+// @Router /api/v1/system/user/{id}/reset-password [put]
 func (h *Handler) resetUserPassword(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -346,7 +346,7 @@ func (h *Handler) resetUserPassword(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/me/password [put]
+// @Router /api/v1/system/user/me/password [put]
 func (h *Handler) changeCurrentPassword(c *gin.Context) {
 	actorID, ok := actorID(c)
 	if !ok {
@@ -379,7 +379,7 @@ func (h *Handler) changeCurrentPassword(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/user/me/avatar [put]
+// @Router /api/v1/system/user/me/avatar [put]
 func (h *Handler) updateCurrentAvatar(c *gin.Context) {
 	actorID, ok := actorID(c)
 	if !ok {

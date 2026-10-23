@@ -1,4 +1,4 @@
-import { buildApiUrl, http } from "@/lib/http";
+import { API_PREFIX, buildApiUrl, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   FileBatchDeleteRequest,
@@ -10,7 +10,7 @@ import type {
   FileUploadOptions,
 } from "@/types/file";
 
-const FILE_BASE_PATH = "/api/system/file";
+const FILE_BASE_PATH = `${API_PREFIX}/system/file`;
 
 function appendOptionalText(
   formData: FormData,

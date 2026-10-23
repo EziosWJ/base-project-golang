@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   DictDataBatchDeleteRequest,
@@ -28,9 +28,9 @@ export async function getDictTypes(
   return getDictTypePage(query);
 }
 
-const DICT_TYPE_BASE_PATH = "/api/system/dict-type";
-const DICT_DATA_BASE_PATH = "/api/system/dict-data";
-const SYSTEM_CONFIG_BASE_PATH = "/api/system/config";
+const DICT_TYPE_BASE_PATH = `${API_PREFIX}/system/dict-type`;
+const DICT_DATA_BASE_PATH = `${API_PREFIX}/system/dict-data`;
+const SYSTEM_CONFIG_BASE_PATH = `${API_PREFIX}/system/config`;
 const dictItemCache = new Map<string, Promise<DictOption[]>>();
 const systemConfigValueCache = new Map<string, Promise<SystemConfigValueRecord>>();
 
@@ -111,7 +111,7 @@ export function getDictItems(dictCode: string, forceRefresh = false) {
     dictItemCache.set(
       normalizedCode,
       http.get<DictOption[]>(
-        `/api/system/dict/${encodeURIComponent(normalizedCode)}/items`,
+        `${API_PREFIX}/system/dict/${encodeURIComponent(normalizedCode)}/items`,
       ),
     );
   }

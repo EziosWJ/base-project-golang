@@ -38,16 +38,16 @@ try {
     const path = new URL(route.request().url()).pathname;
     if (!path.startsWith("/api/")) { await route.continue(); return; }
     let data = [];
-    if (path === "/api/auth/login") data = { tokenValue: "Bearer test" };
-    else if (path === "/api/auth/me") data = { id: 1, username: "admin", nickname: "测试用户", roles: [{ roleCode: role }] };
-    else if (path === "/api/public/announcement/page") data = { records: active ? announcements : [], total: active ? announcements.length : 0 };
-    else if (path === "/api/system/announcement/page") data = { records: [internalAnnouncement], total: 1 };
-    else if (path === "/api/public/announcement/1") { await route.fulfill({ json: { code: active ? 200 : 404, message: active ? "success" : "公告已失效", data: active ? publicAnnouncement : null } }); return; }
+    if (path === "/api/v1/auth/login") data = { tokenValue: "Bearer test" };
+    else if (path === "/api/v1/auth/me") data = { id: 1, username: "admin", nickname: "测试用户", roles: [{ roleCode: role }] };
+    else if (path === "/api/v1/public/announcement/page") data = { records: active ? announcements : [], total: active ? announcements.length : 0 };
+    else if (path === "/api/v1/system/announcement/page") data = { records: [internalAnnouncement], total: 1 };
+    else if (path === "/api/v1/public/announcement/1") { await route.fulfill({ json: { code: active ? 200 : 404, message: active ? "success" : "公告已失效", data: active ? publicAnnouncement : null } }); return; }
     else if (path.endsWith("/unread-count")) data = unread;
-    else if (path === "/api/system/notification/page") { listRequests += 1; data = { records: [{ ...notification, isRead: unread ? 0 : 1 }], total: 1 }; }
-    else if (path === "/api/system/notification/1") { unread = 0; data = { ...notification, isRead: 1 }; }
+    else if (path === "/api/v1/system/notification/page") { listRequests += 1; data = { records: [{ ...notification, isRead: unread ? 0 : 1 }], total: 1 }; }
+    else if (path === "/api/v1/system/notification/1") { unread = 0; data = { ...notification, isRead: 1 }; }
     else if (path.endsWith("/read-all")) unread = 0;
-    else if (path === "/api/system/announcement-admin/page") data = { records: [], total: 0 };
+    else if (path === "/api/v1/system/announcement-admin/page") data = { records: [], total: 0 };
     await route.fulfill({ json: { code: 200, message: "success", data } });
   });
   const page = await context.newPage();
@@ -61,14 +61,14 @@ try {
   await page.getByRole("button", { name: "关闭公告：公开维护公告" }).click();
   assert.equal(await page.getByRole("button", { name: "公开维护公告", exact: true }).count(), 0);
   announcements = [{ ...publicAnnouncement, id: 3, title: "新公开公告" }, publicAnnouncement];
-  await page.evaluate(() => window.emitMessage("/api/public/announcement/events", { type: "announcement" }));
+  await page.evaluate(() => window.emitMessage("/api/v1/public/announcement/events", { type: "announcement" }));
   await page.getByRole("button", { name: "新公开公告", exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "公开维护公告", exact: true }).count(), 0, "dismissal remains local to the old announcement");
   await page.getByRole("button", { name: "查看公告", exact: true }).click();
   await page.getByRole("button", { name: "公开维护公告", exact: true }).click();
   await page.getByText("今晚维护", { exact: true }).waitFor();
   active = false;
-  await page.evaluate(() => window.emitMessage("/api/public/announcement/events", { type: "announcement" }));
+  await page.evaluate(() => window.emitMessage("/api/v1/public/announcement/events", { type: "announcement" }));
   await page.getByText("公告已失效", { exact: true }).waitFor();
   assert.equal(await page.getByText("今晚维护", { exact: true }).count(), 0);
   active = true;
@@ -105,12 +105,12 @@ try {
     Object.defineProperty(document, "hasFocus", { configurable: true, value: () => false });
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
   });
-  await Promise.all([page.evaluate(() => window.emitMessage("/api/system/notification/events", { type: "notification", id: 42 })), otherPage.evaluate(() => window.emitMessage("/api/system/notification/events", { type: "notification", id: 42 }))]);
+  await Promise.all([page.evaluate(() => window.emitMessage("/api/v1/system/notification/events", { type: "notification", id: 42 })), otherPage.evaluate(() => window.emitMessage("/api/v1/system/notification/events", { type: "notification", id: 42 }))]);
   await otherPage.getByText("收到新的站内通知", { exact: true }).waitFor();
   assert.equal(await page.getByText("收到新的站内通知", { exact: true }).count(), 0, "background page must stay quiet");
   await page.getByRole("button", { name: "查看", exact: true }).click();
   await page.getByText("订单已通过", { exact: true }).waitFor();
-  await otherPage.evaluate(() => window.emitMessage("/api/system/notification/events", { type: "read" }));
+  await otherPage.evaluate(() => window.emitMessage("/api/v1/system/notification/events", { type: "read" }));
   await otherPage.getByRole("cell", { name: "已读", exact: true }).waitFor();
   await otherPage.close();
   await page.evaluate(() => { delete document.hasFocus; delete document.visibilityState; });
@@ -123,7 +123,7 @@ try {
   await page.getByRole("menuitem", { name: "退出登录", exact: true }).click();
   await page.waitForURL("**/login");
   assert.equal(await page.evaluate(() => localStorage.getItem("react-admin-auth")), null);
-  assert.equal(await page.evaluate(() => Boolean(window.messageStreams["/api/system/notification/events"])), false, "logout must abort the personal stream");
+  assert.equal(await page.evaluate(() => Boolean(window.messageStreams["/api/v1/system/notification/events"])), false, "logout must abort the personal stream");
   assert.equal(await page.getByRole("button", { name: "站内公告", exact: true }).count(), 0);
   await context.addInitScript(() => { window.failMessageStreams = true; });
   await page.evaluate(() => localStorage.setItem("react-admin-auth", JSON.stringify({ token: "Bearer test", user: null })));

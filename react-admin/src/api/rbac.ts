@@ -2,7 +2,7 @@ import {
   filterMockPermissions,
   getMockPermissionTotal,
 } from "@/mocks/rbac";
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   PermissionQuery,
@@ -28,8 +28,8 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-const ROLE_BASE_PATH = "/api/system/role";
-const MENU_BASE_PATH = "/api/system/menu";
+const ROLE_BASE_PATH = `${API_PREFIX}/system/role`;
+const MENU_BASE_PATH = `${API_PREFIX}/system/menu`;
 
 export function getRolePage(query: RoleListQuery) {
   return http.get<ApiPageResult<RoleListRecord>>(`${ROLE_BASE_PATH}/page`, {

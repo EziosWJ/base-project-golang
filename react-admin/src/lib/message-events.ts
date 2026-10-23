@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { buildApiUrl } from "@/lib/http";
+import { API_PREFIX, buildApiUrl } from "@/lib/http";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "@/components/common/toast-store";
 
@@ -28,7 +28,7 @@ export function connectMessages(token: string | null) {
   const controller = new AbortController();
   const signal = controller.signal;
   const privateStream = Boolean(token);
-  const path = privateStream ? "/api/system/notification/events" : "/api/public/announcement/events";
+  const path = privateStream ? `${API_PREFIX}/system/notification/events` : `${API_PREFIX}/public/announcement/events`;
   const seen = new Set<number>();
   if (privateStream) useMessageEvents.setState({ privateReady: false, status: "connecting" });
   else useMessageEvents.setState({ publicReady: false, publicStatus: "connecting" });

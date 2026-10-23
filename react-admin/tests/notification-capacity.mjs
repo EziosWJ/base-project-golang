@@ -34,12 +34,12 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript((value) => localStorage.setItem("react-admin-auth", JSON.stringify({ token: value, user: null })), token);
-  const initialPage = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/system/notification/page" && response.ok());
+  const initialPage = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/system/notification/page" && response.ok());
   await page.goto(`${base}/notifications`);
   await initialPage;
   await page.getByRole("heading", { name: "暂无通知", exact: true }).waitFor();
   const title = "容量验证群发消息";
-  const response = await fetch(`${apiURL}/api/system/notification`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ title, content: "1000个启用账号，100条并发连接", allUsers: true }) });
+  const response = await fetch(`${apiURL}/api/v1/system/notification`, { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ title, content: "1000个启用账号，100条并发连接", allUsers: true }) });
   const successTimeUnixMs = Date.now();
   const successAt = performance.now();
   assert.equal(response.status, 200);

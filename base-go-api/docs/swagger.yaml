@@ -860,7 +860,7 @@ info:
   title: Base Go API
   version: 0.1.0
 paths:
-  /api/auth/login:
+  /api/v1/auth/login:
     post:
       consumes:
       - application/json
@@ -893,7 +893,7 @@ paths:
       summary: 登录
       tags:
       - 认证
-  /api/auth/logout:
+  /api/v1/auth/logout:
     post:
       responses:
         "200":
@@ -909,7 +909,7 @@ paths:
       summary: 退出登录
       tags:
       - 认证
-  /api/auth/me:
+  /api/v1/auth/me:
     get:
       responses:
         "200":
@@ -925,7 +925,7 @@ paths:
       summary: 当前用户信息
       tags:
       - 认证
-  /api/auth/menus:
+  /api/v1/auth/menus:
     get:
       responses:
         "200":
@@ -941,7 +941,76 @@ paths:
       summary: 当前用户可见菜单
       tags:
       - 认证
-  /api/public/announcement/{id}:
+  /api/v1/monitoring/history:
+    get:
+      parameters:
+      - description: 资源
+        enum:
+        - cpu
+        - memory
+        - filesystem
+        - disk
+        - network
+        - gpu
+        in: query
+        name: resource
+        required: true
+        type: string
+      - description: 设备 ID；CPU 逻辑核索引，空值表示总体
+        in: query
+        name: device
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/monitoring.HistoryEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 当前 API 实例最近 30 分钟资源历史（仅 ADMIN）
+      tags:
+      - 服务器监控
+  /api/v1/monitoring/overview:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/monitoring.OverviewEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）
+      tags:
+      - 服务器监控
+  /api/v1/public/announcement/{id}:
     get:
       parameters:
       - description: 公告 ID
@@ -957,7 +1026,7 @@ paths:
       summary: 有效公开公告详情
       tags:
       - 公告
-  /api/public/announcement/events:
+  /api/v1/public/announcement/events:
     get:
       produces:
       - text/event-stream
@@ -969,7 +1038,7 @@ paths:
       summary: 公开公告变化 SSE（无需登录）
       tags:
       - 公告
-  /api/public/announcement/page:
+  /api/v1/public/announcement/page:
     get:
       parameters:
       - description: 页码
@@ -988,7 +1057,7 @@ paths:
       summary: 有效公开公告分页（无需登录）
       tags:
       - 公告
-  /api/system/announcement:
+  /api/v1/system/announcement:
     post:
       parameters:
       - description: 公告草稿
@@ -1007,7 +1076,7 @@ paths:
       summary: ADMIN 保存公告草稿
       tags:
       - 公告
-  /api/system/announcement-admin/page:
+  /api/v1/system/announcement-admin/page:
     get:
       parameters:
       - description: 页码
@@ -1028,7 +1097,7 @@ paths:
       summary: ADMIN 公告管理历史分页
       tags:
       - 公告
-  /api/system/announcement/{id}:
+  /api/v1/system/announcement/{id}:
     get:
       parameters:
       - description: 公告 ID
@@ -1069,7 +1138,7 @@ paths:
       summary: ADMIN 修改公告草稿（已发布内容不可修改）
       tags:
       - 公告
-  /api/system/announcement/{id}/publish:
+  /api/v1/system/announcement/{id}/publish:
     put:
       parameters:
       - description: 公告 ID
@@ -1087,7 +1156,7 @@ paths:
       summary: ADMIN 立即发布公告
       tags:
       - 公告
-  /api/system/announcement/{id}/withdraw:
+  /api/v1/system/announcement/{id}/withdraw:
     put:
       parameters:
       - description: 公告 ID
@@ -1105,7 +1174,7 @@ paths:
       summary: ADMIN 撤下公告
       tags:
       - 公告
-  /api/system/announcement/page:
+  /api/v1/system/announcement/page:
     get:
       parameters:
       - description: 页码
@@ -1126,7 +1195,7 @@ paths:
       summary: 有效站内公告分页
       tags:
       - 公告
-  /api/system/config:
+  /api/v1/system/config:
     post:
       parameters:
       - description: 配置
@@ -1145,7 +1214,7 @@ paths:
       summary: 新增配置
       tags:
       - 配置管理
-  /api/system/config/{id}:
+  /api/v1/system/config/{id}:
     delete:
       parameters:
       - description: 配置 ID
@@ -1203,7 +1272,7 @@ paths:
       summary: 修改配置
       tags:
       - 配置管理
-  /api/system/config/{id}/status:
+  /api/v1/system/config/{id}/status:
     patch:
       parameters:
       - description: 配置 ID
@@ -1227,7 +1296,7 @@ paths:
       summary: 修改配置状态
       tags:
       - 配置管理
-  /api/system/config/batch-delete:
+  /api/v1/system/config/batch-delete:
     post:
       parameters:
       - description: 配置 ID 列表
@@ -1246,7 +1315,7 @@ paths:
       summary: 批量删除配置
       tags:
       - 配置管理
-  /api/system/config/key/{key}:
+  /api/v1/system/config/key/{key}:
     get:
       parameters:
       - description: 配置键
@@ -1264,7 +1333,7 @@ paths:
       summary: 按配置键查询
       tags:
       - 配置管理
-  /api/system/config/page:
+  /api/v1/system/config/page:
     get:
       parameters:
       - description: 页码
@@ -1285,7 +1354,7 @@ paths:
       summary: 配置分页
       tags:
       - 配置管理
-  /api/system/dept:
+  /api/v1/system/dept:
     post:
       parameters:
       - description: 部门
@@ -1308,7 +1377,7 @@ paths:
       summary: 新增部门
       tags:
       - 部门管理
-  /api/system/dept/{id}:
+  /api/v1/system/dept/{id}:
     delete:
       parameters:
       - description: 部门 ID
@@ -1374,7 +1443,7 @@ paths:
       summary: 修改部门
       tags:
       - 部门管理
-  /api/system/dept/{id}/status:
+  /api/v1/system/dept/{id}/status:
     patch:
       parameters:
       - description: 部门 ID
@@ -1402,7 +1471,7 @@ paths:
       summary: 修改部门状态
       tags:
       - 部门管理
-  /api/system/dept/batch-delete:
+  /api/v1/system/dept/batch-delete:
     post:
       parameters:
       - description: 部门 ID 列表
@@ -1425,7 +1494,7 @@ paths:
       summary: 批量删除部门
       tags:
       - 部门管理
-  /api/system/dept/options:
+  /api/v1/system/dept/options:
     get:
       responses:
         "200":
@@ -1437,7 +1506,7 @@ paths:
       summary: 启用部门树
       tags:
       - 部门管理
-  /api/system/dept/page:
+  /api/v1/system/dept/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -1474,7 +1543,7 @@ paths:
       summary: 部门分页
       tags:
       - 部门管理
-  /api/system/dept/tree:
+  /api/v1/system/dept/tree:
     get:
       responses:
         "200":
@@ -1486,7 +1555,7 @@ paths:
       summary: 部门树
       tags:
       - 部门管理
-  /api/system/dict-data:
+  /api/v1/system/dict-data:
     post:
       parameters:
       - description: 字典数据
@@ -1513,7 +1582,7 @@ paths:
       summary: 新增字典数据
       tags:
       - 字典数据
-  /api/system/dict-data/{id}:
+  /api/v1/system/dict-data/{id}:
     delete:
       parameters:
       - description: 字典数据 ID
@@ -1591,7 +1660,7 @@ paths:
       summary: 修改字典数据
       tags:
       - 字典数据
-  /api/system/dict-data/batch-delete:
+  /api/v1/system/dict-data/batch-delete:
     post:
       parameters:
       - description: 字典数据 ID 列表
@@ -1618,7 +1687,7 @@ paths:
       summary: 批量删除字典数据
       tags:
       - 字典数据
-  /api/system/dict-data/page:
+  /api/v1/system/dict-data/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -1663,7 +1732,7 @@ paths:
       summary: 字典数据分页
       tags:
       - 字典数据
-  /api/system/dict-type:
+  /api/v1/system/dict-type:
     post:
       parameters:
       - description: 字典类型
@@ -1690,7 +1759,7 @@ paths:
       summary: 新增字典类型
       tags:
       - 字典类型
-  /api/system/dict-type/{id}:
+  /api/v1/system/dict-type/{id}:
     delete:
       parameters:
       - description: 字典类型 ID
@@ -1768,7 +1837,7 @@ paths:
       summary: 修改字典类型
       tags:
       - 字典类型
-  /api/system/dict-type/{id}/status:
+  /api/v1/system/dict-type/{id}/status:
     patch:
       parameters:
       - description: 字典类型 ID
@@ -1800,7 +1869,7 @@ paths:
       summary: 修改字典类型状态
       tags:
       - 字典类型
-  /api/system/dict-type/batch-delete:
+  /api/v1/system/dict-type/batch-delete:
     post:
       parameters:
       - description: 字典类型 ID 列表
@@ -1827,7 +1896,7 @@ paths:
       summary: 批量删除字典类型
       tags:
       - 字典类型
-  /api/system/dict-type/page:
+  /api/v1/system/dict-type/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -1868,7 +1937,7 @@ paths:
       summary: 字典类型分页
       tags:
       - 字典类型
-  /api/system/dict/{dictCode}/items:
+  /api/v1/system/dict/{dictCode}/items:
     get:
       parameters:
       - description: 字典编码
@@ -1890,7 +1959,7 @@ paths:
       summary: 按编码查询启用字典项
       tags:
       - 字典项
-  /api/system/file/{id}:
+  /api/v1/system/file/{id}:
     delete:
       parameters:
       - description: 文件 ID
@@ -1972,7 +2041,7 @@ paths:
       summary: 修改文件元信息
       tags:
       - 文件管理
-  /api/system/file/{id}/download:
+  /api/v1/system/file/{id}/download:
     get:
       parameters:
       - description: 文件 ID
@@ -2000,7 +2069,7 @@ paths:
       summary: 下载文件
       tags:
       - 文件管理
-  /api/system/file/{id}/status:
+  /api/v1/system/file/{id}/status:
     patch:
       parameters:
       - description: 文件 ID
@@ -2032,7 +2101,7 @@ paths:
       summary: 修改文件状态
       tags:
       - 文件管理
-  /api/system/file/{id}/view:
+  /api/v1/system/file/{id}/view:
     get:
       parameters:
       - description: 文件 ID
@@ -2060,7 +2129,7 @@ paths:
       summary: 预览文件
       tags:
       - 文件管理
-  /api/system/file/batch-delete:
+  /api/v1/system/file/batch-delete:
     post:
       parameters:
       - description: 文件 ID 列表
@@ -2087,7 +2156,7 @@ paths:
       summary: 批量删除文件
       tags:
       - 文件管理
-  /api/system/file/page:
+  /api/v1/system/file/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -2132,7 +2201,7 @@ paths:
       summary: 文件分页
       tags:
       - 文件管理
-  /api/system/file/upload:
+  /api/v1/system/file/upload:
     post:
       consumes:
       - multipart/form-data
@@ -2181,7 +2250,7 @@ paths:
       summary: 上传文件
       tags:
       - 文件管理
-  /api/system/file/upload-batch:
+  /api/v1/system/file/upload-batch:
     post:
       consumes:
       - multipart/form-data
@@ -2228,7 +2297,7 @@ paths:
       summary: 批量上传文件
       tags:
       - 文件管理
-  /api/system/login-log/{id}:
+  /api/v1/system/login-log/{id}:
     get:
       parameters:
       - description: 日志 ID
@@ -2254,7 +2323,7 @@ paths:
       summary: 登录日志详情
       tags:
       - 登录日志
-  /api/system/login-log/clear:
+  /api/v1/system/login-log/clear:
     delete:
       responses:
         "200":
@@ -2274,7 +2343,7 @@ paths:
       summary: 清空登录日志
       tags:
       - 登录日志
-  /api/system/login-log/page:
+  /api/v1/system/login-log/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -2315,7 +2384,7 @@ paths:
       summary: 登录日志分页
       tags:
       - 登录日志
-  /api/system/menu:
+  /api/v1/system/menu:
     post:
       parameters:
       - description: 菜单
@@ -2342,7 +2411,7 @@ paths:
       summary: 新增菜单
       tags:
       - 菜单管理
-  /api/system/menu/{id}:
+  /api/v1/system/menu/{id}:
     delete:
       parameters:
       - description: 菜单 ID
@@ -2416,7 +2485,7 @@ paths:
       summary: 修改菜单
       tags:
       - 菜单管理
-  /api/system/menu/{id}/status:
+  /api/v1/system/menu/{id}/status:
     patch:
       parameters:
       - description: 菜单 ID
@@ -2448,7 +2517,7 @@ paths:
       summary: 修改菜单状态
       tags:
       - 菜单管理
-  /api/system/menu/batch-delete:
+  /api/v1/system/menu/batch-delete:
     post:
       parameters:
       - description: 菜单 ID 列表
@@ -2475,7 +2544,7 @@ paths:
       summary: 批量删除菜单
       tags:
       - 菜单管理
-  /api/system/menu/page:
+  /api/v1/system/menu/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -2520,7 +2589,7 @@ paths:
       summary: 菜单分页
       tags:
       - 菜单管理
-  /api/system/menu/tree:
+  /api/v1/system/menu/tree:
     get:
       responses:
         "200":
@@ -2536,7 +2605,7 @@ paths:
       summary: 菜单树
       tags:
       - 菜单管理
-  /api/system/notification:
+  /api/v1/system/notification:
     post:
       parameters:
       - description: 通知内容
@@ -2555,7 +2624,7 @@ paths:
       summary: 发布站内通知
       tags:
       - 站内通知
-  /api/system/notification-admin/page:
+  /api/v1/system/notification-admin/page:
     get:
       parameters:
       - description: 页码
@@ -2576,7 +2645,7 @@ paths:
       summary: 通知管理分页
       tags:
       - 站内通知
-  /api/system/notification/{id}:
+  /api/v1/system/notification/{id}:
     get:
       parameters:
       - description: 通知 ID
@@ -2594,7 +2663,7 @@ paths:
       summary: 通知详情
       tags:
       - 站内通知
-  /api/system/notification/{id}/read:
+  /api/v1/system/notification/{id}/read:
     put:
       parameters:
       - description: 通知 ID
@@ -2612,7 +2681,7 @@ paths:
       summary: 标记通知已读
       tags:
       - 站内通知
-  /api/system/notification/events:
+  /api/v1/system/notification/events:
     get:
       produces:
       - text/event-stream
@@ -2626,7 +2695,7 @@ paths:
       summary: 当前用户公告、通知及已读变化 SSE
       tags:
       - 站内通知
-  /api/system/notification/page:
+  /api/v1/system/notification/page:
     get:
       parameters:
       - description: 页码
@@ -2647,7 +2716,7 @@ paths:
       summary: 我的通知分页
       tags:
       - 站内通知
-  /api/system/notification/read-all:
+  /api/v1/system/notification/read-all:
     put:
       responses:
         "200":
@@ -2659,7 +2728,7 @@ paths:
       summary: 全部标记已读
       tags:
       - 站内通知
-  /api/system/notification/unread-count:
+  /api/v1/system/notification/unread-count:
     get:
       responses:
         "200":
@@ -2671,7 +2740,7 @@ paths:
       summary: 未读通知数
       tags:
       - 站内通知
-  /api/system/oper-log/{id}:
+  /api/v1/system/oper-log/{id}:
     get:
       parameters:
       - description: 日志 ID
@@ -2697,7 +2766,7 @@ paths:
       summary: 操作日志详情
       tags:
       - 操作日志
-  /api/system/oper-log/clear:
+  /api/v1/system/oper-log/clear:
     delete:
       responses:
         "200":
@@ -2717,7 +2786,7 @@ paths:
       summary: 清空操作日志
       tags:
       - 操作日志
-  /api/system/oper-log/page:
+  /api/v1/system/oper-log/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -2762,7 +2831,7 @@ paths:
       summary: 操作日志分页
       tags:
       - 操作日志
-  /api/system/role:
+  /api/v1/system/role:
     post:
       parameters:
       - description: 角色
@@ -2789,7 +2858,7 @@ paths:
       summary: 新增角色
       tags:
       - 角色管理
-  /api/system/role/{id}:
+  /api/v1/system/role/{id}:
     delete:
       parameters:
       - description: 角色 ID
@@ -2867,7 +2936,7 @@ paths:
       summary: 修改角色
       tags:
       - 角色管理
-  /api/system/role/{id}/menus:
+  /api/v1/system/role/{id}/menus:
     put:
       parameters:
       - description: 角色 ID
@@ -2895,7 +2964,7 @@ paths:
       summary: 分配角色菜单
       tags:
       - 角色管理
-  /api/system/role/{id}/status:
+  /api/v1/system/role/{id}/status:
     patch:
       parameters:
       - description: 角色 ID
@@ -2927,7 +2996,7 @@ paths:
       summary: 修改角色状态
       tags:
       - 角色管理
-  /api/system/role/batch-delete:
+  /api/v1/system/role/batch-delete:
     post:
       parameters:
       - description: 角色 ID 列表
@@ -2954,7 +3023,7 @@ paths:
       summary: 批量删除角色
       tags:
       - 角色管理
-  /api/system/role/options:
+  /api/v1/system/role/options:
     get:
       responses:
         "200":
@@ -2970,7 +3039,7 @@ paths:
       summary: 启用角色选项
       tags:
       - 角色管理
-  /api/system/role/page:
+  /api/v1/system/role/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -3011,7 +3080,7 @@ paths:
       summary: 角色分页
       tags:
       - 角色管理
-  /api/system/user:
+  /api/v1/system/user:
     post:
       parameters:
       - description: 用户
@@ -3038,7 +3107,7 @@ paths:
       summary: 新增用户
       tags:
       - 用户管理
-  /api/system/user/{id}:
+  /api/v1/system/user/{id}:
     delete:
       parameters:
       - description: 用户 ID
@@ -3120,7 +3189,7 @@ paths:
       summary: 修改用户
       tags:
       - 用户管理
-  /api/system/user/{id}/reset-password:
+  /api/v1/system/user/{id}/reset-password:
     put:
       parameters:
       - description: 用户 ID
@@ -3146,7 +3215,7 @@ paths:
       summary: 重置用户密码
       tags:
       - 用户管理
-  /api/system/user/{id}/roles:
+  /api/v1/system/user/{id}/roles:
     put:
       parameters:
       - description: 用户 ID
@@ -3178,7 +3247,7 @@ paths:
       summary: 分配用户角色
       tags:
       - 用户管理
-  /api/system/user/{id}/status:
+  /api/v1/system/user/{id}/status:
     patch:
       parameters:
       - description: 用户 ID
@@ -3210,7 +3279,7 @@ paths:
       summary: 修改用户状态
       tags:
       - 用户管理
-  /api/system/user/batch-delete:
+  /api/v1/system/user/batch-delete:
     post:
       parameters:
       - description: 用户 ID 列表
@@ -3237,7 +3306,7 @@ paths:
       summary: 批量删除用户
       tags:
       - 用户管理
-  /api/system/user/me/avatar:
+  /api/v1/system/user/me/avatar:
     put:
       parameters:
       - description: 头像地址
@@ -3264,7 +3333,7 @@ paths:
       summary: 当前用户修改头像
       tags:
       - 用户管理
-  /api/system/user/me/password:
+  /api/v1/system/user/me/password:
     put:
       parameters:
       - description: 新旧密码
@@ -3291,7 +3360,7 @@ paths:
       summary: 当前用户修改密码
       tags:
       - 用户管理
-  /api/system/user/page:
+  /api/v1/system/user/page:
     get:
       parameters:
       - description: 页码，默认 1
@@ -3344,75 +3413,6 @@ paths:
       summary: 用户分页
       tags:
       - 用户管理
-  /api/v1/monitoring/history:
-    get:
-      parameters:
-      - description: 资源
-        enum:
-        - cpu
-        - memory
-        - filesystem
-        - disk
-        - network
-        - gpu
-        in: query
-        name: resource
-        required: true
-        type: string
-      - description: 设备 ID；CPU 逻辑核索引，空值表示总体
-        in: query
-        name: device
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/monitoring.HistoryEnvelope'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/monitoring.HistoryEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/monitoring.HistoryEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/monitoring.HistoryEnvelope'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/monitoring.HistoryEnvelope'
-      security:
-      - BearerAuth: []
-      summary: 当前 API 实例最近 30 分钟资源历史（仅 ADMIN）
-      tags:
-      - 服务器监控
-  /api/v1/monitoring/overview:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/monitoring.OverviewEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/monitoring.OverviewEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/monitoring.OverviewEnvelope'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/monitoring.OverviewEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）
-      tags:
-      - 服务器监控
 securityDefinitions:
   BearerAuth:
     in: header

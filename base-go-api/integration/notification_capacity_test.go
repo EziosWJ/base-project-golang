@@ -67,7 +67,7 @@ func notificationCapacity(t *testing.T, db *database.Database, deps app.Dependen
 	arrivals := make(chan time.Time, 98)
 	// The browser adds one private and one public stream, for 100 total.
 	for i := 0; i < 98; i++ {
-		changes, cancel := notificationStream(t, server.URL+"/api/system/notification/events", token)
+		changes, cancel := notificationStream(t, server.URL+"/api/v1/system/notification/events", token)
 		defer cancel()
 		awaitChange(t, changes, "ready")
 		go func() {
@@ -110,7 +110,7 @@ func notificationCapacity(t *testing.T, db *database.Database, deps app.Dependen
 	if maxProtocolMs > 2000 {
 		t.Fatalf("protocol update %dms", maxProtocolMs)
 	}
-	history := serveJSON(router, "GET", "/api/system/notification-admin/page", "", token)
+	history := serveJSON(router, "GET", "/api/v1/system/notification-admin/page", "", token)
 	var page struct {
 		Data struct {
 			Records []struct {

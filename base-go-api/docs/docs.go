@@ -16,7 +16,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/auth/login": {
+        "/api/v1/auth/login": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -67,7 +67,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/logout": {
+        "/api/v1/auth/logout": {
             "post": {
                 "security": [
                     {
@@ -94,7 +94,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/me": {
+        "/api/v1/auth/me": {
             "get": {
                 "security": [
                     {
@@ -121,7 +121,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/auth/menus": {
+        "/api/v1/auth/menus": {
             "get": {
                 "security": [
                     {
@@ -148,7 +148,114 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/public/announcement/events": {
+        "/api/v1/monitoring/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "服务器监控"
+                ],
+                "summary": "当前 API 实例最近 30 分钟资源历史（仅 ADMIN）",
+                "parameters": [
+                    {
+                        "enum": [
+                            "cpu",
+                            "memory",
+                            "filesystem",
+                            "disk",
+                            "network",
+                            "gpu"
+                        ],
+                        "type": "string",
+                        "description": "资源",
+                        "name": "resource",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "设备 ID；CPU 逻辑核索引，空值表示总体",
+                        "name": "device",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/overview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "服务器监控"
+                ],
+                "summary": "Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/public/announcement/events": {
             "get": {
                 "produces": [
                     "text/event-stream"
@@ -167,7 +274,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/public/announcement/page": {
+        "/api/v1/public/announcement/page": {
             "get": {
                 "tags": [
                     "公告"
@@ -197,7 +304,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/public/announcement/{id}": {
+        "/api/v1/public/announcement/{id}": {
             "get": {
                 "tags": [
                     "公告"
@@ -222,7 +329,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement": {
+        "/api/v1/system/announcement": {
             "post": {
                 "security": [
                     {
@@ -254,7 +361,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement-admin/page": {
+        "/api/v1/system/announcement-admin/page": {
             "get": {
                 "security": [
                     {
@@ -289,7 +396,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement/page": {
+        "/api/v1/system/announcement/page": {
             "get": {
                 "security": [
                     {
@@ -324,7 +431,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement/{id}": {
+        "/api/v1/system/announcement/{id}": {
             "get": {
                 "security": [
                     {
@@ -391,7 +498,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement/{id}/publish": {
+        "/api/v1/system/announcement/{id}/publish": {
             "put": {
                 "security": [
                     {
@@ -421,7 +528,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/announcement/{id}/withdraw": {
+        "/api/v1/system/announcement/{id}/withdraw": {
             "put": {
                 "security": [
                     {
@@ -451,7 +558,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config": {
+        "/api/v1/system/config": {
             "post": {
                 "security": [
                     {
@@ -483,7 +590,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config/batch-delete": {
+        "/api/v1/system/config/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -515,7 +622,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config/key/{key}": {
+        "/api/v1/system/config/key/{key}": {
             "get": {
                 "security": [
                     {
@@ -545,7 +652,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config/page": {
+        "/api/v1/system/config/page": {
             "get": {
                 "security": [
                     {
@@ -580,7 +687,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config/{id}": {
+        "/api/v1/system/config/{id}": {
             "get": {
                 "security": [
                     {
@@ -675,7 +782,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/config/{id}/status": {
+        "/api/v1/system/config/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -714,7 +821,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept": {
+        "/api/v1/system/dept": {
             "post": {
                 "security": [
                     {
@@ -752,7 +859,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/batch-delete": {
+        "/api/v1/system/dept/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -790,7 +897,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/options": {
+        "/api/v1/system/dept/options": {
             "get": {
                 "security": [
                     {
@@ -811,7 +918,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/page": {
+        "/api/v1/system/dept/page": {
             "get": {
                 "security": [
                     {
@@ -870,7 +977,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/tree": {
+        "/api/v1/system/dept/tree": {
             "get": {
                 "security": [
                     {
@@ -891,7 +998,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/{id}": {
+        "/api/v1/system/dept/{id}": {
             "get": {
                 "security": [
                     {
@@ -998,7 +1105,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dept/{id}/status": {
+        "/api/v1/system/dept/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -1043,7 +1150,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-data": {
+        "/api/v1/system/dict-data": {
             "post": {
                 "security": [
                     {
@@ -1087,7 +1194,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-data/batch-delete": {
+        "/api/v1/system/dict-data/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -1131,7 +1238,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-data/page": {
+        "/api/v1/system/dict-data/page": {
             "get": {
                 "security": [
                     {
@@ -1202,7 +1309,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-data/{id}": {
+        "/api/v1/system/dict-data/{id}": {
             "get": {
                 "security": [
                     {
@@ -1327,7 +1434,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-type": {
+        "/api/v1/system/dict-type": {
             "post": {
                 "security": [
                     {
@@ -1371,7 +1478,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-type/batch-delete": {
+        "/api/v1/system/dict-type/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -1415,7 +1522,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-type/page": {
+        "/api/v1/system/dict-type/page": {
             "get": {
                 "security": [
                     {
@@ -1480,7 +1587,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-type/{id}": {
+        "/api/v1/system/dict-type/{id}": {
             "get": {
                 "security": [
                     {
@@ -1605,7 +1712,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict-type/{id}/status": {
+        "/api/v1/system/dict-type/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -1656,7 +1763,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/dict/{dictCode}/items": {
+        "/api/v1/system/dict/{dictCode}/items": {
             "get": {
                 "security": [
                     {
@@ -1692,7 +1799,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/batch-delete": {
+        "/api/v1/system/file/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -1736,7 +1843,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/page": {
+        "/api/v1/system/file/page": {
             "get": {
                 "security": [
                     {
@@ -1807,7 +1914,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/upload": {
+        "/api/v1/system/file/upload": {
             "post": {
                 "security": [
                     {
@@ -1880,7 +1987,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/upload-batch": {
+        "/api/v1/system/file/upload-batch": {
             "post": {
                 "security": [
                     {
@@ -1953,7 +2060,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/{id}": {
+        "/api/v1/system/file/{id}": {
             "get": {
                 "security": [
                     {
@@ -2084,7 +2191,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/{id}/download": {
+        "/api/v1/system/file/{id}/download": {
             "get": {
                 "security": [
                     {
@@ -2129,7 +2236,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/{id}/status": {
+        "/api/v1/system/file/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -2180,7 +2287,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/file/{id}/view": {
+        "/api/v1/system/file/{id}/view": {
             "get": {
                 "security": [
                     {
@@ -2225,7 +2332,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/login-log/clear": {
+        "/api/v1/system/login-log/clear": {
             "delete": {
                 "security": [
                     {
@@ -2258,7 +2365,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/login-log/page": {
+        "/api/v1/system/login-log/page": {
             "get": {
                 "security": [
                     {
@@ -2323,7 +2430,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/login-log/{id}": {
+        "/api/v1/system/login-log/{id}": {
             "get": {
                 "security": [
                     {
@@ -2365,7 +2472,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu": {
+        "/api/v1/system/menu": {
             "post": {
                 "security": [
                     {
@@ -2409,7 +2516,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu/batch-delete": {
+        "/api/v1/system/menu/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -2453,7 +2560,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu/page": {
+        "/api/v1/system/menu/page": {
             "get": {
                 "security": [
                     {
@@ -2524,7 +2631,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu/tree": {
+        "/api/v1/system/menu/tree": {
             "get": {
                 "security": [
                     {
@@ -2551,7 +2658,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu/{id}": {
+        "/api/v1/system/menu/{id}": {
             "get": {
                 "security": [
                     {
@@ -2670,7 +2777,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/menu/{id}/status": {
+        "/api/v1/system/menu/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -2721,7 +2828,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification": {
+        "/api/v1/system/notification": {
             "post": {
                 "security": [
                     {
@@ -2753,7 +2860,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification-admin/page": {
+        "/api/v1/system/notification-admin/page": {
             "get": {
                 "security": [
                     {
@@ -2788,7 +2895,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/events": {
+        "/api/v1/system/notification/events": {
             "get": {
                 "security": [
                     {
@@ -2812,7 +2919,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/page": {
+        "/api/v1/system/notification/page": {
             "get": {
                 "security": [
                     {
@@ -2847,7 +2954,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/read-all": {
+        "/api/v1/system/notification/read-all": {
             "put": {
                 "security": [
                     {
@@ -2868,7 +2975,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/unread-count": {
+        "/api/v1/system/notification/unread-count": {
             "get": {
                 "security": [
                     {
@@ -2889,7 +2996,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/{id}": {
+        "/api/v1/system/notification/{id}": {
             "get": {
                 "security": [
                     {
@@ -2919,7 +3026,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/notification/{id}/read": {
+        "/api/v1/system/notification/{id}/read": {
             "put": {
                 "security": [
                     {
@@ -2949,7 +3056,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/oper-log/clear": {
+        "/api/v1/system/oper-log/clear": {
             "delete": {
                 "security": [
                     {
@@ -2982,7 +3089,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/oper-log/page": {
+        "/api/v1/system/oper-log/page": {
             "get": {
                 "security": [
                     {
@@ -3053,7 +3160,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/oper-log/{id}": {
+        "/api/v1/system/oper-log/{id}": {
             "get": {
                 "security": [
                     {
@@ -3095,7 +3202,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role": {
+        "/api/v1/system/role": {
             "post": {
                 "security": [
                     {
@@ -3139,7 +3246,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/batch-delete": {
+        "/api/v1/system/role/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -3183,7 +3290,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/options": {
+        "/api/v1/system/role/options": {
             "get": {
                 "security": [
                     {
@@ -3210,7 +3317,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/page": {
+        "/api/v1/system/role/page": {
             "get": {
                 "security": [
                     {
@@ -3275,7 +3382,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/{id}": {
+        "/api/v1/system/role/{id}": {
             "get": {
                 "security": [
                     {
@@ -3400,7 +3507,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/{id}/menus": {
+        "/api/v1/system/role/{id}/menus": {
             "put": {
                 "security": [
                     {
@@ -3445,7 +3552,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/role/{id}/status": {
+        "/api/v1/system/role/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -3496,7 +3603,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user": {
+        "/api/v1/system/user": {
             "post": {
                 "security": [
                     {
@@ -3540,7 +3647,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/batch-delete": {
+        "/api/v1/system/user/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -3584,7 +3691,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/me/avatar": {
+        "/api/v1/system/user/me/avatar": {
             "put": {
                 "security": [
                     {
@@ -3628,7 +3735,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/me/password": {
+        "/api/v1/system/user/me/password": {
             "put": {
                 "security": [
                     {
@@ -3672,7 +3779,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/page": {
+        "/api/v1/system/user/page": {
             "get": {
                 "security": [
                     {
@@ -3755,7 +3862,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/{id}": {
+        "/api/v1/system/user/{id}": {
             "get": {
                 "security": [
                     {
@@ -3886,7 +3993,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/{id}/reset-password": {
+        "/api/v1/system/user/{id}/reset-password": {
             "put": {
                 "security": [
                     {
@@ -3928,7 +4035,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/{id}/roles": {
+        "/api/v1/system/user/{id}/roles": {
             "put": {
                 "security": [
                     {
@@ -3979,7 +4086,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/system/user/{id}/status": {
+        "/api/v1/system/user/{id}/status": {
             "patch": {
                 "security": [
                     {
@@ -4025,113 +4132,6 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/usermgmt.ApiEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/monitoring/history": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "服务器监控"
-                ],
-                "summary": "当前 API 实例最近 30 分钟资源历史（仅 ADMIN）",
-                "parameters": [
-                    {
-                        "enum": [
-                            "cpu",
-                            "memory",
-                            "filesystem",
-                            "disk",
-                            "network",
-                            "gpu"
-                        ],
-                        "type": "string",
-                        "description": "资源",
-                        "name": "resource",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "设备 ID；CPU 逻辑核索引，空值表示总体",
-                        "name": "device",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.HistoryEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/monitoring/overview": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "服务器监控"
-                ],
-                "summary": "Linux / Windows 宿主机资源概览（仅 ADMIN；需启用监控）",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/monitoring.OverviewEnvelope"
                         }
                     }
                 }

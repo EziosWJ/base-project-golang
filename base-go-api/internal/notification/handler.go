@@ -62,7 +62,7 @@ func principalID(c *gin.Context) (int64, bool) {
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification/page [get]
+// @Router /api/v1/system/notification/page [get]
 func (h *Handler) page(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -80,7 +80,7 @@ func (h *Handler) page(c *gin.Context) {
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification-admin/page [get]
+// @Router /api/v1/system/notification-admin/page [get]
 func (h *Handler) adminPage(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -96,7 +96,7 @@ func (h *Handler) adminPage(c *gin.Context) {
 // @Tags 站内通知
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification/unread-count [get]
+// @Router /api/v1/system/notification/unread-count [get]
 func (h *Handler) unread(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -112,7 +112,7 @@ func (h *Handler) unread(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "通知 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification/{id} [get]
+// @Router /api/v1/system/notification/{id} [get]
 func (h *Handler) detail(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -132,7 +132,7 @@ func (h *Handler) detail(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "通知 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification/{id}/read [put]
+// @Router /api/v1/system/notification/{id}/read [put]
 func (h *Handler) read(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -150,7 +150,7 @@ func (h *Handler) read(c *gin.Context) {
 // @Tags 站内通知
 // @Security BearerAuth
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification/read-all [put]
+// @Router /api/v1/system/notification/read-all [put]
 func (h *Handler) readAll(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {
@@ -165,7 +165,7 @@ func (h *Handler) readAll(c *gin.Context) {
 // @Security BearerAuth
 // @Param body body publishRequest true "通知内容"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/notification [post]
+// @Router /api/v1/system/notification [post]
 func (h *Handler) publish(c *gin.Context) {
 	id, ok := principalID(c)
 	if !ok {

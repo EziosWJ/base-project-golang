@@ -43,7 +43,7 @@
 - Web: Gin；数据访问: GORM + Go 标准 `database/sql`；Schema: Goose migration。
 - 长期兼容目标: PostgreSQL、MySQL、SQLite；当前正式支持 PostgreSQL 和 SQLite，PostgreSQL 是默认数据库，MySQL 仍是后续兼容目标。SQLite 仅承诺单 API 实例、本地持久文件和小规模低写并发部署，具体边界见 ADR-0010。
 - 配置: 使用 Koanf v2，覆盖顺序为默认值 → `config.yaml` → `config.{APP_ENV}.yaml` → `APP_` 环境变量；嵌套键使用双下划线（如 `APP_DATABASE__URL`）。数据库配置包含 driver 和 URL；PostgreSQL 继续拆分 URL、用户名和密码，SQLite 使用本地文件路径且禁止凭据；基础配置与环境模板提交，实际环境 YAML 可保存凭据但不得提交 Git，详见 ADR-0005。
-- API: 新建接口优先使用 `/api/v1/...`、统一响应/错误码/分页。Gin Handler 与 DTO 注释是文档来源，使用 `swaggo/swag` 生成并提交 Swagger 2.0 文档；Swagger UI 仅在开发环境开放。迁移既有前端接口时，以 ADR-0002 的兼容契约为准，暂保留既有 `/api/**` 路径，直到另有版本化决策。
+- API: 所有业务接口统一使用 `/api/v1/...` 前缀：认证为 `/api/v1/auth`、系统管理为 `/api/v1/system`、公开公告为 `/api/v1/public`、服务器监控为 `/api/v1/monitoring`，并使用统一响应/错误码/分页。旧未版本化的 `/api/auth`、`/api/system`、`/api/public` 路由以及兼容别名已移除，详见 ADR-0013。Gin Handler 与 DTO 注释是文档来源，使用 `swaggo/swag` 生成并提交 Swagger 2.0 文档；Swagger UI 仅在开发环境开放。`/health`、`/ready`、`/metrics` 与开发环境 Swagger 入口保持既有职责和路径。
 - CORS: 默认允许跨域 Bearer Token 请求且不启用 Cookie 凭据；可通过精确 `allowed_origins` 配置收紧来源范围，不使用允许凭据的通配来源。
 - 认证: 目标为 JWT 加数据库管理的动态角色和菜单关系；`ADMIN` 是内置角色，`admin`、`user` 只是角色示例。JWT 使用 HS256，密钥由运行配置提供，包含 `sub`、`jti`、`iat`、`exp` 并校验 `issuer`、`audience`，不包含角色或菜单。Gin middleware 首版只校验登录态，不按 `permissionCode` 拦截接口；会话持久化在所选数据库的 `auth_session` 表中，JWT `jti` 用于校验和登出即时撤销；不引入 Redis、Casbin、ABAC、多租户权限或组织树数据权限。
 - 可观测性: 使用 `log/slog` 记录 request_id、请求方法与路径、状态、耗时、user_id 和错误；`/health` 只检查进程存活，`/ready` 检查所选数据库并在不可用时返回 503，`/metrics` 不要求 JWT、仅通过内部网络或反向代理白名单供 Prometheus 抓取且不应用默认 CORS。业务审计日志须落库，不能由应用日志替代：middleware 将 request_id、IP、User-Agent 写入标准 `context.Context`，Service 显式记录审计，Repository 持久化；认证记录成功与失败登录，其他操作仅在业务成功后记录。
@@ -113,7 +113,7 @@ base-go-api/
 ## 现状与目标差异
 
 - Go 服务已具备 Gin、GORM、Goose、Prometheus、`log/slog`、Koanf、Docker Compose、Swagger、JWT 会话认证与站内通知能力，并可执行格式化、测试与静态检查；Excelize 及其余业务模块仍按 Issue 顺序实施。
-- ADR-0002 规定的既有 `/api/**`、响应结构和 Bearer Token 外部契约已实现；与新接口 `/api/v1` 规范并存时，迁移兼容优先。
+- ADR-0002 规定的响应结构、分页格式和 Bearer Token 认证契约已实现；其中“迁移期间保留既有 `/api/**` 路径”的条款已由 ADR-0013 替代，所有业务接口统一为 `/api/v1/...`。
 
 ## 已知领域术语
 

@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   AssignableRole,
@@ -11,7 +11,7 @@ import type {
   UserUpdateRequest,
 } from "@/types/user";
 
-const USER_BASE_PATH = "/api/system/user";
+const USER_BASE_PATH = `${API_PREFIX}/system/user`;
 
 export function getUserPage(query: UserListQuery) {
   return http.get<ApiPageResult<UserRecord>>(`${USER_BASE_PATH}/page`, {
@@ -61,5 +61,5 @@ export function resetUserPassword(id: number) {
 }
 
 export function getAssignableRoles() {
-  return http.get<AssignableRole[]>("/api/system/role/options");
+  return http.get<AssignableRole[]>(`${API_PREFIX}/system/role/options`);
 }

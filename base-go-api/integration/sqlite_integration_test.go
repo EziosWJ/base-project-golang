@@ -134,63 +134,63 @@ func TestSQLiteSharedHTTPBusinessContract(t *testing.T) {
 		t.Fatalf("build SQLite API: %v", err)
 	}
 
-	failedLogin := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"wrong"}`, "")
+	failedLogin := serveJSON(router, http.MethodPost, "/api/v1/auth/login", `{"username":"admin","password":"wrong"}`, "")
 	assertEnvelopeCode(t, failedLogin, http.StatusOK, 400, "用户名或密码错误")
 	adminToken := loginAdmin(t, router)
-	me := serveJSON(router, http.MethodGet, "/api/auth/me", "", adminToken)
+	me := serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", adminToken)
 	if me.Code != http.StatusOK || !strings.Contains(me.Body.String(), `"roleCode":"ADMIN"`) {
 		t.Fatalf("SQLite current user = %d %s", me.Code, me.Body.String())
 	}
-	menus := serveJSON(router, http.MethodGet, "/api/auth/menus", "", adminToken)
+	menus := serveJSON(router, http.MethodGet, "/api/v1/auth/menus", "", adminToken)
 	if menus.Code != http.StatusOK || !strings.Contains(menus.Body.String(), `"menuName":"系统管理"`) {
 		t.Fatalf("SQLite current menus = %d %s", menus.Code, menus.Body.String())
 	}
-	createdRole := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"SQLite运营","roleCode":"SQLITE-OPS","status":1,"sortOrder":2}`, adminToken)
+	createdRole := serveJSON(router, http.MethodPost, "/api/v1/system/role", `{"roleName":"SQLite运营","roleCode":"SQLITE-OPS","status":1,"sortOrder":2}`, adminToken)
 	assertEnvelopeCode(t, createdRole, http.StatusOK, 200, "success")
-	roleMenus := serveJSON(router, http.MethodPut, "/api/system/role/2/menus", `{"menuIds":[1,2]}`, adminToken)
+	roleMenus := serveJSON(router, http.MethodPut, "/api/v1/system/role/2/menus", `{"menuIds":[1,2]}`, adminToken)
 	assertEnvelopeCode(t, roleMenus, http.StatusOK, 200, "success")
-	roleDetail := serveJSON(router, http.MethodGet, "/api/system/role/2", "", adminToken)
+	roleDetail := serveJSON(router, http.MethodGet, "/api/v1/system/role/2", "", adminToken)
 	if roleDetail.Code != http.StatusOK || !strings.Contains(roleDetail.Body.String(), `"menuIds":[1,2]`) {
 		t.Fatalf("SQLite role detail = %d %s", roleDetail.Code, roleDetail.Body.String())
 	}
 
-	createdDept := serveJSON(router, http.MethodPost, "/api/system/dept", `{"parentId":1,"deptName":"SQLite研发部","deptCode":"SQLITE-RND","status":1}`, adminToken)
+	createdDept := serveJSON(router, http.MethodPost, "/api/v1/system/dept", `{"parentId":1,"deptName":"SQLite研发部","deptCode":"SQLITE-RND","status":1}`, adminToken)
 	assertEnvelopeCode(t, createdDept, http.StatusOK, 200, "success")
-	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"sqlite-user","nickname":"SQLite用户","deptId":2,"status":1}`, adminToken)
+	createdUser := serveJSON(router, http.MethodPost, "/api/v1/system/user", `{"username":"sqlite-user","nickname":"SQLite用户","deptId":2,"status":1}`, adminToken)
 	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
-	assignedRoles := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[2]}`, adminToken)
+	assignedRoles := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/roles", `{"roleIds":[2]}`, adminToken)
 	assertEnvelopeCode(t, assignedRoles, http.StatusOK, 200, "success")
 	userToken := loginUser(t, router, "sqlite-user", "admin123")
 
-	items := serveJSON(router, http.MethodGet, "/api/system/dict/USER_STATUS/items", "", adminToken)
+	items := serveJSON(router, http.MethodGet, "/api/v1/system/dict/USER_STATUS/items", "", adminToken)
 	if items.Code != http.StatusOK || !strings.Contains(items.Body.String(), `"value":"1"`) {
 		t.Fatalf("SQLite seed dict items = %d %s", items.Code, items.Body.String())
 	}
-	createdType := serveJSON(router, http.MethodPost, "/api/system/dict-type", `{"dictName":"SQLite环境","dictCode":"SQLITE_ENV"}`, adminToken)
+	createdType := serveJSON(router, http.MethodPost, "/api/v1/system/dict-type", `{"dictName":"SQLite环境","dictCode":"SQLITE_ENV"}`, adminToken)
 	assertEnvelopeCode(t, createdType, http.StatusOK, 200, "success")
-	createdConfig := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"SQLite演示","configKey":"sqlite.demo","configValue":"true"}`, adminToken)
+	createdConfig := serveJSON(router, http.MethodPost, "/api/v1/system/config", `{"configName":"SQLite演示","configKey":"sqlite.demo","configValue":"true"}`, adminToken)
 	assertEnvelopeCode(t, createdConfig, http.StatusOK, 200, "success")
-	configPage := serveJSON(router, http.MethodGet, "/api/system/config/page?page=1&pageSize=20&configKey=sqlite.demo", "", adminToken)
+	configPage := serveJSON(router, http.MethodGet, "/api/v1/system/config/page?page=1&pageSize=20&configKey=sqlite.demo", "", adminToken)
 	if configPage.Code != http.StatusOK || !strings.Contains(configPage.Body.String(), `"configKey":"sqlite.demo"`) {
 		t.Fatalf("SQLite config page = %d %s", configPage.Code, configPage.Body.String())
 	}
-	key := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", adminToken)
+	key := serveJSON(router, http.MethodGet, "/api/v1/system/config/key/system.log-clear-enabled", "", adminToken)
 	assertEnvelopeCode(t, key, http.StatusOK, 200, "success")
-	disabledConfig := serveJSON(router, http.MethodPatch, "/api/system/config/1/status", `{"status":0}`, adminToken)
+	disabledConfig := serveJSON(router, http.MethodPatch, "/api/v1/system/config/1/status", `{"status":0}`, adminToken)
 	assertEnvelopeCode(t, disabledConfig, http.StatusOK, 200, "success")
-	missingKey := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", adminToken)
+	missingKey := serveJSON(router, http.MethodGet, "/api/v1/system/config/key/system.log-clear-enabled", "", adminToken)
 	assertEnvelopeCode(t, missingKey, http.StatusOK, 404, "数据不存在")
 
-	loginPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=20", "", adminToken)
+	loginPage := serveJSON(router, http.MethodGet, "/api/v1/system/login-log/page?page=1&pageSize=20", "", adminToken)
 	if loginPage.Code != http.StatusOK || !strings.Contains(loginPage.Body.String(), `"loginStatus":"FAIL"`) {
 		t.Fatalf("SQLite login logs = %d %s", loginPage.Code, loginPage.Body.String())
 	}
-	operPage := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=20&operatorName=admin", "", adminToken)
+	operPage := serveJSON(router, http.MethodGet, "/api/v1/system/oper-log/page?page=1&pageSize=20&operatorName=admin", "", adminToken)
 	if operPage.Code != http.StatusOK || !strings.Contains(operPage.Body.String(), `"operatorName":"admin"`) {
 		t.Fatalf("SQLite operation logs = %d %s", operPage.Code, operPage.Body.String())
 	}
 
-	upload := serveMultipartFile(router, "/api/system/file/upload", adminToken, "sqlite.txt", "SQLite file content")
+	upload := serveMultipartFile(router, "/api/v1/system/file/upload", adminToken, "sqlite.txt", "SQLite file content")
 	assertEnvelopeCode(t, upload, http.StatusOK, 200, "success")
 	var uploadPayload struct {
 		Data struct {
@@ -200,24 +200,24 @@ func TestSQLiteSharedHTTPBusinessContract(t *testing.T) {
 	if err := json.Unmarshal(upload.Body.Bytes(), &uploadPayload); err != nil || uploadPayload.Data.ID <= 0 {
 		t.Fatalf("decode SQLite upload = %s, error=%v", upload.Body.String(), err)
 	}
-	download := servePlain(t, router, http.MethodGet, "/api/system/file/"+itoa(uploadPayload.Data.ID)+"/download", adminToken)
+	download := servePlain(t, router, http.MethodGet, "/api/v1/system/file/"+itoa(uploadPayload.Data.ID)+"/download", adminToken)
 	if download.Code != http.StatusOK || download.Body.String() != "SQLite file content" {
 		t.Fatalf("SQLite file download = %d %q", download.Code, download.Body.String())
 	}
 
-	publish := serveJSON(router, http.MethodPost, "/api/system/notification", `{"title":"SQLite通知","content":"通知内容","userIds":[2]}`, adminToken)
+	publish := serveJSON(router, http.MethodPost, "/api/v1/system/notification", `{"title":"SQLite通知","content":"通知内容","userIds":[2]}`, adminToken)
 	assertEnvelopeCode(t, publish, http.StatusOK, 200, "success")
-	page := serveJSON(router, http.MethodGet, "/api/system/notification/page?page=1&pageSize=20", "", userToken)
+	page := serveJSON(router, http.MethodGet, "/api/v1/system/notification/page?page=1&pageSize=20", "", userToken)
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"title":"SQLite通知"`) || !strings.Contains(page.Body.String(), `"isRead":0`) {
 		t.Fatalf("SQLite notification page = %d %s", page.Code, page.Body.String())
 	}
-	unread := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	unread := serveJSON(router, http.MethodGet, "/api/v1/system/notification/unread-count", "", userToken)
 	if unread.Code != http.StatusOK || !strings.Contains(unread.Body.String(), `"data":2`) {
 		t.Fatalf("SQLite unread count = %d %s", unread.Code, unread.Body.String())
 	}
-	detail := serveJSON(router, http.MethodGet, "/api/system/notification/2", "", userToken)
+	detail := serveJSON(router, http.MethodGet, "/api/v1/system/notification/2", "", userToken)
 	assertEnvelopeCode(t, detail, http.StatusOK, 200, "success")
-	unreadAfterDetail := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	unreadAfterDetail := serveJSON(router, http.MethodGet, "/api/v1/system/notification/unread-count", "", userToken)
 	if unreadAfterDetail.Code != http.StatusOK || !strings.Contains(unreadAfterDetail.Body.String(), `"data":1`) {
 		t.Fatalf("SQLite unread count after detail = %d %s", unreadAfterDetail.Code, unreadAfterDetail.Body.String())
 	}
@@ -254,7 +254,7 @@ END`).Error; err != nil {
 	}
 	defer func() { _ = database.GORM.Exec("DROP TRIGGER IF EXISTS fail_success_audit").Error }()
 
-	attempt := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"回滚角色","roleCode":"ROLLBACK","status":1,"sortOrder":2}`, adminToken)
+	attempt := serveJSON(router, http.MethodPost, "/api/v1/system/role", `{"roleName":"回滚角色","roleCode":"ROLLBACK","status":1,"sortOrder":2}`, adminToken)
 	if attempt.Code != http.StatusInternalServerError || strings.Contains(attempt.Body.String(), "audit failure") {
 		t.Fatalf("SQLite audit failure response = %d %s, want generic 500", attempt.Code, attempt.Body.String())
 	}
@@ -293,7 +293,7 @@ func TestSQLiteLockTimeoutUsesTemporaryUnavailableContract(t *testing.T) {
 	started := time.Now()
 	response := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
-		response <- serveJSON(router, http.MethodPatch, "/api/system/config/1/status", `{"status":1}`, adminToken)
+		response <- serveJSON(router, http.MethodPatch, "/api/v1/system/config/1/status", `{"status":1}`, adminToken)
 	}()
 	var result *httptest.ResponseRecorder
 	select {
@@ -343,7 +343,7 @@ func TestSQLiteTransientLockWaitsAndCommitsOnce(t *testing.T) {
 		close(released)
 	}()
 
-	response := serveJSON(router, http.MethodPatch, "/api/system/config/1/status", `{"status":0}`, adminToken)
+	response := serveJSON(router, http.MethodPatch, "/api/v1/system/config/1/status", `{"status":0}`, adminToken)
 	select {
 	case <-released:
 	case <-time.After(2 * time.Second):

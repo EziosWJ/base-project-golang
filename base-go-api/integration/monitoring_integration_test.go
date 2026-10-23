@@ -93,7 +93,7 @@ func testMonitoringMenuAndAuthorization(t *testing.T, database *platformdatabase
 		t.Fatal(err)
 	}
 	adminToken := loginAdmin(t, router)
-	adminMenus := serveJSON(router, http.MethodGet, "/api/auth/menus", "", adminToken)
+	adminMenus := serveJSON(router, http.MethodGet, "/api/v1/auth/menus", "", adminToken)
 	if adminMenus.Code != http.StatusOK || !strings.Contains(adminMenus.Body.String(), `"path":"/monitor/server"`) {
 		t.Fatalf("ADMIN monitor menus = %d %s", adminMenus.Code, adminMenus.Body.String())
 	}
@@ -109,14 +109,14 @@ func testMonitoringMenuAndAuthorization(t *testing.T, database *platformdatabase
 	if !strings.Contains(overview.Body.String(), `"hostname":"integration-host"`) || !strings.Contains(overview.Body.String(), `"usagePercent":50`) {
 		t.Fatalf("controlled overview = %s", overview.Body.String())
 	}
-	createdRole := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"监控普通用户","roleCode":"MONITOR_VIEWER","status":1}`, adminToken)
+	createdRole := serveJSON(router, http.MethodPost, "/api/v1/system/role", `{"roleName":"监控普通用户","roleCode":"MONITOR_VIEWER","status":1}`, adminToken)
 	assertEnvelopeCode(t, createdRole, http.StatusOK, 200, "success")
-	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"monitor-viewer","nickname":"监控普通用户","status":1}`, adminToken)
+	createdUser := serveJSON(router, http.MethodPost, "/api/v1/system/user", `{"username":"monitor-viewer","nickname":"监控普通用户","status":1}`, adminToken)
 	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
-	assigned := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[2]}`, adminToken)
+	assigned := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/roles", `{"roleIds":[2]}`, adminToken)
 	assertEnvelopeCode(t, assigned, http.StatusOK, 200, "success")
 	viewerToken := loginUser(t, router, "monitor-viewer", "admin123")
-	viewerMenus := serveJSON(router, http.MethodGet, "/api/auth/menus", "", viewerToken)
+	viewerMenus := serveJSON(router, http.MethodGet, "/api/v1/auth/menus", "", viewerToken)
 	if viewerMenus.Code != http.StatusOK || strings.Contains(viewerMenus.Body.String(), `"path":"/monitor/server"`) {
 		t.Fatalf("ordinary role monitor menus = %d %s", viewerMenus.Code, viewerMenus.Body.String())
 	}
@@ -129,7 +129,7 @@ func testMonitoringMenuAndAuthorization(t *testing.T, database *platformdatabase
 	if err != nil {
 		t.Fatal(err)
 	}
-	disabledMenus := serveJSON(disabledRouter, http.MethodGet, "/api/auth/menus", "", adminToken)
+	disabledMenus := serveJSON(disabledRouter, http.MethodGet, "/api/v1/auth/menus", "", adminToken)
 	if disabledMenus.Code != http.StatusOK || strings.Contains(disabledMenus.Body.String(), `"path":"/monitor/server"`) || strings.Contains(disabledMenus.Body.String(), `"path":"/monitor"`) {
 		t.Fatalf("disabled menus: %d %s", disabledMenus.Code, disabledMenus.Body.String())
 	}

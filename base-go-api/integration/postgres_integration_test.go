@@ -102,10 +102,10 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		t.Fatalf("build authentication API: %v", err)
 	}
 
-	failedLogin := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"wrong"}`, "")
+	failedLogin := serveJSON(router, http.MethodPost, "/api/v1/auth/login", `{"username":"admin","password":"wrong"}`, "")
 	assertEnvelopeCode(t, failedLogin, http.StatusOK, 400, "用户名或密码错误")
 
-	login := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"admin123"}`, "")
+	login := serveJSON(router, http.MethodPost, "/api/v1/auth/login", `{"username":"admin","password":"admin123"}`, "")
 	if login.Code != http.StatusOK {
 		t.Fatalf("login status = %d, body=%s", login.Code, login.Body.String())
 	}
@@ -123,18 +123,18 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		t.Fatalf("login response = %+v", loginResponse)
 	}
 
-	me := serveJSON(router, http.MethodGet, "/api/auth/me", "", loginResponse.Data.TokenValue)
+	me := serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", loginResponse.Data.TokenValue)
 	if me.Code != http.StatusOK || !strings.Contains(me.Body.String(), `"username":"admin"`) || !strings.Contains(me.Body.String(), `"roleCode":"ADMIN"`) {
 		t.Fatalf("current user response = status %d body=%s", me.Code, me.Body.String())
 	}
-	menus := serveJSON(router, http.MethodGet, "/api/auth/menus", "", loginResponse.Data.TokenValue)
+	menus := serveJSON(router, http.MethodGet, "/api/v1/auth/menus", "", loginResponse.Data.TokenValue)
 	if menus.Code != http.StatusOK || !strings.Contains(menus.Body.String(), `"menuName":"系统管理"`) || !strings.Contains(menus.Body.String(), `"children"`) {
 		t.Fatalf("current menu response = status %d body=%s", menus.Code, menus.Body.String())
 	}
 
-	logout := serveJSON(router, http.MethodPost, "/api/auth/logout", "", loginResponse.Data.TokenValue)
+	logout := serveJSON(router, http.MethodPost, "/api/v1/auth/logout", "", loginResponse.Data.TokenValue)
 	assertEnvelopeCode(t, logout, http.StatusOK, 200, "success")
-	revoked := serveJSON(router, http.MethodGet, "/api/auth/me", "", loginResponse.Data.TokenValue)
+	revoked := serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", loginResponse.Data.TokenValue)
 	assertEnvelopeCode(t, revoked, http.StatusUnauthorized, 401, auth.ErrUnauthenticated.Error())
 
 	var loginLogCount int64
@@ -162,9 +162,9 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 	}
 	token := loginAdmin(t, router)
 
-	createdRole := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
+	createdRole := serveJSON(router, http.MethodPost, "/api/v1/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
 	assertEnvelopeCode(t, createdRole, http.StatusOK, 200, "success")
-	rolePage := serveJSON(router, http.MethodGet, "/api/system/role/page?page=1&pageSize=500", "", token)
+	rolePage := serveJSON(router, http.MethodGet, "/api/v1/system/role/page?page=1&pageSize=500", "", token)
 	if rolePage.Code != http.StatusOK || !strings.Contains(rolePage.Body.String(), `"roleCode":"OPS"`) {
 		t.Fatalf("role page = status %d body=%s", rolePage.Code, rolePage.Body.String())
 	}
@@ -176,23 +176,23 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 		t.Fatal("created role create_time must not be zero")
 	}
 
-	assigned := serveJSON(router, http.MethodPut, "/api/system/role/2/menus", `{"menuIds":[1,2]}`, token)
+	assigned := serveJSON(router, http.MethodPut, "/api/v1/system/role/2/menus", `{"menuIds":[1,2]}`, token)
 	assertEnvelopeCode(t, assigned, http.StatusOK, 200, "success")
-	roleDetail := serveJSON(router, http.MethodGet, "/api/system/role/2", "", token)
+	roleDetail := serveJSON(router, http.MethodGet, "/api/v1/system/role/2", "", token)
 	if roleDetail.Code != http.StatusOK || !strings.Contains(roleDetail.Body.String(), `"menuIds":[1,2]`) {
 		t.Fatalf("role detail = status %d body=%s", roleDetail.Code, roleDetail.Body.String())
 	}
 
-	createdMenu := serveJSON(router, http.MethodPost, "/api/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
+	createdMenu := serveJSON(router, http.MethodPost, "/api/v1/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
 	assertEnvelopeCode(t, createdMenu, http.StatusOK, 200, "success")
-	menuTree := serveJSON(router, http.MethodGet, "/api/system/menu/tree", "", token)
+	menuTree := serveJSON(router, http.MethodGet, "/api/v1/system/menu/tree", "", token)
 	if menuTree.Code != http.StatusOK || !strings.Contains(menuTree.Body.String(), `"menuName":"custom-menu"`) {
 		t.Fatalf("menu tree = status %d body=%s", menuTree.Code, menuTree.Body.String())
 	}
 
-	invalidPage := serveJSON(router, http.MethodGet, "/api/system/menu/page?pageSize=501", "", token)
+	invalidPage := serveJSON(router, http.MethodGet, "/api/v1/system/menu/page?pageSize=501", "", token)
 	assertEnvelopeCode(t, invalidPage, http.StatusBadRequest, 400, "参数错误")
-	missingMenu := serveJSON(router, http.MethodPut, "/api/system/role/2/menus", `{"menuIds":[999]}`, token)
+	missingMenu := serveJSON(router, http.MethodPut, "/api/v1/system/role/2/menus", `{"menuIds":[999]}`, token)
 	assertEnvelopeCode(t, missingMenu, http.StatusOK, 404, "数据不存在")
 
 	var auditCount int64
@@ -221,7 +221,7 @@ func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
 	token := loginAdmin(t, router)
 
 	// 成功写操作后业务数据与审计日志同时存在。
-	created := serveJSON(router, http.MethodPost, "/api/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
+	created := serveJSON(router, http.MethodPost, "/api/v1/system/role", `{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`, token)
 	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
 	var roleCount, auditCount int64
 	if err := database.GORM.Table("sys_role").Where("role_code='OPS' AND deleted=0").Count(&roleCount).Error; err != nil {
@@ -243,7 +243,7 @@ func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
 	}
 
 	// 审计写入失败时业务写入必须整体回滚。
-	attempt := serveJSON(router, http.MethodPost, "/api/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
+	attempt := serveJSON(router, http.MethodPost, "/api/v1/system/menu", `{"parentId":0,"menuName":"custom-menu","menuType":"MENU","path":"/custom","visible":1,"status":1}`, token)
 	if attempt.Code == http.StatusOK {
 		t.Fatalf("menu create must fail when audit write fails, body=%s", attempt.Body.String())
 	}
@@ -272,7 +272,7 @@ func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
 	}
 	token := loginAdmin(t, router)
 
-	created := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"原子化","configKey":"atomic.config","configValue":"true"}`, token)
+	created := serveJSON(router, http.MethodPost, "/api/v1/system/config", `{"configName":"原子化","configKey":"atomic.config","configValue":"true"}`, token)
 	assertEnvelopeCode(t, created, http.StatusOK, 200, "success")
 	var configCount, auditCount int64
 	if err := database.GORM.Table("sys_config").Where("config_key='atomic.config' AND deleted=0").Count(&configCount).Error; err != nil {
@@ -294,7 +294,7 @@ func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
 	}
 
 	// 审计写入失败时业务写入必须整体回滚。
-	attempt := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"回滚","configKey":"atomic.rollback","configValue":"true"}`, token)
+	attempt := serveJSON(router, http.MethodPost, "/api/v1/system/config", `{"configName":"回滚","configKey":"atomic.rollback","configValue":"true"}`, token)
 	if attempt.Code == http.StatusOK {
 		t.Fatalf("config create must fail when audit write fails, body=%s", attempt.Body.String())
 	}
@@ -322,46 +322,46 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 	}
 	adminToken := loginAdmin(t, router)
 
-	createdDept := serveJSON(router, http.MethodPost, "/api/system/dept", `{"parentId":1,"deptName":"研发部","deptCode":"RND","status":1}`, adminToken)
+	createdDept := serveJSON(router, http.MethodPost, "/api/v1/system/dept", `{"parentId":1,"deptName":"研发部","deptCode":"RND","status":1}`, adminToken)
 	assertEnvelopeCode(t, createdDept, http.StatusOK, 200, "success")
-	deptTree := serveJSON(router, http.MethodGet, "/api/system/dept/tree", "", adminToken)
+	deptTree := serveJSON(router, http.MethodGet, "/api/v1/system/dept/tree", "", adminToken)
 	if deptTree.Code != http.StatusOK || !strings.Contains(deptTree.Body.String(), `"deptCode":"RND"`) {
 		t.Fatalf("department tree = status %d body=%s", deptTree.Code, deptTree.Body.String())
 	}
 
-	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"developer","nickname":"开发者","deptId":2,"status":1}`, adminToken)
+	createdUser := serveJSON(router, http.MethodPost, "/api/v1/system/user", `{"username":"developer","nickname":"开发者","deptId":2,"status":1}`, adminToken)
 	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
-	assignedRoles := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
+	assignedRoles := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
 	assertEnvelopeCode(t, assignedRoles, http.StatusOK, 200, "success")
-	userPage := serveJSON(router, http.MethodGet, "/api/system/user/page?page=1&pageSize=10", "", adminToken)
+	userPage := serveJSON(router, http.MethodGet, "/api/v1/system/user/page?page=1&pageSize=10", "", adminToken)
 	if userPage.Code != http.StatusOK || !strings.Contains(userPage.Body.String(), `"deptName":"研发部"`) || !strings.Contains(userPage.Body.String(), `"roleCode":"ADMIN"`) {
 		t.Fatalf("user page = status %d body=%s", userPage.Code, userPage.Body.String())
 	}
-	invalidPage := serveJSON(router, http.MethodGet, "/api/system/user/page?pageSize=501", "", adminToken)
+	invalidPage := serveJSON(router, http.MethodGet, "/api/v1/system/user/page?pageSize=501", "", adminToken)
 	assertEnvelopeCode(t, invalidPage, http.StatusBadRequest, 400, "参数错误")
 
 	userToken := loginUser(t, router, "developer", "admin123")
-	disabled := serveJSON(router, http.MethodPatch, "/api/system/user/2/status", `{"status":0}`, adminToken)
+	disabled := serveJSON(router, http.MethodPatch, "/api/v1/system/user/2/status", `{"status":0}`, adminToken)
 	assertEnvelopeCode(t, disabled, http.StatusOK, 200, "success")
-	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", userToken))
 
-	enabled := serveJSON(router, http.MethodPatch, "/api/system/user/2/status", `{"status":1}`, adminToken)
+	enabled := serveJSON(router, http.MethodPatch, "/api/v1/system/user/2/status", `{"status":1}`, adminToken)
 	assertEnvelopeCode(t, enabled, http.StatusOK, 200, "success")
 	userToken = loginUser(t, router, "developer", "admin123")
-	reset := serveJSON(router, http.MethodPut, "/api/system/user/2/reset-password", "", adminToken)
+	reset := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/reset-password", "", adminToken)
 	assertEnvelopeCode(t, reset, http.StatusOK, 200, "success")
 	if !strings.Contains(reset.Body.String(), `"password":"admin123"`) {
 		t.Fatalf("reset password response = %s", reset.Body.String())
 	}
-	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", userToken))
 
 	userToken = loginUser(t, router, "developer", "admin123")
-	changed := serveJSON(router, http.MethodPut, "/api/system/user/me/password", `{"oldPassword":"admin123","newPassword":"new-password"}`, userToken)
+	changed := serveJSON(router, http.MethodPut, "/api/v1/system/user/me/password", `{"oldPassword":"admin123","newPassword":"new-password"}`, userToken)
 	assertEnvelopeCode(t, changed, http.StatusOK, 200, "success")
-	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/auth/me", "", userToken))
+	assertUnauthenticated(t, serveJSON(router, http.MethodGet, "/api/v1/auth/me", "", userToken))
 	_ = loginUser(t, router, "developer", "new-password")
 
-	invalidRole := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[999]}`, adminToken)
+	invalidRole := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/roles", `{"roleIds":[999]}`, adminToken)
 	assertEnvelopeCode(t, invalidRole, http.StatusOK, 404, "数据不存在")
 
 	var auditCount int64
@@ -386,23 +386,23 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 		t.Fatal(err)
 	}
 	token := loginAdmin(t, router)
-	items := serveJSON(router, http.MethodGet, "/api/system/dict/USER_STATUS/items", "", token)
+	items := serveJSON(router, http.MethodGet, "/api/v1/system/dict/USER_STATUS/items", "", token)
 	if items.Code != http.StatusOK || !strings.Contains(items.Body.String(), `"value":"1"`) {
 		t.Fatalf("seed dict items=%d %s", items.Code, items.Body.String())
 	}
-	createdType := serveJSON(router, http.MethodPost, "/api/system/dict-type", `{"dictName":"环境","dictCode":"ENV"}`, token)
+	createdType := serveJSON(router, http.MethodPost, "/api/v1/system/dict-type", `{"dictName":"环境","dictCode":"ENV"}`, token)
 	assertEnvelopeCode(t, createdType, http.StatusOK, 200, "success")
-	createdConfig := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"演示","configKey":"demo.enabled","configValue":"true"}`, token)
+	createdConfig := serveJSON(router, http.MethodPost, "/api/v1/system/config", `{"configName":"演示","configKey":"demo.enabled","configValue":"true"}`, token)
 	assertEnvelopeCode(t, createdConfig, http.StatusOK, 200, "success")
-	configPage := serveJSON(router, http.MethodGet, "/api/system/config/page?page=1&pageSize=10", "", token)
+	configPage := serveJSON(router, http.MethodGet, "/api/v1/system/config/page?page=1&pageSize=10", "", token)
 	if configPage.Code != http.StatusOK || !strings.Contains(configPage.Body.String(), `"configKey":"demo.enabled"`) || !strings.Contains(configPage.Body.String(), `"status":1`) {
 		t.Fatalf("config page=%d %s", configPage.Code, configPage.Body.String())
 	}
-	key := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", token)
+	key := serveJSON(router, http.MethodGet, "/api/v1/system/config/key/system.log-clear-enabled", "", token)
 	assertEnvelopeCode(t, key, http.StatusOK, 200, "success")
-	disabled := serveJSON(router, http.MethodPatch, "/api/system/config/1/status", `{"status":0}`, token)
+	disabled := serveJSON(router, http.MethodPatch, "/api/v1/system/config/1/status", `{"status":0}`, token)
 	assertEnvelopeCode(t, disabled, http.StatusOK, 200, "success")
-	missingKey := serveJSON(router, http.MethodGet, "/api/system/config/key/system.log-clear-enabled", "", token)
+	missingKey := serveJSON(router, http.MethodGet, "/api/v1/system/config/key/system.log-clear-enabled", "", token)
 	assertEnvelopeCode(t, missingKey, http.StatusOK, 404, "数据不存在")
 }
 
@@ -421,18 +421,18 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 		t.Fatalf("build log management API: %v", err)
 	}
 
-	failedLogin := serveJSON(router, http.MethodPost, "/api/auth/login", `{"username":"admin","password":"wrong"}`, "")
+	failedLogin := serveJSON(router, http.MethodPost, "/api/v1/auth/login", `{"username":"admin","password":"wrong"}`, "")
 	assertEnvelopeCode(t, failedLogin, http.StatusOK, 400, "用户名或密码错误")
 	token := loginAdmin(t, router)
 
-	createdConfig := serveJSON(router, http.MethodPost, "/api/system/config", `{"configName":"日志测试","configKey":"log.demo","configValue":"on"}`, token)
+	createdConfig := serveJSON(router, http.MethodPost, "/api/v1/system/config", `{"configName":"日志测试","configKey":"log.demo","configValue":"on"}`, token)
 	assertEnvelopeCode(t, createdConfig, http.StatusOK, 200, "success")
 
-	loginPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10&username=admin", "", token)
+	loginPage := serveJSON(router, http.MethodGet, "/api/v1/system/login-log/page?page=1&pageSize=10&username=admin", "", token)
 	if loginPage.Code != http.StatusOK || !strings.Contains(loginPage.Body.String(), `"total":2`) || !strings.Contains(loginPage.Body.String(), `"loginStatus":"FAIL"`) {
 		t.Fatalf("login-log page = status %d body=%s", loginPage.Code, loginPage.Body.String())
 	}
-	operPage := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10&operatorName=admin", "", token)
+	operPage := serveJSON(router, http.MethodGet, "/api/v1/system/oper-log/page?page=1&pageSize=10&operatorName=admin", "", token)
 	if operPage.Code != http.StatusOK || !strings.Contains(operPage.Body.String(), `"moduleName":"config"`) || !strings.Contains(operPage.Body.String(), `"operatorName":"admin"`) || !strings.Contains(operPage.Body.String(), `"total":1`) {
 		t.Fatalf("oper-log page = status %d body=%s", operPage.Code, operPage.Body.String())
 	}
@@ -449,13 +449,13 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 		t.Fatalf("load operation log id: %v", err)
 	}
 
-	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/oper-log/%d", detailID), "", token)
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/v1/system/oper-log/%d", detailID), "", token)
 	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), `"operatorName":"admin"`) || !strings.Contains(detail.Body.String(), `"moduleName":"config"`) {
 		t.Fatalf("oper-log detail = status %d body=%s", detail.Code, detail.Body.String())
 	}
-	missing := serveJSON(router, http.MethodGet, "/api/system/oper-log/99999", "", token)
+	missing := serveJSON(router, http.MethodGet, "/api/v1/system/oper-log/99999", "", token)
 	assertEnvelopeCode(t, missing, http.StatusOK, 404, "数据不存在")
-	missingLogin := serveJSON(router, http.MethodGet, "/api/system/login-log/99999", "", token)
+	missingLogin := serveJSON(router, http.MethodGet, "/api/v1/system/login-log/99999", "", token)
 	assertEnvelopeCode(t, missingLogin, http.StatusOK, 404, "数据不存在")
 
 	setSwitch := func(value string) {
@@ -465,24 +465,24 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 		}
 	}
 	setSwitch("false")
-	forbidden := serveJSON(router, http.MethodDelete, "/api/system/login-log/clear", "", token)
+	forbidden := serveJSON(router, http.MethodDelete, "/api/v1/system/login-log/clear", "", token)
 	assertEnvelopeCode(t, forbidden, http.StatusOK, 403, "无权限")
-	stillPresent := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10", "", token)
+	stillPresent := serveJSON(router, http.MethodGet, "/api/v1/system/login-log/page?page=1&pageSize=10", "", token)
 	if stillPresent.Code != http.StatusOK || !strings.Contains(stillPresent.Body.String(), `"total":2`) {
 		t.Fatalf("login logs must survive a forbidden clear: status %d body=%s", stillPresent.Code, stillPresent.Body.String())
 	}
 
-	forbidden = serveJSON(router, http.MethodDelete, "/api/system/oper-log/clear", "", token)
+	forbidden = serveJSON(router, http.MethodDelete, "/api/v1/system/oper-log/clear", "", token)
 	assertEnvelopeCode(t, forbidden, http.StatusOK, 403, "无权限")
-	operLogsSurvive := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10", "", token)
+	operLogsSurvive := serveJSON(router, http.MethodGet, "/api/v1/system/oper-log/page?page=1&pageSize=10", "", token)
 	if operLogsSurvive.Code != http.StatusOK || !strings.Contains(operLogsSurvive.Body.String(), `"total":1`) {
 		t.Fatalf("oper logs must survive a forbidden clear: status %d body=%s", operLogsSurvive.Code, operLogsSurvive.Body.String())
 	}
 
 	setSwitch("true")
-	cleared := serveJSON(router, http.MethodDelete, "/api/system/login-log/clear", "", token)
+	cleared := serveJSON(router, http.MethodDelete, "/api/v1/system/login-log/clear", "", token)
 	assertEnvelopeCode(t, cleared, http.StatusOK, 200, "success")
-	emptyPage := serveJSON(router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10", "", token)
+	emptyPage := serveJSON(router, http.MethodGet, "/api/v1/system/login-log/page?page=1&pageSize=10", "", token)
 	if emptyPage.Code != http.StatusOK || !strings.Contains(emptyPage.Body.String(), `"total":0`) || !strings.Contains(emptyPage.Body.String(), `"records":[]`) {
 		t.Fatalf("login logs must be cleared: status %d body=%s", emptyPage.Code, emptyPage.Body.String())
 	}
@@ -493,9 +493,9 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 	if clearAuditCount != 1 {
 		t.Fatalf("clear audit count = %d, want 1", clearAuditCount)
 	}
-	clearedOper := serveJSON(router, http.MethodDelete, "/api/system/oper-log/clear", "", token)
+	clearedOper := serveJSON(router, http.MethodDelete, "/api/v1/system/oper-log/clear", "", token)
 	assertEnvelopeCode(t, clearedOper, http.StatusOK, 200, "success")
-	emptyOperPage := serveJSON(router, http.MethodGet, "/api/system/oper-log/page?page=1&pageSize=10&moduleName=zzz_nonexistent", "", token)
+	emptyOperPage := serveJSON(router, http.MethodGet, "/api/v1/system/oper-log/page?page=1&pageSize=10&moduleName=zzz_nonexistent", "", token)
 	if emptyOperPage.Code != http.StatusOK || !strings.Contains(emptyOperPage.Body.String(), `"total":0`) || !strings.Contains(emptyOperPage.Body.String(), `"records":[]`) {
 		t.Fatalf("oper logs empty page must serialize records as array: status %d body=%s", emptyOperPage.Code, emptyOperPage.Body.String())
 	}
@@ -519,7 +519,7 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	token := loginAdmin(t, router)
 
 	const content = "hello file content"
-	upload := serveMultipart(t, router, http.MethodPost, "/api/system/file/upload", token, []filePart{
+	upload := serveMultipart(t, router, http.MethodPost, "/api/v1/system/file/upload", token, []filePart{
 		{field: "file", filename: "contract.txt", contentType: "text/plain", content: content},
 	}, "system", "")
 	if upload.Code != http.StatusOK {
@@ -542,11 +542,11 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if uploaded.Code != 200 || uploaded.Data.OriginalName != "contract.txt" || uploaded.Data.FileSize != int64(len(content)) || uploaded.Data.MimeType != "text/plain" || uploaded.Data.BusinessModule != "system" {
 		t.Fatalf("upload response = %+v", uploaded)
 	}
-	if want := fmt.Sprintf("/api/system/file/%d/view", uploaded.Data.ID); uploaded.Data.AccessURL != want {
+	if want := fmt.Sprintf("/api/v1/system/file/%d/view", uploaded.Data.ID); uploaded.Data.AccessURL != want {
 		t.Fatalf("accessUrl = %q, want %q", uploaded.Data.AccessURL, want)
 	}
 
-	page := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10&businessModule=system", "", token)
+	page := serveJSON(router, http.MethodGet, "/api/v1/system/file/page?page=1&pageSize=10&businessModule=system", "", token)
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"originalName":"contract.txt"`) || !strings.Contains(page.Body.String(), `"total":1`) {
 		t.Fatalf("file page = status %d body=%s", page.Code, page.Body.String())
 	}
@@ -556,8 +556,8 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 		path     string
 		disposit string
 	}{
-		{name: "download", path: fmt.Sprintf("/api/system/file/%d/download", uploaded.Data.ID), disposit: "attachment"},
-		{name: "view", path: fmt.Sprintf("/api/system/file/%d/view", uploaded.Data.ID), disposit: "inline"},
+		{name: "download", path: fmt.Sprintf("/api/v1/system/file/%d/download", uploaded.Data.ID), disposit: "attachment"},
+		{name: "view", path: fmt.Sprintf("/api/v1/system/file/%d/view", uploaded.Data.ID), disposit: "inline"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := servePlain(t, router, http.MethodGet, test.path, token)
@@ -570,16 +570,16 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 		})
 	}
 
-	update := serveJSON(router, http.MethodPut, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), `{"businessModule":"avatar","remark":"头像文件"}`, token)
+	update := serveJSON(router, http.MethodPut, fmt.Sprintf("/api/v1/system/file/%d", uploaded.Data.ID), `{"businessModule":"avatar","remark":"头像文件"}`, token)
 	assertEnvelopeCode(t, update, http.StatusOK, 200, "success")
-	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/v1/system/file/%d", uploaded.Data.ID), "", token)
 	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), `"businessModule":"avatar"`) || !strings.Contains(detail.Body.String(), `"remark":"头像文件"`) {
 		t.Fatalf("file detail = status %d body=%s", detail.Code, detail.Body.String())
 	}
 
-	status := serveJSON(router, http.MethodPatch, fmt.Sprintf("/api/system/file/%d/status", uploaded.Data.ID), `{"status":0}`, token)
+	status := serveJSON(router, http.MethodPatch, fmt.Sprintf("/api/v1/system/file/%d/status", uploaded.Data.ID), `{"status":0}`, token)
 	assertEnvelopeCode(t, status, http.StatusOK, 200, "success")
-	disabledPage := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10&status=0", "", token)
+	disabledPage := serveJSON(router, http.MethodGet, "/api/v1/system/file/page?page=1&pageSize=10&status=0", "", token)
 	if disabledPage.Code != http.StatusOK || !strings.Contains(disabledPage.Body.String(), `"status":0`) {
 		t.Fatalf("disabled page = status %d body=%s", disabledPage.Code, disabledPage.Body.String())
 	}
@@ -592,33 +592,33 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 	if _, err := os.Stat(physicalPath); err != nil {
 		t.Fatalf("physical file missing before delete: %v", err)
 	}
-	failedBatch := serveJSON(router, http.MethodPost, "/api/system/file/batch-delete", fmt.Sprintf(`{"ids":[%d,99999]}`, uploaded.Data.ID), token)
+	failedBatch := serveJSON(router, http.MethodPost, "/api/v1/system/file/batch-delete", fmt.Sprintf(`{"ids":[%d,99999]}`, uploaded.Data.ID), token)
 	assertEnvelopeCode(t, failedBatch, http.StatusOK, 404, "数据不存在")
 	if _, err := os.Stat(physicalPath); err != nil {
 		t.Fatalf("physical file missing after rejected batch delete: %v", err)
 	}
-	stillPresent := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	stillPresent := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/v1/system/file/%d", uploaded.Data.ID), "", token)
 	assertEnvelopeCode(t, stillPresent, http.StatusOK, 200, "success")
 
-	deleted := serveJSON(router, http.MethodDelete, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	deleted := serveJSON(router, http.MethodDelete, fmt.Sprintf("/api/v1/system/file/%d", uploaded.Data.ID), "", token)
 	assertEnvelopeCode(t, deleted, http.StatusOK, 200, "success")
-	afterDelete := serveJSON(router, http.MethodGet, "/api/system/file/page?page=1&pageSize=10", "", token)
+	afterDelete := serveJSON(router, http.MethodGet, "/api/v1/system/file/page?page=1&pageSize=10", "", token)
 	if afterDelete.Code != http.StatusOK || !strings.Contains(afterDelete.Body.String(), `"total":0`) {
 		t.Fatalf("page after soft delete = status %d body=%s", afterDelete.Code, afterDelete.Body.String())
 	}
 	if _, err := os.Stat(physicalPath); err != nil {
 		t.Fatalf("physical file must remain after metadata delete: %v", err)
 	}
-	missingDetail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/file/%d", uploaded.Data.ID), "", token)
+	missingDetail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/v1/system/file/%d", uploaded.Data.ID), "", token)
 	assertEnvelopeCode(t, missingDetail, http.StatusOK, 404, "数据不存在")
 
-	emptyUpload := serveMultipart(t, router, http.MethodPost, "/api/system/file/upload", token, []filePart{
+	emptyUpload := serveMultipart(t, router, http.MethodPost, "/api/v1/system/file/upload", token, []filePart{
 		{field: "file", filename: "empty.txt", contentType: "text/plain", content: ""},
 	}, "", "")
 	if emptyUpload.Code != http.StatusBadRequest || !strings.Contains(emptyUpload.Body.String(), `"code":400`) {
 		t.Fatalf("empty upload = status %d body=%s", emptyUpload.Code, emptyUpload.Body.String())
 	}
-	missingStream := servePlain(t, router, http.MethodGet, "/api/system/file/99999/download", token)
+	missingStream := servePlain(t, router, http.MethodGet, "/api/v1/system/file/99999/download", token)
 	assertEnvelopeCode(t, missingStream, http.StatusOK, 404, "数据不存在")
 
 	var auditCount int64
@@ -646,20 +646,20 @@ func TestNotificationContractUsesPostgres(t *testing.T) {
 	}
 	adminToken := loginAdmin(t, router)
 
-	createdUser := serveJSON(router, http.MethodPost, "/api/system/user", `{"username":"postgres-notify-user","nickname":"PostgreSQL通知用户","status":1}`, adminToken)
+	createdUser := serveJSON(router, http.MethodPost, "/api/v1/system/user", `{"username":"postgres-notify-user","nickname":"PostgreSQL通知用户","status":1}`, adminToken)
 	assertEnvelopeCode(t, createdUser, http.StatusOK, 200, "success")
-	assignedRoles := serveJSON(router, http.MethodPut, "/api/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
+	assignedRoles := serveJSON(router, http.MethodPut, "/api/v1/system/user/2/roles", `{"roleIds":[1]}`, adminToken)
 	assertEnvelopeCode(t, assignedRoles, http.StatusOK, 200, "success")
 	userToken := loginUser(t, router, "postgres-notify-user", "admin123")
 
-	published := serveJSON(router, http.MethodPost, "/api/system/notification", `{"title":"PostgreSQL通知","content":"通知内容","userIds":[2]}`, adminToken)
+	published := serveJSON(router, http.MethodPost, "/api/v1/system/notification", `{"title":"PostgreSQL通知","content":"通知内容","userIds":[2]}`, adminToken)
 	assertEnvelopeCode(t, published, http.StatusOK, 200, "success")
 
-	page := serveJSON(router, http.MethodGet, "/api/system/notification/page?page=1&pageSize=20", "", userToken)
+	page := serveJSON(router, http.MethodGet, "/api/v1/system/notification/page?page=1&pageSize=20", "", userToken)
 	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"title":"PostgreSQL通知"`) || !strings.Contains(page.Body.String(), `"isRead":0`) {
 		t.Fatalf("PostgreSQL notification page = %d %s", page.Code, page.Body.String())
 	}
-	unread := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	unread := serveJSON(router, http.MethodGet, "/api/v1/system/notification/unread-count", "", userToken)
 	if unread.Code != http.StatusOK || !strings.Contains(unread.Body.String(), `"data":2`) {
 		t.Fatalf("PostgreSQL unread count = %d %s", unread.Code, unread.Body.String())
 	}
@@ -668,9 +668,9 @@ func TestNotificationContractUsesPostgres(t *testing.T) {
 	if err := database.GORM.Table("sys_notification").Where("title = ?", "PostgreSQL通知").Pluck("id", &notificationID).Error; err != nil {
 		t.Fatalf("load PostgreSQL notification ID: %v", err)
 	}
-	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/system/notification/%d", notificationID), "", userToken)
+	detail := serveJSON(router, http.MethodGet, fmt.Sprintf("/api/v1/system/notification/%d", notificationID), "", userToken)
 	assertEnvelopeCode(t, detail, http.StatusOK, 200, "success")
-	unreadAfterDetail := serveJSON(router, http.MethodGet, "/api/system/notification/unread-count", "", userToken)
+	unreadAfterDetail := serveJSON(router, http.MethodGet, "/api/v1/system/notification/unread-count", "", userToken)
 	if unreadAfterDetail.Code != http.StatusOK || !strings.Contains(unreadAfterDetail.Body.String(), `"data":1`) {
 		t.Fatalf("PostgreSQL unread count after detail = %d %s", unreadAfterDetail.Code, unreadAfterDetail.Body.String())
 	}
@@ -995,7 +995,7 @@ func loginAdmin(t *testing.T, router http.Handler) string {
 
 func loginUser(t *testing.T, router http.Handler, username, password string) string {
 	t.Helper()
-	response := serveJSON(router, http.MethodPost, "/api/auth/login", fmt.Sprintf(`{"username":%q,"password":%q}`, username, password), "")
+	response := serveJSON(router, http.MethodPost, "/api/v1/auth/login", fmt.Sprintf(`{"username":%q,"password":%q}`, username, password), "")
 	if response.Code != http.StatusOK {
 		t.Fatalf("%s login status = %d, body=%s", username, response.Code, response.Body.String())
 	}

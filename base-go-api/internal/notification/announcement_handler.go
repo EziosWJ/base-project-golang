@@ -24,7 +24,7 @@ func RegisterAnnouncementRoutes(public, system gin.IRouter, h *Handler) {
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/public/announcement/page [get]
+// @Router /api/v1/public/announcement/page [get]
 func (h *Handler) publicAnnouncements(c *gin.Context) { h.announcementPage(c, ScopePublic, false) }
 
 // internalAnnouncements godoc
@@ -34,7 +34,7 @@ func (h *Handler) publicAnnouncements(c *gin.Context) { h.announcementPage(c, Sc
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement/page [get]
+// @Router /api/v1/system/announcement/page [get]
 func (h *Handler) internalAnnouncements(c *gin.Context) { h.announcementPage(c, ScopeInternal, false) }
 
 // adminAnnouncements godoc
@@ -44,7 +44,7 @@ func (h *Handler) internalAnnouncements(c *gin.Context) { h.announcementPage(c, 
 // @Param page query int false "页码"
 // @Param pageSize query int false "每页条数"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement-admin/page [get]
+// @Router /api/v1/system/announcement-admin/page [get]
 func (h *Handler) adminAnnouncements(c *gin.Context) { h.announcementPage(c, "", true) }
 func (h *Handler) announcementPage(c *gin.Context, scope string, admin bool) {
 	actor := int64(0)
@@ -65,7 +65,7 @@ func (h *Handler) announcementPage(c *gin.Context, scope string, admin bool) {
 // @Tags 公告
 // @Param id path int true "公告 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/public/announcement/{id} [get]
+// @Router /api/v1/public/announcement/{id} [get]
 func (h *Handler) publicAnnouncement(c *gin.Context) { h.announcementDetail(c, ScopePublic) }
 
 // internalAnnouncement godoc
@@ -74,7 +74,7 @@ func (h *Handler) publicAnnouncement(c *gin.Context) { h.announcementDetail(c, S
 // @Security BearerAuth
 // @Param id path int true "公告 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement/{id} [get]
+// @Router /api/v1/system/announcement/{id} [get]
 func (h *Handler) internalAnnouncement(c *gin.Context) { h.announcementDetail(c, ScopeInternal) }
 func (h *Handler) announcementDetail(c *gin.Context, scope string) {
 	id, ok := pathID(c)
@@ -91,7 +91,7 @@ func (h *Handler) announcementDetail(c *gin.Context, scope string) {
 // @Security BearerAuth
 // @Param body body AnnouncementInput true "公告草稿"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement [post]
+// @Router /api/v1/system/announcement [post]
 func (h *Handler) saveAnnouncement(c *gin.Context) {
 	actor, ok := principalID(c)
 	if !ok {
@@ -120,7 +120,7 @@ func (h *Handler) saveAnnouncement(c *gin.Context) {
 // @Param id path int true "公告 ID"
 // @Param body body AnnouncementInput true "公告草稿"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement/{id} [put]
+// @Router /api/v1/system/announcement/{id} [put]
 func (h *Handler) updateAnnouncement(c *gin.Context) { h.saveAnnouncement(c) }
 
 // publishAnnouncement godoc
@@ -129,7 +129,7 @@ func (h *Handler) updateAnnouncement(c *gin.Context) { h.saveAnnouncement(c) }
 // @Security BearerAuth
 // @Param id path int true "公告 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement/{id}/publish [put]
+// @Router /api/v1/system/announcement/{id}/publish [put]
 func (h *Handler) publishAnnouncement(c *gin.Context) { h.transitionAnnouncement(c, Published) }
 
 // withdrawAnnouncement godoc
@@ -138,7 +138,7 @@ func (h *Handler) publishAnnouncement(c *gin.Context) { h.transitionAnnouncement
 // @Security BearerAuth
 // @Param id path int true "公告 ID"
 // @Success 200 {object} ApiEnvelope
-// @Router /api/system/announcement/{id}/withdraw [put]
+// @Router /api/v1/system/announcement/{id}/withdraw [put]
 func (h *Handler) withdrawAnnouncement(c *gin.Context) { h.transitionAnnouncement(c, Withdrawn) }
 func (h *Handler) transitionAnnouncement(c *gin.Context, status string) {
 	actor, ok := principalID(c)

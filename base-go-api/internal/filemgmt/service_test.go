@@ -31,7 +31,7 @@ func TestServiceUploadPersistsMetadataAndContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if file.ID != 1 || file.AccessURL != "/api/system/file/1/view" || file.BusinessModule != "system" {
+	if file.ID != 1 || file.AccessURL != "/api/v1/system/file/1/view" || file.BusinessModule != "system" {
 		t.Fatalf("file = %#v", file)
 	}
 	resource, err := service.Open(context.Background(), file.ID, true)
@@ -344,7 +344,7 @@ func (s *memoryStore) Create(_ context.Context, file File, e AuditEvent) (File, 
 		return file, s.auditError
 	}
 	file.ID = int64(len(s.records) + 1)
-	file.AccessURL = "/api/system/file/" + strconv.FormatInt(file.ID, 10) + "/view"
+	file.AccessURL = "/api/v1/system/file/" + strconv.FormatInt(file.ID, 10) + "/view"
 	e.ResourceID = file.ID
 	s.events = append(s.events, e)
 	if s.file.ID == 0 {

@@ -47,7 +47,7 @@ func businessEntryContract(t *testing.T, db *database.Database, deps app.Depende
 	server := httptest.NewServer(router)
 	defer server.Close()
 	token := loginAdmin(t, router)
-	events, stop := notificationStream(t, server.URL+"/api/system/notification/events", token)
+	events, stop := notificationStream(t, server.URL+"/api/v1/system/notification/events", token)
 	defer stop()
 	awaitChange(t, events, "ready")
 	// Arrange the result of a business transaction through the integration entry;
@@ -63,7 +63,7 @@ func businessEntryContract(t *testing.T, db *database.Database, deps app.Depende
 	}
 	afterCommit()
 	awaitChange(t, events, "notification")
-	response := serveJSON(router, "GET", "/api/system/notification/1", "", token)
+	response := serveJSON(router, "GET", "/api/v1/system/notification/1", "", token)
 	assertEnvelopeCode(t, response, 200, 200, "success")
 	var result struct {
 		Data notification.Notification `json:"data"`
@@ -87,7 +87,7 @@ func businessEntryContract(t *testing.T, db *database.Database, deps app.Depende
 		t.Fatal("fixture business failure did not rollback")
 	}
 	noChange(t, events)
-	if total := pageTotal(t, serveJSON(router, "GET", "/api/system/notification/page", "", token).Body.Bytes()); total != 1 {
+	if total := pageTotal(t, serveJSON(router, "GET", "/api/v1/system/notification/page", "", token).Body.Bytes()); total != 1 {
 		t.Fatalf("business rollback left notification: %d", total)
 	}
 	service.Close()

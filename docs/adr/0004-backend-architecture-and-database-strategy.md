@@ -24,7 +24,7 @@ Accepted
 
 ### 2. Web
 
-Go 后端使用 Gin。Handler 只处理 HTTP 参数、DTO、校验、状态码及统一 API Response；业务逻辑进入 Service。新接口优先使用 `/api/v1/...`；迁移既有接口时，ADR-0002 的 `/api/**` 兼容契约优先，直到另行决定版本切换。Handler 与 DTO 注释通过 `swaggo/swag` 生成并提交 Swagger 2.0 文档，Swagger UI 仅在开发环境开放。CORS 默认允许跨域 Bearer Token 请求且不启用 Cookie 凭据；可由精确 `allowed_origins` 配置收紧来源范围，不使用允许凭据的通配来源。
+Go 后端使用 Gin。Handler 只处理 HTTP 参数、DTO、校验、状态码及统一 API Response；业务逻辑进入 Service。所有业务接口统一使用 `/api/v1/...`；ADR-0002 的 `/api/**` 路径兼容条款已由 ADR-0013 替代。Handler 与 DTO 注释通过 `swaggo/swag` 生成并提交 Swagger 2.0 文档，Swagger UI 仅在开发环境开放。CORS 默认允许跨域 Bearer Token 请求且不启用 Cookie 凭据；可由精确 `allowed_origins` 配置收紧来源范围，不使用允许凭据的通配来源。
 
 ### 3. 数据访问
 

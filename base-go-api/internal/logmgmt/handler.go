@@ -41,8 +41,8 @@ func NewHandler(service HandlerService) (*Handler, error) {
 	return &Handler{service: service}, nil
 }
 
-// RegisterRoutes registers Java-compatible log routes on an already
-// authenticated /api/system router group.
+// RegisterRoutes registers log routes on an already authenticated
+// /api/v1/system router group.
 func RegisterRoutes(router gin.IRouter, handler *Handler) {
 	loginLogs := router.Group("/login-log")
 	loginLogs.GET("/page", handler.loginLogPage)
@@ -66,7 +66,7 @@ func RegisterRoutes(router gin.IRouter, handler *Handler) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/login-log/page [get]
+// @Router /api/v1/system/login-log/page [get]
 func (h *Handler) loginLogPage(c *gin.Context) {
 	query := LoginLogPageQuery{
 		Page: queryInt(c, "page", 1), PageSize: queryInt(c, "pageSize", 10),
@@ -88,7 +88,7 @@ func (h *Handler) loginLogPage(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/login-log/{id} [get]
+// @Router /api/v1/system/login-log/{id} [get]
 func (h *Handler) loginLogDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -105,7 +105,7 @@ func (h *Handler) loginLogDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/login-log/clear [delete]
+// @Router /api/v1/system/login-log/clear [delete]
 func (h *Handler) clearLoginLogs(c *gin.Context) {
 	writeMutation(c, h.service.ClearLoginLogs(c.Request.Context(), auditMetadata(c)))
 }
@@ -123,7 +123,7 @@ func (h *Handler) clearLoginLogs(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/oper-log/page [get]
+// @Router /api/v1/system/oper-log/page [get]
 func (h *Handler) operLogPage(c *gin.Context) {
 	query := OperLogPageQuery{
 		Page: queryInt(c, "page", 1), PageSize: queryInt(c, "pageSize", 10),
@@ -146,7 +146,7 @@ func (h *Handler) operLogPage(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/oper-log/{id} [get]
+// @Router /api/v1/system/oper-log/{id} [get]
 func (h *Handler) operLogDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -163,7 +163,7 @@ func (h *Handler) operLogDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/oper-log/clear [delete]
+// @Router /api/v1/system/oper-log/clear [delete]
 func (h *Handler) clearOperLogs(c *gin.Context) {
 	writeMutation(c, h.service.ClearOperLogs(c.Request.Context(), auditMetadata(c)))
 }

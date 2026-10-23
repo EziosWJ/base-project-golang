@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   DeptBatchDeleteRequest,
@@ -11,7 +11,7 @@ import type {
 } from "@/types/dept";
 import type { TreeSelectNode } from "@/components/common/tree-select";
 
-const DEPT_BASE_PATH = "/api/system/dept";
+const DEPT_BASE_PATH = `${API_PREFIX}/system/dept`;
 
 export function getDeptTree() {
   return http.get<DeptRecord[]>(`${DEPT_BASE_PATH}/tree`);

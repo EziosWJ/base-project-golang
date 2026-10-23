@@ -145,20 +145,20 @@ func TestHandlerContractUsesEmptyArrayNullMutationAndTransportValidation(t *test
 	service, _ := NewService(store)
 	handler, _ := NewHandler(service)
 	router := gin.New()
-	group := router.Group("/api/system")
+	group := router.Group("/api/v1/system")
 	RegisterRoutes(group, handler)
 
-	response := perform(router, http.MethodGet, "/api/system/dict/UNKNOWN/items", "")
+	response := perform(router, http.MethodGet, "/api/v1/system/dict/UNKNOWN/items", "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"data":[]`) {
 		t.Fatalf("items response = %d %s", response.Code, response.Body.String())
 	}
 
-	response = perform(router, http.MethodPost, "/api/system/dict-type", `{"dictName":"测试","dictCode":"TEST"}`)
+	response = perform(router, http.MethodPost, "/api/v1/system/dict-type", `{"dictName":"测试","dictCode":"TEST"}`)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"code":200`) || !strings.Contains(response.Body.String(), `"data":null`) {
 		t.Fatalf("mutation response = %d %s", response.Code, response.Body.String())
 	}
 
-	response = perform(router, http.MethodGet, "/api/system/dict-type/page?pageSize=501", "")
+	response = perform(router, http.MethodGet, "/api/v1/system/dict-type/page?pageSize=501", "")
 	var envelope struct {
 		Code int `json:"code"`
 	}

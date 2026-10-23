@@ -48,8 +48,8 @@ func NewHandler(service HandlerService) (*Handler, error) {
 	return &Handler{service: service}, nil
 }
 
-// RegisterRoutes registers Java-compatible file routes on an already
-// authenticated /api/system router group.
+// RegisterRoutes registers file routes on an already authenticated
+// /api/v1/system router group.
 func RegisterRoutes(router gin.IRouter, handler *Handler) {
 	files := router.Group("/file")
 	files.POST("/upload", handler.upload)
@@ -92,7 +92,7 @@ type statusRequest struct {
 // @Failure 401 {object} ApiEnvelope
 // @Failure 413 {object} ApiEnvelope
 // @Failure 503 {object} ApiEnvelope
-// @Router /api/system/file/upload [post]
+// @Router /api/v1/system/file/upload [post]
 func (h *Handler) upload(c *gin.Context) {
 	parsed, err := parseMultipartUpload(c.Request, "file", 1, 0)
 	if err != nil {
@@ -136,7 +136,7 @@ func (h *Handler) upload(c *gin.Context) {
 // @Failure 401 {object} ApiEnvelope
 // @Failure 413 {object} ApiEnvelope
 // @Failure 503 {object} ApiEnvelope
-// @Router /api/system/file/upload-batch [post]
+// @Router /api/v1/system/file/upload-batch [post]
 func (h *Handler) uploadBatch(c *gin.Context) {
 	parsed, err := parseMultipartUpload(c.Request, "files", MaxBatchFiles, MaxBatchContentSize)
 	if err != nil {
@@ -199,7 +199,7 @@ func (h *Handler) uploadBatch(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/page [get]
+// @Router /api/v1/system/file/page [get]
 func (h *Handler) page(c *gin.Context) {
 	page, pageOK := queryInt(c, "page", 1)
 	pageSize, pageSizeOK := queryInt(c, "pageSize", 10)
@@ -233,7 +233,7 @@ func (h *Handler) page(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id} [get]
+// @Router /api/v1/system/file/{id} [get]
 func (h *Handler) detail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -252,7 +252,7 @@ func (h *Handler) detail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id} [put]
+// @Router /api/v1/system/file/{id} [put]
 func (h *Handler) update(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -278,7 +278,7 @@ func (h *Handler) update(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id} [delete]
+// @Router /api/v1/system/file/{id} [delete]
 func (h *Handler) delete(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -295,7 +295,7 @@ func (h *Handler) delete(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/batch-delete [post]
+// @Router /api/v1/system/file/batch-delete [post]
 func (h *Handler) deleteBatch(c *gin.Context) {
 	var request batchRequest
 	if err := c.ShouldBindJSON(&request); err != nil || !validIDs(request.IDs) {
@@ -314,7 +314,7 @@ func (h *Handler) deleteBatch(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id}/status [patch]
+// @Router /api/v1/system/file/{id}/status [patch]
 func (h *Handler) status(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -337,7 +337,7 @@ func (h *Handler) status(c *gin.Context) {
 // @Success 200 {file} binary
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id}/download [get]
+// @Router /api/v1/system/file/{id}/download [get]
 func (h *Handler) download(c *gin.Context) { h.stream(c, false) }
 
 // view godoc
@@ -349,7 +349,7 @@ func (h *Handler) download(c *gin.Context) { h.stream(c, false) }
 // @Success 200 {file} binary
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/file/{id}/view [get]
+// @Router /api/v1/system/file/{id}/view [get]
 func (h *Handler) view(c *gin.Context) { h.stream(c, true) }
 
 func (h *Handler) stream(c *gin.Context, view bool) {

@@ -22,7 +22,7 @@ type HandlerService interface {
 	CurrentUserMenus(context.Context, Principal) ([]CurrentUserMenu, error)
 }
 
-// Handler adapts the authentication use cases to the existing /api/auth HTTP
+// Handler adapts the authentication use cases to the /api/v1/auth HTTP
 // contract. It contains no token, database, or business-rule implementation.
 type Handler struct {
 	service       HandlerService
@@ -39,10 +39,11 @@ func NewHandler(service HandlerService, authenticator Authenticator) (*Handler, 
 	return &Handler{service: service, authenticator: authenticator}, nil
 }
 
-// RegisterRoutes keeps the existing React contract unchanged. Only login is
-// public; the remaining endpoints require a valid Bearer session.
+// RegisterRoutes registers the authentication endpoints under /auth on the
+// supplied API router group. Only login is public; the remaining endpoints
+// require a valid Bearer session.
 func RegisterRoutes(router gin.IRouter, handler *Handler) {
-	group := router.Group("/api/auth")
+	group := router.Group("/auth")
 	group.POST("/login", handler.Login)
 
 	protected := group.Group("")
@@ -88,7 +89,7 @@ type errorResponseEnvelope struct {
 // @Failure 400 {object} errorResponseEnvelope
 // @Failure 429 {object} errorResponseEnvelope
 // @Header 429 {string} Retry-After "等待重试的秒数"
-// @Router /api/auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var request loginRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -118,7 +119,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} emptyResponseEnvelope
 // @Failure 401 {object} errorResponseEnvelope
-// @Router /api/auth/logout [post]
+// @Router /api/v1/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	principal, ok := PrincipalFromContext(c.Request.Context())
 	if !ok {
@@ -138,7 +139,7 @@ func (h *Handler) Logout(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} currentUserResponseEnvelope
 // @Failure 401 {object} errorResponseEnvelope
-// @Router /api/auth/me [get]
+// @Router /api/v1/auth/me [get]
 func (h *Handler) CurrentUser(c *gin.Context) {
 	principal, ok := PrincipalFromContext(c.Request.Context())
 	if !ok {
@@ -159,7 +160,7 @@ func (h *Handler) CurrentUser(c *gin.Context) {
 // @Security BearerAuth
 // @Success 200 {object} currentUserMenusResponseEnvelope
 // @Failure 401 {object} errorResponseEnvelope
-// @Router /api/auth/menus [get]
+// @Router /api/v1/auth/menus [get]
 func (h *Handler) CurrentUserMenus(c *gin.Context) {
 	principal, ok := PrincipalFromContext(c.Request.Context())
 	if !ok {

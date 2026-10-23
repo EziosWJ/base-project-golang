@@ -23,7 +23,7 @@ func newHandlerRouter(t *testing.T, service *Service) *gin.Engine {
 	}
 	router := gin.New()
 	router.Use(platformhttp.RequestMetadata())
-	RegisterRoutes(router.Group("/api/system"), handler)
+	RegisterRoutes(router.Group("/api/v1/system"), handler)
 	return router
 }
 
@@ -35,7 +35,7 @@ func TestCreateRoleUsesPrincipalAndRequestMetadataForAudit(t *testing.T) {
 	}
 	router := newHandlerRouter(t, service)
 
-	request := httptest.NewRequest(http.MethodPost, "/api/system/role", strings.NewReader(`{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/system/role", strings.NewReader(`{"roleName":"运营","roleCode":"OPS","status":1,"sortOrder":2}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set(platformhttp.RequestIDHeader, "request-42")
 	request.Header.Set("User-Agent", "handler-test")
@@ -48,7 +48,7 @@ func TestCreateRoleUsesPrincipalAndRequestMetadataForAudit(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 	event := store.lastEvent
-	if event.Action != "role.create" || event.ResourceID != 1 || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodPost || event.Metadata.RequestURL != "/api/system/role" {
+	if event.Action != "role.create" || event.ResourceID != 1 || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodPost || event.Metadata.RequestURL != "/api/v1/system/role" {
 		t.Fatalf("audit event = %+v", event)
 	}
 }
@@ -60,7 +60,7 @@ func TestRoleDetailMapsNotFoundToLegacyBusinessEnvelope(t *testing.T) {
 	}
 	router := newHandlerRouter(t, service)
 	response := httptest.NewRecorder()
-	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/system/role/99", nil))
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/v1/system/role/99", nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d", response.Code)
 	}

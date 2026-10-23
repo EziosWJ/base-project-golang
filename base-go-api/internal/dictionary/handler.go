@@ -50,7 +50,7 @@ func NewHandler(service HandlerService) (*Handler, error) {
 }
 
 // RegisterRoutes registers dictionary routes on an already authenticated
-// /api/system router group.
+// /api/v1/system router group.
 func RegisterRoutes(router gin.IRouter, handler *Handler) {
 	types := router.Group("/dict-type")
 	types.GET("/page", handler.typePage)
@@ -109,7 +109,7 @@ type statusRequest struct {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/page [get]
+// @Router /api/v1/system/dict-type/page [get]
 func (h *Handler) typePage(c *gin.Context) {
 	status, statusOK := optionalStatus(c, "status")
 	query := TypePageQuery{
@@ -132,7 +132,7 @@ func (h *Handler) typePage(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/{id} [get]
+// @Router /api/v1/system/dict-type/{id} [get]
 func (h *Handler) typeDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -150,7 +150,7 @@ func (h *Handler) typeDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type [post]
+// @Router /api/v1/system/dict-type [post]
 func (h *Handler) createType(c *gin.Context) {
 	request, ok := bindTypeRequest(c)
 	if !ok {
@@ -169,7 +169,7 @@ func (h *Handler) createType(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/{id} [put]
+// @Router /api/v1/system/dict-type/{id} [put]
 func (h *Handler) updateType(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -190,7 +190,7 @@ func (h *Handler) updateType(c *gin.Context) {
 // @Param id path int true "字典类型 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/{id} [delete]
+// @Router /api/v1/system/dict-type/{id} [delete]
 func (h *Handler) deleteType(c *gin.Context) {
 	id, ok := pathID(c)
 	if ok {
@@ -206,7 +206,7 @@ func (h *Handler) deleteType(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/batch-delete [post]
+// @Router /api/v1/system/dict-type/batch-delete [post]
 func (h *Handler) deleteTypes(c *gin.Context) {
 	var request batchRequest
 	if !bindJSON(c, &request) {
@@ -228,7 +228,7 @@ func (h *Handler) deleteTypes(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-type/{id}/status [patch]
+// @Router /api/v1/system/dict-type/{id}/status [patch]
 func (h *Handler) typeStatus(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -258,7 +258,7 @@ func (h *Handler) typeStatus(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data/page [get]
+// @Router /api/v1/system/dict-data/page [get]
 func (h *Handler) dataPage(c *gin.Context) {
 	typeID, typeIDOK := optionalPositiveInt64(c, "dictTypeId")
 	query := DataPageQuery{
@@ -281,7 +281,7 @@ func (h *Handler) dataPage(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data/{id} [get]
+// @Router /api/v1/system/dict-data/{id} [get]
 func (h *Handler) dataDetail(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -299,7 +299,7 @@ func (h *Handler) dataDetail(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data [post]
+// @Router /api/v1/system/dict-data [post]
 func (h *Handler) createData(c *gin.Context) {
 	request, ok := bindDataRequest(c)
 	if !ok {
@@ -318,7 +318,7 @@ func (h *Handler) createData(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data/{id} [put]
+// @Router /api/v1/system/dict-data/{id} [put]
 func (h *Handler) updateData(c *gin.Context) {
 	id, ok := pathID(c)
 	if !ok {
@@ -339,7 +339,7 @@ func (h *Handler) updateData(c *gin.Context) {
 // @Param id path int true "字典数据 ID"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data/{id} [delete]
+// @Router /api/v1/system/dict-data/{id} [delete]
 func (h *Handler) deleteData(c *gin.Context) {
 	id, ok := pathID(c)
 	if ok {
@@ -355,7 +355,7 @@ func (h *Handler) deleteData(c *gin.Context) {
 // @Success 200 {object} ApiEnvelope
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict-data/batch-delete [post]
+// @Router /api/v1/system/dict-data/batch-delete [post]
 func (h *Handler) deleteDataBatch(c *gin.Context) {
 	var request batchRequest
 	if !bindJSON(c, &request) {
@@ -375,7 +375,7 @@ func (h *Handler) deleteDataBatch(c *gin.Context) {
 // @Param dictCode path string true "字典编码"
 // @Success 200 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
-// @Router /api/system/dict/{dictCode}/items [get]
+// @Router /api/v1/system/dict/{dictCode}/items [get]
 func (h *Handler) items(c *gin.Context) {
 	value, err := h.service.Items(c, c.Param("dictCode"))
 	writeResult(c, value, err)

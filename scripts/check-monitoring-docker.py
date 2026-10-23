@@ -56,7 +56,7 @@ def http(base, path, token=None, body=None):
 def login(base):
     wait_until(lambda: http(base, "/health")["code"] == 200)
     wait_until(lambda: http(base, "/ready")["code"] == 200)
-    return http(base, "/api/auth/login", body={"username": "admin", "password": "admin123"})["data"]["tokenValue"]
+    return http(base, "/api/v1/auth/login", body={"username": "admin", "password": "admin123"})["data"]["tokenValue"]
 
 
 def overview(base, token):

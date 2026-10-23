@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 import type { ApiPageResult } from "@/types/api";
 import type {
   LoginLogListQuery,
@@ -8,8 +8,8 @@ import type {
   OperLogRecord,
 } from "@/types/log";
 
-const LOGIN_LOG_BASE_PATH = "/api/system/login-log";
-const OPER_LOG_BASE_PATH = "/api/system/oper-log";
+const LOGIN_LOG_BASE_PATH = `${API_PREFIX}/system/login-log`;
+const OPER_LOG_BASE_PATH = `${API_PREFIX}/system/oper-log`;
 
 export function getLoginLogPage(query: LoginLogListQuery) {
   return http.get<ApiPageResult<LoginLogRecord>>(`${LOGIN_LOG_BASE_PATH}/page`, {

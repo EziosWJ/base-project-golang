@@ -126,13 +126,13 @@ func TestBuildRegistersAllSystemManagementRoutes(t *testing.T) {
 	// Every module route must exist behind bearer auth; an unauthenticated
 	// request proves the route is registered without exercising handlers.
 	for _, path := range []string{
-		"/api/system/role/page",
-		"/api/system/dept/tree",
-		"/api/system/user/page",
-		"/api/system/dict-type/page",
-		"/api/system/config/page",
-		"/api/system/file/page",
-		"/api/system/login-log/page",
+		"/api/v1/system/role/page",
+		"/api/v1/system/dept/tree",
+		"/api/v1/system/user/page",
+		"/api/v1/system/dict-type/page",
+		"/api/v1/system/config/page",
+		"/api/v1/system/file/page",
+		"/api/v1/system/login-log/page",
 	} {
 		response := httptest.NewRecorder()
 		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
@@ -142,12 +142,46 @@ func TestBuildRegistersAllSystemManagementRoutes(t *testing.T) {
 	}
 }
 
+func TestBuildRegistersVersionedRoutesAndRemovesUnversionedOnes(t *testing.T) {
+	router, err := Build(testConfig("test", false), readyProbe{}, newFakeStores().deps())
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+
+	login := httptest.NewRecorder()
+	loginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{}`))
+	loginRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(login, loginRequest)
+	if login.Code != http.StatusBadRequest {
+		t.Fatalf("POST /api/v1/auth/login status = %d, want %d", login.Code, http.StatusBadRequest)
+	}
+
+	me := httptest.NewRecorder()
+	router.ServeHTTP(me, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
+	if me.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /api/v1/auth/me status = %d, want %d", me.Code, http.StatusUnauthorized)
+	}
+
+	for _, path := range []string{
+		"/api/auth/login",
+		"/api/auth/me",
+		"/api/system/user/page",
+		"/api/public/announcement/page",
+	} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want %d (unversioned route must be removed)", path, response.Code, http.StatusNotFound)
+		}
+	}
+}
+
 func TestBuildAuthenticatesMultipartRequestsBeforeBodyPolicy(t *testing.T) {
 	router, err := Build(testConfig("test", false), readyProbe{}, newFakeStores().deps())
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	request := httptest.NewRequest(http.MethodPost, "/api/system/file/upload", strings.NewReader("oversized or malformed body"))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/system/file/upload", strings.NewReader("oversized or malformed body"))
 	request.Header.Set("Content-Type", "multipart/form-data; boundary=test")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

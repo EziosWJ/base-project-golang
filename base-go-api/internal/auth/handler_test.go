@@ -70,7 +70,7 @@ func newAuthRouter(t *testing.T, service *handlerServiceStub, authenticator *aut
 		t.Fatal(err)
 	}
 	router := gin.New()
-	RegisterRoutes(router, handler)
+	RegisterRoutes(router.Group("/api/v1"), handler)
 	return router
 }
 
@@ -80,7 +80,7 @@ func TestLoginMatchesFrontendContract(t *testing.T) {
 	}}
 	router := newAuthRouter(t, service, &authenticatorStub{})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"admin","password":"admin123"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"username":"admin","password":"admin123"}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("User-Agent", "frontend-test")
 	request.RemoteAddr = "203.0.113.8:4123"
@@ -120,7 +120,7 @@ func TestLoginValidationAndBusinessErrorsKeepLegacyContract(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			service := &handlerServiceStub{loginErr: test.serviceErr}
 			router := newAuthRouter(t, service, &authenticatorStub{})
-			request := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(test.body))
+			request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(test.body))
 			request.Header.Set("Content-Type", "application/json")
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, request)
@@ -156,7 +156,7 @@ func TestLoginValidationAndBusinessErrorsKeepLegacyContract(t *testing.T) {
 func TestLoginRateLimitReturnsRetryAfterAnd429Envelope(t *testing.T) {
 	service := &handlerServiceStub{loginErr: &LoginRateLimitError{RetryAfter: 2500 * time.Millisecond}}
 	router := newAuthRouter(t, service, &authenticatorStub{})
-	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"admin","password":"wrong"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"username":"admin","password":"wrong"}`))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
@@ -182,7 +182,7 @@ func TestProtectedRoutesRequireBearerAndExposePrincipal(t *testing.T) {
 	router := newAuthRouter(t, service, authenticator)
 
 	unauthorized := httptest.NewRecorder()
-	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil))
 	if unauthorized.Code != http.StatusUnauthorized {
 		t.Fatalf("missing bearer status = %d", unauthorized.Code)
 	}
@@ -192,7 +192,7 @@ func TestProtectedRoutesRequireBearerAndExposePrincipal(t *testing.T) {
 	}
 
 	malformed := httptest.NewRecorder()
-	malformedRequest := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	malformedRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	malformedRequest.Header.Set("Authorization", "signed-jwt")
 	router.ServeHTTP(malformed, malformedRequest)
 	if malformed.Code != http.StatusUnauthorized {
@@ -203,9 +203,9 @@ func TestProtectedRoutesRequireBearerAndExposePrincipal(t *testing.T) {
 		method string
 		path   string
 	}{
-		{method: http.MethodGet, path: "/api/auth/me"},
-		{method: http.MethodGet, path: "/api/auth/menus"},
-		{method: http.MethodPost, path: "/api/auth/logout"},
+		{method: http.MethodGet, path: "/api/v1/auth/me"},
+		{method: http.MethodGet, path: "/api/v1/auth/menus"},
+		{method: http.MethodPost, path: "/api/v1/auth/logout"},
 	} {
 		request := httptest.NewRequest(endpoint.method, endpoint.path, nil)
 		request.Header.Set("Authorization", "bearer signed-jwt")
@@ -237,7 +237,7 @@ func TestCurrentUserAndMenuResponsesUseFrontendJSONFields(t *testing.T) {
 	}
 	router := newAuthRouter(t, service, &authenticatorStub{principal: Principal{UserID: 3, JTI: "jti"}})
 
-	for _, path := range []string{"/api/auth/me", "/api/auth/menus"} {
+	for _, path := range []string{"/api/v1/auth/me", "/api/v1/auth/menus"} {
 		request := httptest.NewRequest(http.MethodGet, path, nil)
 		request.Header.Set("Authorization", "BEARER token")
 		response := httptest.NewRecorder()
@@ -256,7 +256,7 @@ func TestCurrentUserAndMenuResponsesUseFrontendJSONFields(t *testing.T) {
 		if err := json.Unmarshal(envelope.Data, &payload); err != nil {
 			t.Fatal(err)
 		}
-		if path == "/api/auth/me" {
+		if path == "/api/v1/auth/me" {
 			user := payload.(map[string]any)
 			if _, exists := user["last_login_time"]; exists || user["username"] != "admin" {
 				t.Fatalf("user JSON = %#v", user)
@@ -282,7 +282,7 @@ func TestProtectedRouteMapsAuthenticationAndUnexpectedErrors(t *testing.T) {
 	authenticator := &authenticatorStub{principal: Principal{UserID: 1, JTI: "jti"}}
 	router := newAuthRouter(t, service, authenticator)
 
-	request := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	request.Header.Set("Authorization", "Bearer valid")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)

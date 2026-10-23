@@ -1,4 +1,4 @@
-import { http } from "@/lib/http";
+import { API_PREFIX, http } from "@/lib/http";
 
 export type Announcement = {
   id: number;
@@ -12,10 +12,10 @@ export type Announcement = {
 };
 export type AnnouncementInput = Pick<Announcement, "title" | "content" | "scope" | "expiresAt">;
 export type AnnouncementPage = { records: Announcement[]; total: number; page: number; pageSize: number };
-const base = (scope: Announcement["scope"]) => scope === "PUBLIC" ? "/api/public/announcement" : "/api/system/announcement";
+const base = (scope: Announcement["scope"]) => scope === "PUBLIC" ? `${API_PREFIX}/public/announcement` : `${API_PREFIX}/system/announcement`;
 export const getAnnouncements = (scope: Announcement["scope"], page = 1, pageSize = 10, signal?: AbortSignal) => http.get<AnnouncementPage>(`${base(scope)}/page`, { query: { page, pageSize }, signal });
 export const getAnnouncement = (item: Pick<Announcement, "id" | "scope">, signal?: AbortSignal) => http.get<Announcement>(`${base(item.scope)}/${item.id}`, { signal });
-export const getAdminAnnouncements = (page: number) => http.get<AnnouncementPage>("/api/system/announcement-admin/page", { query: { page, pageSize: 10 } });
-export const saveAnnouncement = (value: AnnouncementInput, id?: number) => id ? http.put<Announcement>(`/api/system/announcement/${id}`, value) : http.post<Announcement>("/api/system/announcement", value);
-export const publishAnnouncement = (id: number) => http.put<void>(`/api/system/announcement/${id}/publish`);
-export const withdrawAnnouncement = (id: number) => http.put<void>(`/api/system/announcement/${id}/withdraw`);
+export const getAdminAnnouncements = (page: number) => http.get<AnnouncementPage>(`${API_PREFIX}/system/announcement-admin/page`, { query: { page, pageSize: 10 } });
+export const saveAnnouncement = (value: AnnouncementInput, id?: number) => id ? http.put<Announcement>(`${API_PREFIX}/system/announcement/${id}`, value) : http.post<Announcement>(`${API_PREFIX}/system/announcement`, value);
+export const publishAnnouncement = (id: number) => http.put<void>(`${API_PREFIX}/system/announcement/${id}/publish`);
+export const withdrawAnnouncement = (id: number) => http.put<void>(`${API_PREFIX}/system/announcement/${id}/withdraw`);

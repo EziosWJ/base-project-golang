@@ -42,7 +42,7 @@
 
 ## 菜单与路由
 
-- 后端 `GET /api/auth/menus` 驱动侧边栏，Dashboard 等前端本地硬编码保留
+- 后端 `GET /api/v1/auth/menus` 驱动侧边栏，Dashboard 等前端本地硬编码保留
 - 仅渲染 `visible=1` 的菜单，同级按 `sortOrder` 排序
 - `menuType=DIR` 无可见子菜单时不展示
 - 后端菜单 `path` 需与前端路由完全一致（如 `/system/user`）

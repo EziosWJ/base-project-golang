@@ -59,8 +59,8 @@ try {
       if (!url.pathname.startsWith("/api/")) { await route.continue(); return; }
       let result;
       let status = 200;
-      if (url.pathname === "/api/auth/me") result = user(role);
-      else if (url.pathname === "/api/auth/menus") result = role === "ADMIN" && !disabled ? menu : [];
+      if (url.pathname === "/api/v1/auth/me") result = user(role);
+      else if (url.pathname === "/api/v1/auth/menus") result = role === "ADMIN" && !disabled ? menu : [];
       else if (url.pathname.endsWith("unread-count")) result = 0;
       else if (url.pathname.endsWith("/announcement/page")) result = { records: [], total: 0 };
       else if (url.pathname.endsWith("/overview")) { overviewCount += 1; result = data; if (forbidden) status = 403; }

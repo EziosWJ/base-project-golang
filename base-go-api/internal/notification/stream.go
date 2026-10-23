@@ -21,7 +21,7 @@ func RegisterRealtimeRoutes(public, system gin.IRouter, h *Handler, authenticato
 // @Tags 公告
 // @Produce text/event-stream
 // @Success 200 {string} string "SSE ready/announcement/heartbeat"
-// @Router /api/public/announcement/events [get]
+// @Router /api/v1/public/announcement/events [get]
 func (h *Handler) publicEvents(c *gin.Context) { h.stream(c, 0, ScopePublic, nil) }
 
 // privateEvents godoc
@@ -30,7 +30,7 @@ func (h *Handler) publicEvents(c *gin.Context) { h.stream(c, 0, ScopePublic, nil
 // @Security BearerAuth
 // @Produce text/event-stream
 // @Success 200 {string} string "SSE ready/announcement/notification/read/heartbeat"
-// @Router /api/system/notification/events [get]
+// @Router /api/v1/system/notification/events [get]
 func (h *Handler) privateEvents(c *gin.Context) {
 	p, ok := auth.PrincipalFromContext(c.Request.Context())
 	if !ok {

@@ -213,7 +213,7 @@ export function FileUploadDemoPage() {
           >
             <FileUpload
               buttonText="选择单文件"
-              helperText="POST /api/system/file/upload · 单文件最大 50 MB。"
+              helperText="POST /api/v1/system/file/upload · 单文件最大 50 MB。"
               businessModule="upload-demo-single"
             />
           </ContentCard>

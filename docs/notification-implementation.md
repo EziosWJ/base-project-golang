@@ -16,17 +16,17 @@ REST 沿用统一的 `{code, message, data}` 响应；参数错误与不存在�
 
 | 方法与路径 | 受众 | 行为 |
 | --- | --- | --- |
-| GET /api/public/announcement/page | 匿名及登录用户 | 有效公开公告分页 |
-| GET /api/public/announcement/{id} | 匿名及登录用户 | 有效公开公告详情 |
-| GET /api/system/announcement/page | 登录用户 | 有效站内公告分页 |
-| GET /api/system/announcement/{id} | 登录用户 | 有效站内公告详情 |
-| GET /api/system/announcement-admin/page | ADMIN | 草稿、发布、到期、撤下的管理历史分页 |
-| POST /api/system/announcement | ADMIN | 保存新草稿，返回公告 |
-| PUT /api/system/announcement/{id} | ADMIN | 编辑草稿，返回公告 |
-| PUT /api/system/announcement/{id}/publish | ADMIN | 立即发布未到期草稿 |
-| PUT /api/system/announcement/{id}/withdraw | ADMIN | 撤下已发布公告 |
-| GET /api/public/announcement/events | 无需登录 | 公开公告变化 SSE |
-| GET /api/system/notification/events | 登录用户 | 本人通知、已读及站内公告变化 SSE |
+| GET /api/v1/public/announcement/page | 匿名及登录用户 | 有效公开公告分页 |
+| GET /api/v1/public/announcement/{id} | 匿名及登录用户 | 有效公开公告详情 |
+| GET /api/v1/system/announcement/page | 登录用户 | 有效站内公告分页 |
+| GET /api/v1/system/announcement/{id} | 登录用户 | 有效站内公告详情 |
+| GET /api/v1/system/announcement-admin/page | ADMIN | 草稿、发布、到期、撤下的管理历史分页 |
+| POST /api/v1/system/announcement | ADMIN | 保存新草稿，返回公告 |
+| PUT /api/v1/system/announcement/{id} | ADMIN | 编辑草稿，返回公告 |
+| PUT /api/v1/system/announcement/{id}/publish | ADMIN | 立即发布未到期草稿 |
+| PUT /api/v1/system/announcement/{id}/withdraw | ADMIN | 撤下已发布公告 |
+| GET /api/v1/public/announcement/events | 无需登录 | 公开公告变化 SSE |
+| GET /api/v1/system/notification/events | 登录用户 | 本人通知、已读及站内公告变化 SSE |
 
 公告草稿输入：`title`、`content`、`scope`（PUBLIC / INTERNAL）、可选 `expiresAt`（RFC3339，null 表示长期有效）。标题最多 200 字符，正文最多 100,000 字节；前端编辑器限制为 5,000 字符。到期时间必须在未来。公告阅读没有逐人已读或签收状态，发布者账号标识不暴露在公告 JSON 中。
 

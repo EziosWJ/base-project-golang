@@ -80,6 +80,11 @@ function joinUrl(baseUrl: string, path: string) {
   return `${normalizedBaseUrl}${normalizedPath}`;
 }
 
+// All business endpoints live under /api/v1. VITE_API_BASE_URL only carries
+// the server origin: empty means same-origin deployment, while development
+// points directly at the API server.
+export const API_PREFIX = "/api/v1";
+
 export function buildApiUrl(path: string) {
   const baseUrl = (import.meta as ViteImportMeta).env?.VITE_API_BASE_URL ?? "";
   return joinUrl(baseUrl, path);

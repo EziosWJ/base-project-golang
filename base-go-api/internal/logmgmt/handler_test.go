@@ -26,7 +26,7 @@ func newHandlerRouter(t *testing.T, service HandlerService) *gin.Engine {
 	}
 	router := gin.New()
 	router.Use(platformhttp.RequestMetadata())
-	RegisterRoutes(router.Group("/api/system"), handler)
+	RegisterRoutes(router.Group("/api/v1/system"), handler)
 	return router
 }
 
@@ -64,11 +64,11 @@ func TestLoginLogPageValidatesPagination(t *testing.T) {
 		wantCode  float64
 		wantField string
 	}{
-		{name: "page zero", path: "/api/system/login-log/page?page=0", wantCode: 400, wantField: "page"},
-		{name: "page not a number", path: "/api/system/login-log/page?page=abc", wantCode: 400, wantField: "page"},
-		{name: "pageSize zero", path: "/api/system/login-log/page?pageSize=0", wantCode: 400, wantField: "pageSize"},
-		{name: "pageSize too large", path: "/api/system/login-log/page?pageSize=501", wantCode: 400, wantField: "pageSize"},
-		{name: "pageSize not a number", path: "/api/system/login-log/page?pageSize=abc", wantCode: 400, wantField: "pageSize"},
+		{name: "page zero", path: "/api/v1/system/login-log/page?page=0", wantCode: 400, wantField: "page"},
+		{name: "page not a number", path: "/api/v1/system/login-log/page?page=abc", wantCode: 400, wantField: "page"},
+		{name: "pageSize zero", path: "/api/v1/system/login-log/page?pageSize=0", wantCode: 400, wantField: "pageSize"},
+		{name: "pageSize too large", path: "/api/v1/system/login-log/page?pageSize=501", wantCode: 400, wantField: "pageSize"},
+		{name: "pageSize not a number", path: "/api/v1/system/login-log/page?pageSize=abc", wantCode: 400, wantField: "pageSize"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			router := newServiceRouter(t, newMemoryStore(), nil)
@@ -91,8 +91,8 @@ func TestOperLogPageValidatesPagination(t *testing.T) {
 		path      string
 		wantField string
 	}{
-		{name: "page zero", path: "/api/system/oper-log/page?page=0", wantField: "page"},
-		{name: "pageSize too large", path: "/api/system/oper-log/page?pageSize=501", wantField: "pageSize"},
+		{name: "page zero", path: "/api/v1/system/oper-log/page?page=0", wantField: "page"},
+		{name: "pageSize too large", path: "/api/v1/system/oper-log/page?pageSize=501", wantField: "pageSize"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			router := newServiceRouter(t, newMemoryStore(), nil)
@@ -114,7 +114,7 @@ func TestLoginLogPageServesRecords(t *testing.T) {
 	store.loginLogs = append(store.loginLogs, LoginLog{ID: 2, Username: "admin", LoginStatus: "SUCCESS"})
 	store.loginLogs = append(store.loginLogs, LoginLog{ID: 1, Username: "nobody", LoginStatus: "FAIL"})
 	router := newServiceRouter(t, store, nil)
-	status, payload := getBody(t, router, http.MethodGet, "/api/system/login-log/page?page=1&pageSize=10")
+	status, payload := getBody(t, router, http.MethodGet, "/api/v1/system/login-log/page?page=1&pageSize=10")
 	if status != http.StatusOK || payload["code"].(float64) != 200 {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -127,7 +127,7 @@ func TestLoginLogPageServesRecords(t *testing.T) {
 func TestLoginLogDetailNotFoundMapsToBusinessEnvelope(t *testing.T) {
 	t.Parallel()
 	router := newServiceRouter(t, newMemoryStore(), nil)
-	status, payload := getBody(t, router, http.MethodGet, "/api/system/login-log/99")
+	status, payload := getBody(t, router, http.MethodGet, "/api/v1/system/login-log/99")
 	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeNotFound || payload["message"] != ErrNotFound.Error() {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -136,7 +136,7 @@ func TestLoginLogDetailNotFoundMapsToBusinessEnvelope(t *testing.T) {
 func TestLoginLogDetailInvalidID(t *testing.T) {
 	t.Parallel()
 	router := newServiceRouter(t, newMemoryStore(), nil)
-	status, payload := getBody(t, router, http.MethodGet, "/api/system/login-log/abc")
+	status, payload := getBody(t, router, http.MethodGet, "/api/v1/system/login-log/abc")
 	if status != http.StatusBadRequest || payload["code"].(float64) != platformhttp.CodeBadRequest {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -147,7 +147,7 @@ func TestOperLogDetailMapsNotFoundAndServesPayloadColumns(t *testing.T) {
 	store := newMemoryStore()
 	store.operLogDetail = &OperLogDetail{OperLogRecord: OperLogRecord{ID: 3, ModuleName: "role"}, RequestParams: `{"a":1}`, ResponseResult: "ok"}
 	router := newServiceRouter(t, store, nil)
-	status, payload := getBody(t, router, http.MethodGet, "/api/system/oper-log/3")
+	status, payload := getBody(t, router, http.MethodGet, "/api/v1/system/oper-log/3")
 	if status != http.StatusOK || payload["code"].(float64) != 200 {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -155,7 +155,7 @@ func TestOperLogDetailMapsNotFoundAndServesPayloadColumns(t *testing.T) {
 	if data["moduleName"] != "role" || data["requestParams"] != `{"a":1}` {
 		t.Fatalf("data=%v", data)
 	}
-	status, payload = getBody(t, router, http.MethodGet, "/api/system/oper-log/99")
+	status, payload = getBody(t, router, http.MethodGet, "/api/v1/system/oper-log/99")
 	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeNotFound {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -165,7 +165,7 @@ func TestClearLoginLogsGatedByConfigSwitch(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
 	router := newServiceRouter(t, store, &configStub{value: "false"})
-	status, payload := getBody(t, router, http.MethodDelete, "/api/system/login-log/clear")
+	status, payload := getBody(t, router, http.MethodDelete, "/api/v1/system/login-log/clear")
 	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeForbidden || payload["message"] != ErrForbidden.Error() {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -178,7 +178,7 @@ func TestClearOperLogsGatedByConfigSwitch(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
 	router := newServiceRouter(t, store, &configStub{value: "false"})
-	status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
+	status, payload := getBody(t, router, http.MethodDelete, "/api/v1/system/oper-log/clear")
 	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeForbidden || payload["message"] != ErrForbidden.Error() {
 		t.Fatalf("status=%d payload=%v", status, payload)
 	}
@@ -195,7 +195,7 @@ func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := newHandlerRouter(t, service)
-	request := httptest.NewRequest(http.MethodDelete, "/api/system/login-log/clear", nil)
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/system/login-log/clear", nil)
 	request.Header.Set(platformhttp.RequestIDHeader, "request-42")
 	request.Header.Set("User-Agent", "handler-test")
 	request.RemoteAddr = "203.0.113.9:1234"
@@ -208,7 +208,7 @@ func TestClearLoginLogsSucceedsAndAudits(t *testing.T) {
 		t.Fatalf("cleared=%v audit=%d", store.cleared, len(store.events))
 	}
 	event := store.events[0]
-	if event.Action != "login-log.clear" || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodDelete || event.Metadata.RequestURL != "/api/system/login-log/clear" {
+	if event.Action != "login-log.clear" || event.Metadata.ActorID != 7 || event.Metadata.RequestID != "request-42" || event.Metadata.ClientIP != "203.0.113.9" || event.Metadata.RequestMethod != http.MethodDelete || event.Metadata.RequestURL != "/api/v1/system/login-log/clear" {
 		t.Fatalf("audit event = %+v", event)
 	}
 }
@@ -221,7 +221,7 @@ func TestClearOperLogsSucceedsAndAudits(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := newHandlerRouter(t, service)
-	request := httptest.NewRequest(http.MethodDelete, "/api/system/oper-log/clear", nil)
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/system/oper-log/clear", nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, authenticated(request))
 	if response.Code != http.StatusOK {
@@ -236,7 +236,7 @@ func TestClearWithoutConfigIsForbidden(t *testing.T) {
 	t.Parallel()
 	store := newMemoryStore()
 	router := newServiceRouter(t, store, nil)
-	status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
+	status, payload := getBody(t, router, http.MethodDelete, "/api/v1/system/oper-log/clear")
 	if status != http.StatusOK || payload["code"].(float64) != platformhttp.CodeForbidden || store.cleared {
 		t.Fatalf("status=%d payload=%v cleared=%v", status, payload, store.cleared)
 	}
@@ -258,7 +258,7 @@ func TestClearRejectsInvalidConfigAndReadErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			store := newMemoryStore()
 			router := newServiceRouter(t, store, test.config)
-			status, payload := getBody(t, router, http.MethodDelete, "/api/system/oper-log/clear")
+			status, payload := getBody(t, router, http.MethodDelete, "/api/v1/system/oper-log/clear")
 			if status != test.wantStatus || payload["code"].(float64) != test.wantCode || store.cleared {
 				t.Fatalf("status=%d payload=%v cleared=%v", status, payload, store.cleared)
 			}
@@ -268,7 +268,7 @@ func TestClearRejectsInvalidConfigAndReadErrors(t *testing.T) {
 
 func TestClearRollsBackWhenAuditFails(t *testing.T) {
 	t.Parallel()
-	for _, path := range []string{"/api/system/login-log/clear", "/api/system/oper-log/clear"} {
+	for _, path := range []string{"/api/v1/system/login-log/clear", "/api/v1/system/oper-log/clear"} {
 		store := newMemoryStore()
 		store.auditError = errors.New("audit write failed")
 		router := newServiceRouter(t, store, &configStub{value: "true"})
@@ -286,12 +286,12 @@ func TestRoutesRegistered(t *testing.T) {
 	t.Parallel()
 	router := newServiceRouter(t, newMemoryStore(), nil)
 	want := map[string]string{
-		"GET /api/system/login-log/page":     "",
-		"GET /api/system/login-log/:id":      "",
-		"DELETE /api/system/login-log/clear": "",
-		"GET /api/system/oper-log/page":      "",
-		"GET /api/system/oper-log/:id":       "",
-		"DELETE /api/system/oper-log/clear":  "",
+		"GET /api/v1/system/login-log/page":     "",
+		"GET /api/v1/system/login-log/:id":      "",
+		"DELETE /api/v1/system/login-log/clear": "",
+		"GET /api/v1/system/oper-log/page":      "",
+		"GET /api/v1/system/oper-log/:id":       "",
+		"DELETE /api/v1/system/oper-log/clear":  "",
 	}
 	for _, route := range router.Routes() {
 		delete(want, route.Method+" "+route.Path)

@@ -78,19 +78,22 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 	platformhttp.RegisterSystemRoutes(router, platformhttp.SystemRoutes{
 		Readiness: readiness,
 	})
+	api := router.Group("/api/v1")
 	authHandler, err := auth.NewHandler(deps.Auth.WithServerMonitoring(cfg.Monitoring.Enabled), deps.Auth)
 	if err != nil {
 		return nil, fmt.Errorf("create authentication handler: %w", err)
 	}
-	auth.RegisterRoutes(router, authHandler)
+	auth.RegisterRoutes(api, authHandler)
 
-	system := router.Group("/api/system")
+	authenticated := api.Group("")
+	authenticated.Use(auth.BearerMiddleware(deps.Auth))
+
+	system := authenticated.Group("/system")
 	system.Use(
-		auth.BearerMiddleware(deps.Auth),
 		platformhttp.MultipartProtection(platformhttp.MultipartProtectionConfig{
 			Policies: map[string]platformhttp.MultipartPolicy{
-				"/api/system/file/upload":       {MaxBodyBytes: filemgmt.MaxSingleBodySize},
-				"/api/system/file/upload-batch": {MaxBodyBytes: filemgmt.MaxBatchBodySize},
+				"/api/v1/system/file/upload":       {MaxBodyBytes: filemgmt.MaxSingleBodySize},
+				"/api/v1/system/file/upload-batch": {MaxBodyBytes: filemgmt.MaxBatchBodySize},
 			},
 			MaxConcurrent: 8,
 			Logger:        logger,
@@ -141,16 +144,15 @@ func New(cfg config.Config, readiness platformhttp.ReadinessChecker, deps Depend
 			return nil, fmt.Errorf("create notification handler: %w", err)
 		}
 		notification.RegisterRoutes(system, notificationHandler)
-		notification.RegisterAnnouncementRoutes(router.Group("/api/public"), system, notificationHandler)
-		notification.RegisterRealtimeRoutes(router.Group("/api/public"), system, notificationHandler, deps.Auth)
+		public := api.Group("/public")
+		notification.RegisterAnnouncementRoutes(public, system, notificationHandler)
+		notification.RegisterRealtimeRoutes(public, system, notificationHandler, deps.Auth)
 	}
 	if deps.Monitoring != nil {
 		if !cfg.Monitoring.Enabled {
 			deps.Monitoring = deps.Monitoring.Disabled()
 		}
-		versioned := router.Group("/api/v1")
-		versioned.Use(auth.BearerMiddleware(deps.Auth))
-		monitoring.RegisterRoutes(versioned, monitoring.NewHandler(deps.Monitoring))
+		monitoring.RegisterRoutes(authenticated, monitoring.NewHandler(deps.Monitoring))
 	}
 
 	if cfg.Environment == config.EnvironmentDev && cfg.Swagger.Enabled {

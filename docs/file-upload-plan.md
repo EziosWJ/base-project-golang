@@ -35,7 +35,7 @@
 ## 实现与验收
 
 - 页面入口：页面示例 → 文件上传 Demo，路由 `/examples/file-upload`。
-- 复用 `/api/system/file/upload` 与 `/api/system/file/upload-batch`；批量失败结果增加从 0 开始的输入 `index`，前端按该索引保留失败项，避免同名成功文件重复上传。
+- 复用 `/api/v1/system/file/upload` 与 `/api/v1/system/file/upload-batch`；批量失败结果增加从 0 开始的输入 `index`，前端按该索引保留失败项，避免同名成功文件重复上传。
 - 图片上传支持 PNG、JPEG、GIF，服务端验证完整解码内容，最多 2500 万像素；文件预览与头像通过受信任 API 获取带鉴权的文件流，外部头像不附带登录凭证。
 - 补充既有 `SourceSegmentVO` 缺失类型，解除前端构建阻碍。
 - `task backend:check`、`task frontend:lint`、`task frontend:build` 均通过；构建仅提示 bundle 超过 500 kB。

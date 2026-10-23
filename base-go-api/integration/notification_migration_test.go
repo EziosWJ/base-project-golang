@@ -42,7 +42,7 @@ func TestSQLiteNotificationUpgradePreservesHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	token := loginAdmin(t, router)
-	response := serveJSON(router, "GET", "/api/system/notification/1", "", token)
+	response := serveJSON(router, "GET", "/api/v1/system/notification/1", "", token)
 	assertEnvelopeCode(t, response, 200, 200, "success")
 	var result struct {
 		Data notification.Notification `json:"data"`
@@ -53,8 +53,8 @@ func TestSQLiteNotificationUpgradePreservesHistory(t *testing.T) {
 	if result.Data.Title != "升级前消息" || result.Data.Content != "保留正文" || result.Data.IsRead != 1 || result.Data.JumpPath != "" {
 		t.Fatalf("upgrade changed notification: %s", response.Body.String())
 	}
-	assertEnvelopeCode(t, serveJSON(router, "POST", "/api/system/notification", `{"title":"升级后消息","content":"新增正文","userIds":[1]}`, token), 200, 200, "success")
-	page := serveJSON(router, "GET", "/api/system/notification/page", "", token)
+	assertEnvelopeCode(t, serveJSON(router, "POST", "/api/v1/system/notification", `{"title":"升级后消息","content":"新增正文","userIds":[1]}`, token), 200, 200, "success")
+	page := serveJSON(router, "GET", "/api/v1/system/notification/page", "", token)
 	if pageTotal(t, page.Body.Bytes()) != 2 {
 		t.Fatalf("post-upgrade insert failed: %s", page.Body.String())
 	}
