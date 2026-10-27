@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
@@ -92,8 +91,7 @@ func TestAuthContractUsesPostgresSessions(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -151,8 +149,7 @@ func TestRBACContractWritesAuditLog(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -209,8 +206,7 @@ func TestRBACWritesAndAuditsInOneTransaction(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -261,8 +257,7 @@ func TestSysConfigCreateRollsBackWhenAuditFails(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -311,8 +306,7 @@ func TestDepartmentAndUserContractRevokesSessions(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -377,8 +371,7 @@ func TestDictionaryAndConfigContractUsesSeedAndAudit(t *testing.T) {
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 	router, err := app.Build(testAPIConfig(), database, testDependencies(t, database, t.TempDir()))
@@ -411,8 +404,7 @@ func TestLoginAndOperLogContractServesQueriesAndDetails(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -506,8 +498,7 @@ func TestFileContractUploadsAndStreamsWithPostgres(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -635,8 +626,7 @@ func TestNotificationContractUsesPostgres(t *testing.T) {
 		t.Skip("Docker is required for PostgreSQL integration tests")
 	}
 
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	database := openTemporaryDatabase(t, temporary.dsn)
 	defer func() { _ = database.Close() }()
 
@@ -737,76 +727,6 @@ func servePlain(t *testing.T, router http.Handler, method, path, token string) *
 	return response
 }
 
-type temporaryPostgres struct {
-	container string
-	dsn       string
-}
-
-func startPostgres(t *testing.T) temporaryPostgres {
-	t.Helper()
-	container := fmt.Sprintf("base-go-api-integration-%d", time.Now().UnixNano())
-	password := "integration-password"
-	command := exec.Command(
-		"docker", "run", "--detach", "--rm", "--name", container,
-		"--env", "POSTGRES_DB=integration",
-		"--env", "POSTGRES_USER=integration",
-		"--env", "POSTGRES_PASSWORD="+password,
-		"--publish", "127.0.0.1::5432",
-		postgresImage,
-	)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("start temporary PostgreSQL: %v\n%s", err, output)
-	}
-	t.Cleanup(func() {
-		_ = exec.Command("docker", "rm", "--force", container).Run()
-	})
-
-	portOutput, err := exec.Command("docker", "port", container, "5432/tcp").Output()
-	if err != nil {
-		t.Fatalf("resolve temporary PostgreSQL port: %v", err)
-	}
-	_, port, err := net.SplitHostPort(strings.TrimSpace(string(portOutput)))
-	if err != nil {
-		t.Fatalf("parse temporary PostgreSQL port: %v", err)
-	}
-
-	database := temporaryPostgres{
-		container: container,
-		dsn:       "postgres://integration:" + password + "@127.0.0.1:" + port + "/integration?sslmode=disable",
-	}
-	database.waitUntilReady(t)
-	return database
-}
-
-func (database temporaryPostgres) waitUntilReady(t *testing.T) {
-	t.Helper()
-	endpoint, err := url.Parse(database.dsn)
-	if err != nil {
-		t.Fatalf("parse temporary PostgreSQL endpoint: %v", err)
-	}
-	deadline := time.Now().Add(45 * time.Second)
-	readyStreak := 0
-	for time.Now().Before(deadline) {
-		if err := exec.Command("docker", "exec", database.container, "pg_isready", "-U", "integration", "-d", "integration").Run(); err == nil {
-			connection, dialErr := net.DialTimeout("tcp", endpoint.Host, time.Second)
-			if dialErr == nil {
-				_ = connection.Close()
-				readyStreak++
-				if readyStreak >= 2 {
-					return
-				}
-			} else {
-				readyStreak = 0
-			}
-		} else {
-			readyStreak = 0
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	t.Fatal("temporary PostgreSQL did not become ready within 45 seconds")
-}
-
 func runMigrations(t *testing.T, root, dsn string) {
 	runMigrationsWithEnvironment(t, root, dsn, config.EnvironmentTest)
 }
@@ -816,7 +736,7 @@ func runMigrationsWithEnvironment(t *testing.T, root, dsn, environment string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	command := exec.CommandContext(ctx, "go", "run", "./cmd/migrate", "up", "--kind", "all")
+	command := exec.CommandContext(ctx, migrationExecutable(t, root), "up", "--kind", "all")
 	command.Dir = root
 	command.Env = integrationEnvironment(t, dsn, environment)
 	if output, err := command.CombinedOutput(); err != nil {
@@ -836,6 +756,7 @@ func integrationEnvironment(t *testing.T, dsn, environmentName string) []string 
 	}
 	return append(environment,
 		"APP_ENV="+environmentName,
+		"APP_DATABASE__DRIVER=postgres",
 		"APP_DATABASE__URL="+databaseConfig.URL,
 		"APP_DATABASE__USERNAME="+databaseConfig.Username,
 		"APP_DATABASE__PASSWORD="+databaseConfig.Password,
@@ -845,7 +766,7 @@ func integrationEnvironment(t *testing.T, dsn, environmentName string) []string 
 
 func (database temporaryPostgres) assertGooseSchemaVersionTable(t *testing.T) {
 	t.Helper()
-	command := exec.Command("docker", "exec", database.container, "psql", "-U", "integration", "-d", "integration", "-tAc", "SELECT 1 FROM goose_schema_db_version LIMIT 1")
+	command := exec.Command("docker", "exec", database.container, "psql", "-U", "integration", "-d", database.name, "-tAc", "SELECT 1 FROM goose_schema_db_version LIMIT 1")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("verify Goose schema migration table: %v\n%s", err, output)
