@@ -30,8 +30,7 @@ func TestSQLiteNotificationCapacity(t *testing.T) {
 	notificationCapacity(t, db, deps)
 }
 func TestNotificationCapacityPostgres(t *testing.T) {
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	db := openTemporaryDatabase(t, temporary.dsn)
 	defer db.Close()
 	deps := testDependencies(t, db, t.TempDir())

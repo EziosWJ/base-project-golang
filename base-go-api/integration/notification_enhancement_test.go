@@ -74,8 +74,7 @@ func TestSQLiteNotificationRealtimeContract(t *testing.T) {
 }
 
 func TestNotificationRealtimePostgresContract(t *testing.T) {
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	db := openTemporaryDatabase(t, temporary.dsn)
 	defer db.Close()
 	deps := testDependencies(t, db, t.TempDir())
@@ -268,8 +267,7 @@ func TestSQLiteAnnouncementContract(t *testing.T) {
 }
 
 func TestNotificationAnnouncementPostgresContract(t *testing.T) {
-	temporary := startPostgres(t)
-	runMigrations(t, projectRoot(t), temporary.dsn)
+	temporary := startBusinessPostgres(t)
 	db := openTemporaryDatabase(t, temporary.dsn)
 	defer db.Close()
 	deps := testDependencies(t, db, t.TempDir())
