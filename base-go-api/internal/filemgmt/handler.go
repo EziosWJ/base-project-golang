@@ -28,6 +28,7 @@ type HandlerService interface {
 	DeleteBatch(context.Context, AuditMetadata, []int64) error
 	SetStatus(context.Context, AuditMetadata, int64, int) error
 	Open(context.Context, int64, bool) (FileResource, error)
+	AccessURL(context.Context, int64, bool) (AccessLink, error)
 }
 
 type Handler struct{ service HandlerService }
@@ -62,6 +63,33 @@ func RegisterRoutes(router gin.IRouter, handler *Handler) {
 	files.PATCH("/:id/status", handler.status)
 	files.GET("/:id/download", handler.download)
 	files.GET("/:id/view", handler.view)
+	files.GET("/:id/access-url", handler.accessURL)
+}
+
+// accessURL godoc
+// @Summary 获取文件访问链接
+// @Description S3 返回临时签名链接且 direct=true；本地返回需要 Bearer Token 的流接口地址且 direct=false。链接按需生成，不持久化。软删除后不再签发新链接，已签发链接在到期前仍有效。
+// @Tags 文件管理
+// @Security BearerAuth
+// @Param id path int true "文件 ID"
+// @Param disposition query string false "inline（默认）或 attachment"
+// @Success 200 {object} ApiEnvelope{data=AccessLink}
+// @Failure 400 {object} ApiEnvelope
+// @Failure 401 {object} ApiEnvelope
+// @Router /api/v1/system/file/{id}/access-url [get]
+func (h *Handler) accessURL(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	disposition := c.DefaultQuery("disposition", "inline")
+	if disposition != "inline" && disposition != "attachment" {
+		writeFields(c, map[string]string{"disposition": "只能为 inline 或 attachment"})
+		return
+	}
+	link, err := h.service.AccessURL(c.Request.Context(), id, disposition == "inline")
+	writeResult(c, link, err)
 }
 
 type updateRequest struct {
@@ -335,6 +363,7 @@ func (h *Handler) status(c *gin.Context) {
 // @Produce application/octet-stream
 // @Param id path int true "文件 ID"
 // @Success 200 {file} binary
+// @Success 302 {string} string "S3 临时签名链接；响应不可缓存"
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
 // @Router /api/v1/system/file/{id}/download [get]
@@ -347,6 +376,7 @@ func (h *Handler) download(c *gin.Context) { h.stream(c, false) }
 // @Produce application/octet-stream
 // @Param id path int true "文件 ID"
 // @Success 200 {file} binary
+// @Success 302 {string} string "S3 临时签名链接；响应不可缓存"
 // @Failure 400 {object} ApiEnvelope
 // @Failure 401 {object} ApiEnvelope
 // @Router /api/v1/system/file/{id}/view [get]
@@ -360,6 +390,11 @@ func (h *Handler) stream(c *gin.Context, view bool) {
 	resource, err := h.service.Open(c.Request.Context(), id, view)
 	if err != nil {
 		writeError(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	if resource.URL != "" {
+		c.Redirect(http.StatusFound, resource.URL)
 		return
 	}
 	defer func() { _ = resource.Reader.Close() }()

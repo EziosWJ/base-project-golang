@@ -218,6 +218,13 @@ definitions:
       status:
         type: integer
     type: object
+  filemgmt.AccessLink:
+    properties:
+      direct:
+        type: boolean
+      url:
+        type: string
+    type: object
   filemgmt.ApiEnvelope:
     properties:
       code:
@@ -2041,6 +2048,42 @@ paths:
       summary: 修改文件元信息
       tags:
       - 文件管理
+  /api/v1/system/file/{id}/access-url:
+    get:
+      description: S3 返回临时签名链接且 direct=true；本地返回需要 Bearer Token 的流接口地址且 direct=false。链接按需生成，不持久化。软删除后不再签发新链接，已签发链接在到期前仍有效。
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: inline（默认）或 attachment
+        in: query
+        name: disposition
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/filemgmt.ApiEnvelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/filemgmt.AccessLink'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/filemgmt.ApiEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取文件访问链接
+      tags:
+      - 文件管理
   /api/v1/system/file/{id}/download:
     get:
       parameters:
@@ -2056,6 +2099,10 @@ paths:
           description: OK
           schema:
             type: file
+        "302":
+          description: S3 临时签名链接；响应不可缓存
+          schema:
+            type: string
         "400":
           description: Bad Request
           schema:
@@ -2116,6 +2163,10 @@ paths:
           description: OK
           schema:
             type: file
+        "302":
+          description: S3 临时签名链接；响应不可缓存
+          schema:
+            type: string
         "400":
           description: Bad Request
           schema:

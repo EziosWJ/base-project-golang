@@ -16,6 +16,14 @@ import (
 
 type LocalStorage struct{ root string }
 
+func (s *LocalStorage) Access(ctx context.Context, file File, _ bool) (FileResource, error) {
+	reader, err := s.Open(ctx, file.StoragePath)
+	if err != nil {
+		return FileResource{}, err
+	}
+	return FileResource{Reader: reader, File: file}, nil
+}
+
 func NewLocalStorage(root string) (*LocalStorage, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, ErrInvalid

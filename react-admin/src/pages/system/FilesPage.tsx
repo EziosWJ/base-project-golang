@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   App,
@@ -32,6 +32,8 @@ import {
   deleteFile,
   deleteFiles,
   downloadFile,
+  getFileLink,
+  getSignedBlob,
   listFiles,
   setFileStatus,
   updateFile,
@@ -66,7 +68,9 @@ export default function FilesPage() {
   const [uploadList, setUploadList] = useState<UploadFile[]>([]);
   const [uploadMeta, setUploadMeta] = useState<FileMetaValues>({});
   const [editRecord, setEditRecord] = useState<FileRecord | null>(null);
-  const [preview, setPreview] = useState<{ record: FileRecord; url: string; text?: string } | null>(null);
+  const [preview, setPreview] = useState<{ record: FileRecord; url: string; text?: string; objectUrl: boolean } | null>(null);
+  const [previewError, setPreviewError] = useState('');
+  const previewAbort = useRef<AbortController | null>(null);
   const [editForm] = Form.useForm<FileMetaValues>();
 
   const query = useMemo(
@@ -162,23 +166,57 @@ export default function FilesPage() {
   };
 
   const handlePreview = async (record: FileRecord) => {
+    previewAbort.current?.abort();
+    const controller = new AbortController();
+    previewAbort.current = controller;
+    setPreviewError('');
     try {
-      const blob = await getAssetBlob(record.accessUrl);
-      const url = URL.createObjectURL(blob);
-      if (record.mimeType.startsWith('text/')) {
-        const text = await blob.text();
-        setPreview({ record, url, text: text.slice(0, 20_000) });
+      const link = await getFileLink(record.id, 'inline', controller.signal);
+      if (controller.signal.aborted) return;
+      let blob: Blob | null = null;
+      let url = link.url;
+      let objectUrl = false;
+      if (link.direct) {
+        // R2 图片直接交给 img 加载；只有文本预览需要读取内容。
+        if (record.mimeType.startsWith('text/')) {
+          blob = await getSignedBlob(link.url, controller.signal);
+        }
       } else {
-        setPreview({ record, url });
+        blob = await getAssetBlob(link.url, controller.signal);
+        if (controller.signal.aborted) return;
+        url = URL.createObjectURL(blob);
+        objectUrl = true;
       }
+      let text: string | undefined;
+      if (blob && record.mimeType.startsWith('text/')) {
+        text = (await blob.text()).slice(0, 20_000);
+      }
+      if (controller.signal.aborted) {
+        if (objectUrl) URL.revokeObjectURL(url);
+        return;
+      }
+      setPreview({ record, url, text, objectUrl });
     } catch (error) {
+      if (controller.signal.aborted) return;
       message.error(getApiErrorMessage(error));
     }
   };
 
+  const closePreview = () => {
+    previewAbort.current?.abort();
+    setPreviewError('');
+    setPreview(null);
+  };
+
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview.url);
+      previewAbort.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.url);
     };
   }, [preview]);
 
@@ -383,14 +421,21 @@ export default function FilesPage() {
         title={preview?.record.originalName}
         open={Boolean(preview)}
         width={900}
-        footer={<Button onClick={() => setPreview(null)}>关闭</Button>}
-        onCancel={() => setPreview(null)}
+        footer={<Button onClick={closePreview}>关闭</Button>}
+        onCancel={closePreview}
         destroyOnHidden
       >
-        {preview && preview.text !== undefined ? (
+        {previewError ? (
+          <Alert type="error" showIcon title="图片加载失败" description={previewError} />
+        ) : preview && preview.text !== undefined ? (
           <pre style={{ maxHeight: '60vh', overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 13 }}>{preview.text}</pre>
         ) : preview && preview.record.mimeType.startsWith('image/') ? (
-          <img src={preview.url} alt={preview.record.originalName} style={{ maxWidth: '100%', maxHeight: '65vh', display: 'block', margin: '0 auto' }} />
+          <img
+            src={preview.url}
+            alt={preview.record.originalName}
+            onError={() => setPreviewError('图片加载失败，请重试')}
+            style={{ maxWidth: '100%', maxHeight: '65vh', display: 'block', margin: '0 auto' }}
+          />
         ) : preview && (preview.record.mimeType === 'application/pdf' || preview.record.extension === 'pdf') ? (
           <iframe src={preview.url} title={preview.record.originalName} style={{ width: '100%', height: '65vh', border: 0 }} />
         ) : (

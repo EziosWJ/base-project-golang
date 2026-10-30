@@ -11,21 +11,41 @@ import (
 	"mime"
 	"mime/multipart"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 const maxImagePixels int64 = 25000000
 
 type Service struct {
-	store   Store
-	storage Storage
+	store           Store
+	storages        map[string]Storage
+	defaultStorage  string
+	businessStorage map[string]string
 }
 
 func NewService(store Store, storage Storage) (*Service, error) {
-	if store == nil || storage == nil {
+	return NewServiceWithStorages(store, "local", nil, map[string]Storage{"local": storage})
+}
+
+// NewServiceWithStorages fixes each upload's storage type in its metadata.
+// Business routing applies only to new uploads, never to existing records.
+func NewServiceWithStorages(store Store, defaultStorage string, businessStorage map[string]string, storages map[string]Storage) (*Service, error) {
+	if store == nil || storages[defaultStorage] == nil {
 		return nil, ErrInvalid
 	}
-	return &Service{store: store, storage: storage}, nil
+	routes := make(map[string]string, len(businessStorage))
+	for business, backend := range businessStorage {
+		if strings.TrimSpace(business) == "" || storages[backend] == nil {
+			return nil, ErrInvalid
+		}
+		routes[business] = backend
+	}
+	backends := make(map[string]Storage, len(storages))
+	for name, storage := range storages {
+		backends[name] = storage
+	}
+	return &Service{store: store, storages: backends, defaultStorage: defaultStorage, businessStorage: routes}, nil
 }
 
 func (s *Service) Upload(ctx context.Context, m AuditMetadata, header *multipart.FileHeader, businessModule, remark string) (File, error) {
@@ -61,18 +81,24 @@ func (s *Service) uploadReader(ctx context.Context, m AuditMetadata, input Uploa
 	if err != nil {
 		return File{}, err
 	}
-	stored, err := s.storage.Save(ctx, input.Filename, input.Reader)
+	storageType := s.defaultStorage
+	if override, ok := s.businessStorage[businessModule]; ok {
+		storageType = override
+	}
+	storage := s.storages[storageType]
+	stored, err := storage.Save(ctx, input.Filename, input.Reader)
 	if err != nil {
 		return File{}, err
 	}
 	if !validMD5(stored.MD5) {
-		s.compensate(ctx, stored.Path)
+		s.compensate(ctx, storage, stored.Path)
 		return File{}, ErrInvalid
 	}
 	f := File{OriginalName: input.Filename, StorageName: stored.Name, Extension: stored.Extension, MimeType: mimeType, FileSize: stored.Size, FileMD5: stored.MD5, StoragePath: stored.Path, BusinessModule: businessModule, Status: StatusEnabled, Remark: stringPtr(remark)}
+	f.StorageType = storageType
 	f, err = s.store.Create(ctx, f, AuditEvent{Action: "file.upload", Resource: "file", ResourceID: 0, Summary: "上传文件", Metadata: m})
 	if err != nil {
-		s.compensate(ctx, stored.Path)
+		s.compensate(ctx, storage, stored.Path)
 		return File{}, err
 	}
 	return f, nil
@@ -80,8 +106,8 @@ func (s *Service) uploadReader(ctx context.Context, m AuditMetadata, input Uploa
 
 // compensate deletes the physical file written before a failed database
 // transaction. Compensation failure is logged, leaving a best-effort orphan.
-func (s *Service) compensate(ctx context.Context, storagePath string) {
-	if err := s.storage.Remove(ctx, storagePath); err != nil {
+func (s *Service) compensate(ctx context.Context, storage Storage, storagePath string) {
+	if err := storage.Remove(ctx, storagePath); err != nil {
 		slog.Error("补偿删除物理文件失败", "storagePath", storagePath, "error", err)
 	}
 }
@@ -263,16 +289,48 @@ func (s *Service) SetStatus(ctx context.Context, m AuditMetadata, id int64, stat
 	return s.store.SetStatus(ctx, id, status, AuditEvent{Action: "file.status", Resource: "file", ResourceID: id, Summary: "更新文件状态", Metadata: m})
 }
 
-func (s *Service) Open(ctx context.Context, id int64, _ bool) (FileResource, error) {
+func (s *Service) Open(ctx context.Context, id int64, view bool) (FileResource, error) {
+	f, storage, err := s.findFileStorage(ctx, id)
+	if err != nil {
+		return FileResource{}, err
+	}
+	return storage.Access(ctx, *f, view)
+}
+
+// AccessURL resolves metadata and signs remote links without opening local files.
+func (s *Service) AccessURL(ctx context.Context, id int64, view bool) (AccessLink, error) {
+	f, storage, err := s.findFileStorage(ctx, id)
+	if err != nil {
+		return AccessLink{}, err
+	}
+	if f.StorageType == "" || f.StorageType == "local" {
+		action := "download"
+		if view {
+			action = "view"
+		}
+		return AccessLink{URL: "/api/v1/system/file/" + strconv.FormatInt(id, 10) + "/" + action}, nil
+	}
+	resource, err := storage.Access(ctx, *f, view)
+	if err != nil {
+		return AccessLink{}, err
+	}
+	return AccessLink{URL: resource.URL, Direct: true}, nil
+}
+
+func (s *Service) findFileStorage(ctx context.Context, id int64) (*File, Storage, error) {
 	f, err := s.store.Find(ctx, id)
 	if err != nil {
-		return FileResource{}, err
+		return nil, nil, err
 	}
-	r, err := s.storage.Open(ctx, f.StoragePath)
-	if err != nil {
-		return FileResource{}, err
+	storageType := f.StorageType
+	if storageType == "" {
+		storageType = "local"
 	}
-	return FileResource{Reader: r, File: *f}, nil
+	storage := s.storages[storageType]
+	if storage == nil {
+		return nil, nil, ErrNotFound
+	}
+	return f, storage, nil
 }
 
 func stringPtr(value string) *string {

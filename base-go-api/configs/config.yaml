@@ -39,6 +39,15 @@ database:
   conn_max_lifetime: 30m
   conn_max_idle_time: 5m
 
+file:
+  default_storage: local
+  business_storage:
+    # 头像必须保持本地存储；businessModule 未匹配时使用 default_storage。
+    avatar: local
+  s3:
+    # 启用 R2 时在 config.dev.yaml / config.prod.yaml 填写连接信息。
+    presign_ttl: 5m
+
 jwt:
   issuer: base-go-api
   audience: react-admin

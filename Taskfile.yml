@@ -224,6 +224,12 @@ tasks:
     cmds:
       - pnpm run test
 
+  frontend:files:
+    desc: Verify local and R2 file access and credential isolation in a browser
+    dir: react-admin
+    cmds:
+      - pnpm run test:files
+
   frontend:build:
     desc: Type-check and build the frontend
     dir: react-admin

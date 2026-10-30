@@ -88,7 +88,20 @@ func main() {
 		slog.Error("build file storage", "error", err)
 		os.Exit(1)
 	}
-	fileService, err := filemgmt.NewService(filemgmt.NewRepository(database.GORM), fileStorage)
+	fileStorages := map[string]filemgmt.Storage{"local": fileStorage}
+	if cfg.File.S3Enabled() {
+		s3Storage, storageErr := filemgmt.NewS3Storage(filemgmt.S3Config{
+			Endpoint: cfg.File.S3.Endpoint, Bucket: cfg.File.S3.Bucket,
+			AccessKeyID: cfg.File.S3.AccessKeyID, SecretAccessKey: cfg.File.S3.SecretAccessKey,
+			PresignTTL: cfg.File.S3.PresignTTL,
+		})
+		if storageErr != nil {
+			slog.Error("build S3 storage", "error", storageErr)
+			os.Exit(1)
+		}
+		fileStorages["s3"] = s3Storage
+	}
+	fileService, err := filemgmt.NewServiceWithStorages(filemgmt.NewRepository(database.GORM), cfg.File.DefaultStorage, cfg.File.BusinessStorage, fileStorages)
 	if err != nil {
 		slog.Error("build file service", "error", err)
 		os.Exit(1)

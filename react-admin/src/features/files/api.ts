@@ -49,6 +49,28 @@ export function setFileStatus(id: number, status: 0 | 1): Promise<void> {
   return patch<void>(`${BASE}/${id}/status`, { status });
 }
 
-export function downloadFile(id: number): Promise<Blob> {
-  return getBlob(`${BASE}/${id}/download`);
+export interface FileAccessLink {
+  url: string;
+  direct: boolean;
+}
+
+export function getFileLink(
+  id: number,
+  disposition: 'inline' | 'attachment',
+  signal?: AbortSignal,
+): Promise<FileAccessLink> {
+  return get<FileAccessLink>(`${BASE}/${id}/access-url`, { disposition }, { signal });
+}
+
+/** 签名 URL 自身授权访问 R2，不把系统 Bearer Token 发送给对象存储。 */
+export async function getSignedBlob(url: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(url, { credentials: 'omit', signal });
+  if (!response.ok) throw new Error('文件加载失败，请重试');
+  return response.blob();
+}
+
+export async function downloadFile(id: number): Promise<Blob> {
+  const link = await getFileLink(id, 'attachment');
+  if (!link.direct) return getBlob(link.url);
+  return getSignedBlob(link.url);
 }

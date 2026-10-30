@@ -154,7 +154,7 @@ export async function getBlob(url: string, params?: Record<string, unknown>): Pr
 }
 
 /** 读取带鉴权的文件资源；accessUrl 已包含 /api/v1 前缀。 */
-export async function getAssetBlob(accessUrl: string): Promise<Blob> {
+export async function getAssetBlob(accessUrl: string, signal?: AbortSignal): Promise<Blob> {
   const url = env.apiOrigin && accessUrl.startsWith('/') ? `${env.apiOrigin}${accessUrl}` : accessUrl;
   try {
     const response = await apiClient.request<Blob>({
@@ -162,6 +162,7 @@ export async function getAssetBlob(accessUrl: string): Promise<Blob> {
       baseURL: '',
       method: 'GET',
       responseType: 'blob',
+      signal,
     });
     const contentType = String(response.headers['content-type'] ?? '');
     if (contentType.includes('application/json')) {

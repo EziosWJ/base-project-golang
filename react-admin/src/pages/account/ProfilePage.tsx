@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { appConfig } from '../../config/app.config';
 import { getApiErrorMessage } from '../../lib/api/errors';
 import { formatDateTime } from '../../utils/format';
-import { useAuthenticatedBlobUrl } from '../../hooks/useAuthenticatedBlobUrl';
+import { useAuthenticatedFileUrl } from '../../hooks/useAuthenticatedFileUrl';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { updateCurrentAvatar } from '../../features/account/api';
 import { uploadFile } from '../../features/files/api';
@@ -16,7 +16,7 @@ export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const refreshUser = useAuthStore((state) => state.refreshUser);
   const [refreshing, setRefreshing] = useState(false);
-  const avatarUrl = useAuthenticatedBlobUrl(user?.avatar);
+  const { url: avatarUrl, onError: handleAvatarError } = useAuthenticatedFileUrl(user?.avatar);
 
   const avatarMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -54,7 +54,15 @@ export default function ProfilePage() {
         <Space size={24} align="start" wrap>
           <Space orientation="vertical" align="center" size={10}>
             {avatarUrl ? (
-              <Avatar size={88} src={avatarUrl} alt="当前用户头像" />
+              <Avatar
+                size={88}
+                src={avatarUrl}
+                alt="当前用户头像"
+                onError={() => {
+                  handleAvatarError();
+                  return true;
+                }}
+              />
             ) : (
               <Avatar size={88} style={{ background: appConfig.brandColor, fontSize: 32 }}>
                 {(user?.nickname || user?.username || 'U').slice(0, 1)}

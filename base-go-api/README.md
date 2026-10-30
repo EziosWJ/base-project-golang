@@ -70,6 +70,10 @@ jwt:
 
 `.env` 只由 Docker Compose 读取，Go 程序不会自动加载它。直接执行 `go run` 或通过 VS Code 调试时，应使用 YAML 配置或在启动配置中显式注入环境变量。
 
+## 文件存储
+
+文件上传支持配置本地目录或 Cloudflare R2，并按业务模块选择存储；头像固定使用本地存储。配置、私有文件临时访问和 Bucket CORS 见 [R2 文件存储](docs/r2-storage.md)。
+
 ## SQLite 正式部署
 
 SQLite 必须显式配置 `database.driver: sqlite`，`database.url` 是本地持久文件路径；不配置 `username` 和 `password`：

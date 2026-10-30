@@ -132,6 +132,7 @@ func TestBuildRegistersAllSystemManagementRoutes(t *testing.T) {
 		"/api/v1/system/dict-type/page",
 		"/api/v1/system/config/page",
 		"/api/v1/system/file/page",
+		"/api/v1/system/file/1/access-url",
 		"/api/v1/system/login-log/page",
 	} {
 		response := httptest.NewRecorder()
@@ -490,7 +491,7 @@ type memoryStorage struct{}
 func (memoryStorage) Save(context.Context, string, io.Reader) (filemgmt.StoredFile, error) {
 	return filemgmt.StoredFile{}, nil
 }
-func (memoryStorage) Open(context.Context, string) (io.ReadSeekCloser, error) {
-	return nil, filemgmt.ErrNotFound
+func (memoryStorage) Access(context.Context, filemgmt.File, bool) (filemgmt.FileResource, error) {
+	return filemgmt.FileResource{}, filemgmt.ErrNotFound
 }
 func (memoryStorage) Remove(context.Context, string) error { return nil }
