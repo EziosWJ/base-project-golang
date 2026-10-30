@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -80,7 +81,31 @@ type DatabaseConfig struct {
 	ConnMaxIdleTime time.Duration `koanf:"conn_max_idle_time"`
 }
 type FileConfig struct {
-	StorageRoot string `koanf:"storage_root"`
+	StorageRoot     string            `koanf:"storage_root"`
+	DefaultStorage  string            `koanf:"default_storage"`
+	BusinessStorage map[string]string `koanf:"business_storage"`
+	S3              FileS3Config      `koanf:"s3"`
+}
+
+type FileS3Config struct {
+	Endpoint        string        `koanf:"endpoint"`
+	Bucket          string        `koanf:"bucket"`
+	AccessKeyID     string        `koanf:"access_key_id"`
+	SecretAccessKey string        `koanf:"secret_access_key"`
+	PresignTTL      time.Duration `koanf:"presign_ttl"`
+}
+
+// S3Enabled also keeps S3 readable when new uploads are switched back to local.
+func (c FileConfig) S3Enabled() bool {
+	if c.S3.Endpoint != "" || c.DefaultStorage == "s3" {
+		return true
+	}
+	for _, storage := range c.BusinessStorage {
+		if storage == "s3" {
+			return true
+		}
+	}
+	return false
 }
 
 type JWTConfig struct {
@@ -233,6 +258,27 @@ func (c Config) Validate() error {
 	}
 	if !filepath.IsAbs(c.File.StorageRoot) {
 		errs = append(errs, errors.New("file.storage_root must be an absolute path"))
+	}
+	if !oneOf(c.File.DefaultStorage, "local", "s3") {
+		errs = append(errs, errors.New("file.default_storage must be local or s3"))
+	}
+	for business, storage := range c.File.BusinessStorage {
+		if strings.TrimSpace(business) == "" || !oneOf(storage, "local", "s3") {
+			errs = append(errs, errors.New("file.business_storage must map nonempty business modules to local or s3"))
+		}
+	}
+	if c.File.S3Enabled() {
+		s3 := c.File.S3
+		endpoint, err := url.Parse(s3.Endpoint)
+		if err != nil || endpoint.Scheme != "https" || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || (endpoint.Path != "" && endpoint.Path != "/") {
+			errs = append(errs, errors.New("file.s3.endpoint must be an HTTPS origin"))
+		}
+		if strings.TrimSpace(s3.Bucket) == "" || strings.TrimSpace(s3.AccessKeyID) == "" || strings.TrimSpace(s3.SecretAccessKey) == "" {
+			errs = append(errs, errors.New("file.s3.bucket, access_key_id and secret_access_key are required"))
+		}
+		if s3.PresignTTL < time.Second || s3.PresignTTL > 7*24*time.Hour {
+			errs = append(errs, errors.New("file.s3.presign_ttl must be between 1s and 168h"))
+		}
 	}
 
 	if strings.TrimSpace(c.JWT.Secret) == "" {

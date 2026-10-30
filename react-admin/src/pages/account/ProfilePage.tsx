@@ -6,11 +6,13 @@ import { useAuthStore } from '../../features/auth/store';
 import { updateCurrentAvatar } from '../../features/system/api';
 import { getErrorMessage } from '../../lib/api/errors';
 import { formatDateTime } from '../../utils/format';
+import { useAuthenticatedFileUrl } from '../../hooks/useAuthenticatedFileUrl';
 
 export default function ProfilePage() {
   const { message } = App.useApp();
   const user = useAuthStore((state) => state.user);
   const [avatar, setAvatar] = useState(user?.avatar ?? '');
+  const { url: avatarUrl, onError: handleAvatarError } = useAuthenticatedFileUrl(user?.avatar);
 
   const saveAvatar = useMutation({
     mutationFn: updateCurrentAvatar,
@@ -31,7 +33,12 @@ export default function ProfilePage() {
 
       <Card>
         <Space align="start" size={20} wrap>
-          <Avatar size={72} src={user?.avatar || undefined} style={{ background: 'var(--ant-color-primary)' }}>
+          <Avatar
+            size={72}
+            src={avatarUrl || undefined}
+            onError={() => { handleAvatarError(); return false; }}
+            style={{ background: 'var(--ant-color-primary)' }}
+          >
             {(user?.nickname || user?.username || '?').slice(0, 1)}
           </Avatar>
           <div>

@@ -442,8 +442,8 @@ func (s *memoryStorage) Save(_ context.Context, name string, src io.Reader) (Sto
 	return StoredFile{Name: name, Path: path, Size: int64(len(data))}, nil
 }
 
-func (s *memoryStorage) Open(_ context.Context, path string) (io.ReadSeekCloser, error) {
-	return nil, ErrNotFound
+func (s *memoryStorage) Access(context.Context, File, bool) (FileResource, error) {
+	return FileResource{}, ErrNotFound
 }
 
 func (s *memoryStorage) Remove(_ context.Context, path string) error {

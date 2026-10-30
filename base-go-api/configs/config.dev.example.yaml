@@ -26,6 +26,16 @@ auth:
 file:
   # 生成时会填为本检出的绝对路径；手工修改后同样必须是绝对路径。
   storage_root: /home/your-user/project/base-project-golang/.data/uploads
+  # 默认使用本地存储；需要 R2 时取消注释并填写真实凭据（不要提交真实密钥）。
+  # default_storage: local
+  # business_storage:
+  #   avatar: local
+  # s3:
+  #   endpoint: https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+  #   bucket: YOUR_PRIVATE_BUCKET
+  #   access_key_id: YOUR_R2_ACCESS_KEY_ID
+  #   secret_access_key: YOUR_R2_SECRET_ACCESS_KEY
+  #   presign_ttl: 5m
 
 log:
   level: debug

@@ -2191,6 +2191,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/system/file/{id}/access-url": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "S3 返回临时签名链接且 direct=true；本地返回需要 Bearer Token 的流接口地址且 direct=false。链接按需生成，不持久化。软删除后不再签发新链接，已签发链接在到期前仍有效。",
+                "tags": [
+                    "文件管理"
+                ],
+                "summary": "获取文件访问链接",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "文件 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "inline（默认）或 attachment",
+                        "name": "disposition",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/filemgmt.AccessLink"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/filemgmt.ApiEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/system/file/{id}/download": {
             "get": {
                 "security": [
@@ -2219,6 +2280,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "file"
+                        }
+                    },
+                    "302": {
+                        "description": "S3 临时签名链接；响应不可缓存",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -2315,6 +2382,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "file"
+                        }
+                    },
+                    "302": {
+                        "description": "S3 临时签名链接；响应不可缓存",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -4471,6 +4544,17 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "integer"
+                }
+            }
+        },
+        "filemgmt.AccessLink": {
+            "type": "object",
+            "properties": {
+                "direct": {
+                    "type": "boolean"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },

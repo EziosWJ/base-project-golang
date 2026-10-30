@@ -378,8 +378,36 @@ export function updateFileStatus(id: number, status: 0 | 1): Promise<void> {
   return api.patch<void>(`${V1}/file/${id}/status`, { status });
 }
 
-export function downloadFile(id: number): Promise<Blob> {
-  return api.blob(`${V1}/file/${id}/download`);
+export interface FileAccessLink {
+  url: string;
+  direct: boolean;
+}
+
+export function getFileLink(
+  id: number,
+  disposition: 'inline' | 'attachment',
+  signal?: AbortSignal,
+): Promise<FileAccessLink> {
+  return api.get<FileAccessLink>(`${V1}/file/${id}/access-url`, {
+    params: { disposition },
+    signal,
+  });
+}
+
+/** Load the stable local stream URL with the API token, or a signed URL with cookies omitted. */
+export async function getFileBlob(url: string, signal?: AbortSignal): Promise<Blob> {
+  if (url.startsWith('/api/')) {
+    return api.blob(url.slice('/api/v1'.length), { signal });
+  }
+  // The signed URL authorizes R2 access; never send the API Bearer Token to R2.
+  const response = await fetch(url, { credentials: 'omit', signal });
+  if (!response.ok) throw new Error('文件加载失败，请重试');
+  return response.blob();
+}
+
+export async function downloadFile(id: number): Promise<Blob> {
+  const link = await getFileLink(id, 'attachment');
+  return getFileBlob(link.url);
 }
 
 export function getFileViewUrl(id: number): string {

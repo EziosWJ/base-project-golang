@@ -1,4 +1,4 @@
-// Package filemgmt owns local file metadata and storage operations.
+// Package filemgmt owns file metadata and storage operations.
 package filemgmt
 
 import (
@@ -46,6 +46,7 @@ type File struct {
 	FileSize       int64     `gorm:"column:file_size" json:"fileSize"`
 	FileMD5        string    `gorm:"column:file_md5" json:"fileMd5"`
 	StoragePath    string    `gorm:"column:storage_path" json:"storagePath"`
+	StorageType    string    `gorm:"column:storage_type;default:local" json:"storageType"`
 	AccessURL      string    `gorm:"column:access_url" json:"accessUrl"`
 	BusinessModule string    `gorm:"column:business_module" json:"businessModule"`
 	Status         int       `gorm:"column:status" json:"status"`
@@ -100,10 +101,16 @@ type UploadInput struct {
 	Reader      io.ReadSeeker
 }
 
-// FileResource deliberately exposes a stream instead of a byte slice.
+// FileResource exposes either a local stream or a temporary object URL.
 type FileResource struct {
 	Reader io.ReadSeekCloser
 	File   File
+	URL    string
+}
+
+type AccessLink struct {
+	URL    string `json:"url"`
+	Direct bool   `json:"direct"`
 }
 
 type BatchUploadResult struct {
@@ -132,6 +139,6 @@ type Store interface {
 
 type Storage interface {
 	Save(context.Context, string, io.Reader) (StoredFile, error)
-	Open(context.Context, string) (io.ReadSeekCloser, error)
+	Access(context.Context, File, bool) (FileResource, error)
 	Remove(context.Context, string) error
 }

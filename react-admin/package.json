@@ -16,7 +16,8 @@
     "typecheck": "tsc -b --pretty",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:files": "node tests/file-storage.mjs"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.5",

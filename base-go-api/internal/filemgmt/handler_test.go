@@ -762,3 +762,40 @@ func TestAuditMetadataCarriesRequestContext(t *testing.T) {
 		t.Fatalf("audit event = %+v", event)
 	}
 }
+
+func TestLocalAccessURLDoesNotOpenFile(t *testing.T) {
+	storage, err := NewLocalStorage(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &memoryStore{}
+	// Resolving a link must only inspect metadata, even if the physical file is absent.
+	store.seed(File{StorageType: "local", StoragePath: "missing.txt"})
+	router, _ := newServiceRouter(t, store, storage)
+	for _, disposition := range []string{"inline", "attachment", "invalid"} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, "/api/v1/system/file/1/access-url?disposition="+disposition, nil)))
+		if disposition == "invalid" {
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d", response.Code)
+			}
+			continue
+		}
+		var envelope struct {
+			Data AccessLink `json:"data"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+			t.Fatal(err)
+		}
+		action := "view"
+		if disposition == "attachment" {
+			action = "download"
+		}
+		if response.Code != http.StatusOK || envelope.Data.Direct || envelope.Data.URL != "/api/v1/system/file/1/"+action {
+			t.Fatalf("status=%d link=%+v", response.Code, envelope.Data)
+		}
+	}
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, authenticated(httptest.NewRequest(http.MethodGet, "/api/v1/system/file/1/view", nil)))
+	wantNotFoundEnvelope(t, response)
+}

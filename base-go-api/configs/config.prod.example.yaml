@@ -17,6 +17,18 @@ database:
 #   url: /var/lib/base-go-api/data/base-go-api.db
 #   # SQLite 不配置 username/password；请使用本地持久卷和单个 API 实例。
 
+# 文件存储：默认本地；使用私有 R2 Bucket 时取消注释并填写真实凭据。
+# file:
+#   default_storage: local
+#   business_storage:
+#     avatar: local
+#   s3:
+#     endpoint: https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+#     bucket: YOUR_PRIVATE_BUCKET
+#     access_key_id: YOUR_R2_ACCESS_KEY_ID
+#     secret_access_key: YOUR_R2_SECRET_ACCESS_KEY
+#     presign_ttl: 5m
+
 jwt:
   secret: change-me
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   App,
@@ -33,6 +33,8 @@ import {
   batchDeleteFiles,
   deleteFile,
   downloadFile,
+  getFileBlob,
+  getFileLink,
   getFilePage,
   updateFile,
   updateFileStatus,
@@ -43,6 +45,13 @@ import type { FileRecord } from '../../types/system';
 interface FileEditValues {
   businessModule?: string;
   remark?: string;
+}
+
+interface FilePreviewState {
+  record: FileRecord;
+  url: string;
+  text?: string;
+  error?: string;
 }
 
 const FILTER_KEYS = ['originalName', 'businessModule', 'status'] as const;
@@ -62,6 +71,9 @@ export default function FilesPage() {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<FilePreviewState | null>(null);
+  const previewRequest = useRef<AbortController | null>(null);
+  const previewObjectUrl = useRef('');
 
   const list = useQuery({
     queryKey: queryKeys.files.list(listState.query),
@@ -155,17 +167,50 @@ export default function FilesPage() {
     }
   };
 
-  const preview = async (record: FileRecord) => {
+  const releasePreview = () => {
+    previewRequest.current?.abort();
+    previewRequest.current = null;
+    if (previewObjectUrl.current) {
+      URL.revokeObjectURL(previewObjectUrl.current);
+      previewObjectUrl.current = '';
+    }
+  };
+
+  useEffect(() => releasePreview, []);
+
+  const closePreview = () => {
+    releasePreview();
+    setPreviewState(null);
+  };
+
+  const handlePreviewError = () => {
+    setPreviewState((current) =>
+      current ? { ...current, error: '文件加载失败，请重试' } : current,
+    );
+  };
+
+  const previewFile = async (record: FileRecord) => {
+    releasePreview();
+    const controller = new AbortController();
+    previewRequest.current = controller;
     try {
-      const blob = await downloadFile(record.id);
-      const url = URL.createObjectURL(blob);
-      const opened = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        downloadBlob(blob, record.originalName);
+      const link = await getFileLink(record.id, 'inline', controller.signal);
+      if (controller.signal.aborted) return;
+      const isText = record.mimeType.startsWith('text/');
+      let url = link.url;
+      let text: string | undefined;
+      if (!link.direct || isText) {
+        const blob = await getFileBlob(link.url, controller.signal);
+        if (controller.signal.aborted) return;
+        const objectUrl = URL.createObjectURL(blob);
+        previewObjectUrl.current = objectUrl;
+        url = objectUrl;
+        if (isText) text = (await blob.text()).slice(0, 20_000);
       }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (controller.signal.aborted) return;
+      setPreviewState({ record, url, text });
     } catch (error) {
-      message.error(getErrorMessage(error));
+      if (!controller.signal.aborted) message.error(getErrorMessage(error));
     }
   };
 
@@ -235,7 +280,7 @@ export default function FilesPage() {
       hideInSettings: true,
       render: (_, record) => (
         <Space size={0} wrap className="table-actions">
-          <Button type="link" size="small" icon={<Eye size={14} />} onClick={() => void preview(record)}>
+          <Button type="link" size="small" icon={<Eye size={14} />} onClick={() => void previewFile(record)}>
             预览
           </Button>
           <Button
@@ -257,7 +302,7 @@ export default function FilesPage() {
             onClick={() =>
               modal.confirm({
                 title: `删除文件「${record.originalName}」？`,
-                content: '文件记录与存储文件将被删除。',
+                content: '文件记录将被删除，物理对象保留。',
                 okButtonProps: { danger: true },
                 onOk: () => deleteMutation.mutateAsync(record.id),
               })
@@ -274,7 +319,7 @@ export default function FilesPage() {
     <div>
       <PageHeader
         title="文件管理"
-        description="文件通过受 Bearer 保护的接口下载与预览；上传大小与数量受后端策略限制。"
+        description="文件通过鉴权接口获取访问链接后下载与预览；上传大小与数量受后端策略限制。"
         extra={
           <Button type="primary" icon={<Plus size={16} />} onClick={() => setUploadOpen(true)}>
             上传文件
@@ -401,6 +446,39 @@ export default function FilesPage() {
         </Upload.Dragger>
         {uploadResult && (
           <Alert style={{ marginTop: 12 }} type="info" showIcon title="上传结果" description={uploadResult} />
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(previewState)}
+        title={previewState?.record.originalName}
+        onCancel={closePreview}
+        footer={<Button onClick={closePreview}>关闭</Button>}
+        width={900}
+        destroyOnHidden
+      >
+        {previewState?.error ? (
+          <Alert type="error" showIcon title={previewState.error} />
+        ) : previewState?.text !== undefined ? (
+          <pre style={{ maxHeight: '60vh', overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 13 }}>
+            {previewState.text}
+          </pre>
+        ) : previewState && previewState.record.mimeType.startsWith('image/') ? (
+          <img
+            src={previewState.url}
+            onError={handlePreviewError}
+            alt={previewState.record.originalName}
+            style={{ maxWidth: '100%', maxHeight: '65vh', display: 'block', margin: '0 auto' }}
+          />
+        ) : previewState &&
+          (previewState.record.mimeType === 'application/pdf' || previewState.record.extension === 'pdf') ? (
+          <iframe
+            src={previewState.url}
+            title={previewState.record.originalName}
+            style={{ width: '100%', height: '65vh', border: 0 }}
+          />
+        ) : (
+          <Alert type="info" showIcon title="该文件类型不支持内嵌预览，请使用下载。" />
         )}
       </Modal>
 
